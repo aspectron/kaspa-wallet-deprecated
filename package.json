@@ -2,6 +2,7 @@
   "name": "kaspa-node-module",
   "version": "0.0.1",
   "description": "Node module for kaspa",
+  "main": "index.ts",
   "author": "Denis.S",
   "license": "ISC"
 }
