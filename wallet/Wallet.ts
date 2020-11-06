@@ -1,5 +1,7 @@
 import Mnemonic from 'bitcore-mnemonic';
+// @ts-ignore
 import bitcore from 'bitcore-lib-cash';
+// @ts-ignore
 import passworder from 'browser-passworder';
 import { Buffer } from 'safe-buffer';
 import {
@@ -9,8 +11,8 @@ import {
   Api,
   TxSend,
   PendingTransactions,
-  WalletCache,
-} from '../custom-types';
+  WalletCache
+} from '../types/custom-types';
 import { logger } from '../utils/logger';
 import { AddressManager } from './AddressManager';
 import { UtxoSet } from './UtxoSet';
@@ -128,11 +130,12 @@ class Wallet {
       const { transactions } = txResults[i];
       logger.log('info', `${address}: ${transactions.length} transactions found.`);
       if (transactions.length !== 0) {
-        const confirmedTx = transactions.filter((tx) => tx.confirmations > 0);
+        const confirmedTx = transactions.filter((tx:Api.Transaction) => tx.confirmations > 0);
         this.transactionsStorage[address] = confirmedTx;
         addressesWithTx.push(address);
       }
     });
+    // @ts-ignore
     this.transactions = txParser(this.transactionsStorage, Object.keys(this.addressManager.all));
     const pendingTxHashes = Object.keys(this.pending.transactions);
     if (pendingTxHashes.length > 0) {
@@ -348,6 +351,7 @@ class Wallet {
     this.addressManager.getAddresses(cache.addresses.changeCounter + 1, 'change');
     this.addressManager.receiveAddress.advance(cache.addresses.receiveCounter - 1);
     this.addressManager.changeAddress.advance(cache.addresses.changeCounter);
+    // @ts-ignore
     this.transactions = txParser(this.transactionsStorage, Object.keys(this.addressManager.all));
     this.runStateChangeHooks();
   }

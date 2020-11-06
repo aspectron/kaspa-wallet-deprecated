@@ -1,3 +1,4 @@
+// @ts-ignore
 import bitcore from 'bitcore-lib-cash';
 import { Network } from 'custom-types';
 

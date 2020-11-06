@@ -1,4 +1,5 @@
 import { Api } from 'custom-types';
+// @ts-ignore
 import bitcore from 'bitcore-lib-cash';
 import { logger } from '../utils/logger';
 
