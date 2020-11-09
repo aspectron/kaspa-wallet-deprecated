@@ -1,0 +1,15 @@
+const winston = require('winston');
+export const logger = winston.createLogger({
+    level: 'info',
+    format: winston.format.json(),
+});
+//
+// If we're not in production then log to the `console` with the format:
+// `${info.level}: ${info.message} JSON.stringify({ ...rest }) `
+//
+if (process.env.NODE_ENV !== 'production') {
+    logger.add(new winston.transports.Console({
+        format: winston.format.simple(),
+    }));
+}
+//# sourceMappingURL=data:application/json;base64,eyJ2ZXJzaW9uIjozLCJmaWxlIjoibG9nZ2VyLmpzIiwic291cmNlUm9vdCI6IiIsInNvdXJjZXMiOlsiLi4vLi4vdXRpbHMvbG9nZ2VyLnRzIl0sIm5hbWVzIjpbXSwibWFwcGluZ3MiOiJBQUFBLE1BQU0sT0FBTyxHQUFHLE9BQU8sQ0FBQyxTQUFTLENBQUMsQ0FBQztBQUVuQyxNQUFNLENBQUMsTUFBTSxNQUFNLEdBQUcsT0FBTyxDQUFDLFlBQVksQ0FBQztJQUN6QyxLQUFLLEVBQUUsTUFBTTtJQUNiLE1BQU0sRUFBRSxPQUFPLENBQUMsTUFBTSxDQUFDLElBQUksRUFBRTtDQUM5QixDQUFDLENBQUM7QUFFSCxFQUFFO0FBQ0Ysd0VBQXdFO0FBQ3hFLGdFQUFnRTtBQUNoRSxFQUFFO0FBQ0YsSUFBSSxPQUFPLENBQUMsR0FBRyxDQUFDLFFBQVEsS0FBSyxZQUFZLEVBQUU7SUFDekMsTUFBTSxDQUFDLEdBQUcsQ0FDUixJQUFJLE9BQU8sQ0FBQyxVQUFVLENBQUMsT0FBTyxDQUFDO1FBQzdCLE1BQU0sRUFBRSxPQUFPLENBQUMsTUFBTSxDQUFDLE1BQU0sRUFBRTtLQUNoQyxDQUFDLENBQ0gsQ0FBQztDQUNIIiwic291cmNlc0NvbnRlbnQiOlsiY29uc3Qgd2luc3RvbiA9IHJlcXVpcmUoJ3dpbnN0b24nKTtcblxuZXhwb3J0IGNvbnN0IGxvZ2dlciA9IHdpbnN0b24uY3JlYXRlTG9nZ2VyKHtcbiAgbGV2ZWw6ICdpbmZvJyxcbiAgZm9ybWF0OiB3aW5zdG9uLmZvcm1hdC5qc29uKCksXG59KTtcblxuLy9cbi8vIElmIHdlJ3JlIG5vdCBpbiBwcm9kdWN0aW9uIHRoZW4gbG9nIHRvIHRoZSBgY29uc29sZWAgd2l0aCB0aGUgZm9ybWF0OlxuLy8gYCR7aW5mby5sZXZlbH06ICR7aW5mby5tZXNzYWdlfSBKU09OLnN0cmluZ2lmeSh7IC4uLnJlc3QgfSkgYFxuLy9cbmlmIChwcm9jZXNzLmVudi5OT0RFX0VOViAhPT0gJ3Byb2R1Y3Rpb24nKSB7XG4gIGxvZ2dlci5hZGQoXG4gICAgbmV3IHdpbnN0b24udHJhbnNwb3J0cy5Db25zb2xlKHtcbiAgICAgIGZvcm1hdDogd2luc3Rvbi5mb3JtYXQuc2ltcGxlKCksXG4gICAgfSlcbiAgKTtcbn1cbiJdfQ==
