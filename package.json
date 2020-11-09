@@ -8,7 +8,6 @@
   "scripts": {
     "build": "tsc",
     "watch": "tsc --watch",
-    "install": "npm install .",
     "prepare": "npm run build"
   },
   "dependencies": {
