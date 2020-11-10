@@ -8,7 +8,7 @@
   "scripts": {
     "build": "tsc",
     "watch": "tsc --watch",
-    "prepare": "npm run build"
+    "prepare": "npm run build && npm install ."
   },
   "dependencies": {
     "@types/node": "^14.14.6",
