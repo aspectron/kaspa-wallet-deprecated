@@ -1,8 +1,8 @@
-import Mnemonic from 'bitcore-mnemonic';
+const Mnemonic = require('bitcore-mnemonic');
 // @ts-ignore
-import bitcore from 'bitcore-lib-cash';
+import * as bitcore from 'bitcore-lib-cash';
 // @ts-ignore
-import passworder from 'browser-passworder';
+import * as passworder from 'passworder';
 import { Buffer } from 'safe-buffer';
 import {
   Network,

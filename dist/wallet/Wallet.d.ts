@@ -1,4 +1,4 @@
-import bitcore from 'bitcore-lib-cash';
+import * as bitcore from 'bitcore-lib-cash';
 import { Network, SelectedNetwork, Api, TxSend, PendingTransactions, WalletCache } from '../types/custom-types';
 import { AddressManager } from './AddressManager';
 import { UtxoSet } from './UtxoSet';

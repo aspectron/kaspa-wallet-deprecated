@@ -1,5 +1,5 @@
 // @ts-ignore
-import bitcore from 'bitcore-lib-cash';
+import * as bitcore from 'bitcore-lib-cash';
 import { Network } from 'custom-types';
 
 export default () => {
