@@ -111,7 +111,9 @@ declare class Wallet {
             utxoIds: string[];
             rawTx: string;
             amount: number;
-            fee: number;
+            fee: number; /**
+             * The summed balance across all of Wallet's discovered addresses, minus amount from pending transactions.
+             */
             to: string;
         }>;
         utxos: {

@@ -2,7 +2,17 @@ const Mnemonic = require('bitcore-mnemonic');
 // @ts-ignore
 import * as bitcore from 'bitcore-lib-cash';
 // @ts-ignore
-import * as passworder from 'passworder';
+
+import * as passworder1 from 'browser-passworder';
+import * as passworder2 from '@aspectron/flow-key-crypt';
+let passworder:typeof passworder1 | typeof passworder2;
+// @ts-ignore
+if(typeof window != "undefined" && !window.nw){
+  passworder = passworder1;
+}else{
+  passworder = passworder2;
+}
+
 import { Buffer } from 'safe-buffer';
 import {
   Network,
@@ -383,7 +393,7 @@ class Wallet {
    */
   static async import(password: string, encryptedMnemonic: string): Promise<Wallet> {
     const decrypted = await passworder.decrypt(password, encryptedMnemonic);
-    const savedWallet = JSON.parse(Buffer.from(decrypted).toString('utf8')) as WalletSave;
+    const savedWallet = decrypted as WalletSave;
     const myWallet = new this(savedWallet.privKey, savedWallet.seedPhrase);
     return myWallet;
   }
@@ -398,7 +408,7 @@ class Wallet {
       privKey: this.HDWallet.toString(),
       seedPhrase: this.mnemonic,
     };
-    return passworder.encrypt(password, Buffer.from(JSON.stringify(savedWallet), 'utf8'));
+    return passworder.encrypt(password, JSON.stringify(savedWallet));
   }
 }
 
