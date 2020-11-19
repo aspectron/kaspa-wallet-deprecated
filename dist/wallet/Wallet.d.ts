@@ -1,5 +1,5 @@
 import * as bitcore from 'bitcore-lib-cash';
-import { Network, SelectedNetwork, Api, TxSend, PendingTransactions, WalletCache } from '../types/custom-types';
+import { Network, SelectedNetwork, Api, TxSend, PendingTransactions, WalletCache, IRPC } from '../types/custom-types';
 import { AddressManager } from './AddressManager';
 import { UtxoSet } from './UtxoSet';
 /** Class representing an HDWallet with derivable child addresses */
@@ -42,6 +42,11 @@ declare class Wallet {
      * @param walletSave.seedPhrase Saved wallet's seed phrase.
      */
     constructor(privKey?: string, seedPhrase?: string);
+    /**
+     * Set rpc provider
+     * @param rpc
+     */
+    setRPC(rpc: IRPC): void;
     /**
      * Queries API for address[] UTXOs. Adds UTXOs to UTXO set. Updates wallet balance.
      * @param addresses

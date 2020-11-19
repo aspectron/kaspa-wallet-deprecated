@@ -11,7 +11,7 @@ import {
   Api,
   TxSend,
   PendingTransactions,
-  WalletCache
+  WalletCache, IRPC
 } from '../types/custom-types';
 import { logger } from '../utils/logger';
 import { AddressManager } from './AddressManager';
@@ -100,13 +100,21 @@ class Wallet {
   }
 
   /**
+   * Set rpc provider
+   * @param rpc
+   */
+  setRPC(rpc:IRPC){
+    api.setRPC(rpc);
+  }
+
+  /**
    * Queries API for address[] UTXOs. Adds UTXOs to UTXO set. Updates wallet balance.
    * @param addresses
    */
   async updateUtxos(addresses: string[]): Promise<void> {
     logger.log('info', `Getting utxos for ${addresses.length} addresses.`);
     const utxoResults = await Promise.all(
-      addresses.map((address) => api.getUtxos(address, this.apiEndpoint))
+      addresses.map((address) => api.getUtxos(address))
     );
     addresses.forEach((address, i) => {
       const { utxos } = utxoResults[i];
@@ -124,7 +132,7 @@ class Wallet {
     logger.log('info', `Getting transactions for ${addresses.length} addresses.`);
     const addressesWithTx: string[] = [];
     const txResults = await Promise.all(
-      addresses.map((address) => api.getTransactions(address, this.apiEndpoint))
+      addresses.map((address) => api.getTransactions(address))
     );
     addresses.forEach((address, i) => {
       const { transactions } = txResults[i];
@@ -286,7 +294,7 @@ class Wallet {
   async sendTx(txParams: TxSend): Promise<string> {
     const { id, rawTx } = this.composeTx(txParams);
     try {
-      await api.postTx(rawTx, this.apiEndpoint);
+      await api.postTx(rawTx);
     } catch (e) {
       this.undoPendingTx(id);
       throw e;

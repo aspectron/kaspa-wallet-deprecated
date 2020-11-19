@@ -82,6 +82,10 @@ export namespace Api {
     errorCode: number;
     errorMessage: string;
   }
+  interface SuccessResponse{
+    success:boolean;
+    message?:string
+  }
 
   interface BlockResponse {
     blockHash: string;
@@ -132,3 +136,12 @@ export namespace Api {
   }
   type SendTxResponse = boolean;
 }
+
+export interface IRPC {
+  getBlock(blockHash:string): Promise<Api.BlockResponse>;
+  getAddressTransactions(address:string, limit:number, skip:number): Promise<Api.Transaction[]>;
+  getUtxos(address:string, limit:number, skip:number): Promise<Api.Utxo[]>;
+  postTx(rawTransaction: string): Promise<Api.SuccessResponse>;
+}
+
+
