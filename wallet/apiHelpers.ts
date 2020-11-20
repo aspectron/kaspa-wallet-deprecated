@@ -12,7 +12,7 @@ class ApiError extends Error {
 
 const missingRPCProviderError = ()=>{
 	throw new ApiError(`RPC privider is missing. Please set RPC using 
-		wallet.setRPC(rpc_provider).`);
+		Wallet.setRPC(rpc_provider).`);
 }
 
 export const setRPC = (rpc:IRPC)=>{

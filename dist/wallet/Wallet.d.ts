@@ -46,7 +46,7 @@ declare class Wallet {
      * Set rpc provider
      * @param rpc
      */
-    setRPC(rpc: IRPC): void;
+    static setRPC(rpc: IRPC): void;
     /**
      * Queries API for address[] UTXOs. Adds UTXOs to UTXO set. Updates wallet balance.
      * @param addresses

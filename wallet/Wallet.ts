@@ -113,7 +113,7 @@ class Wallet {
    * Set rpc provider
    * @param rpc
    */
-  setRPC(rpc:IRPC){
+  static setRPC(rpc:IRPC){
     api.setRPC(rpc);
   }
 
