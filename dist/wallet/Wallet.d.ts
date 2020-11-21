@@ -4,8 +4,6 @@ import { AddressManager } from './AddressManager';
 import { UtxoSet } from './UtxoSet';
 /** Class representing an HDWallet with derivable child addresses */
 declare class Wallet {
-    static passworder1: any;
-    static passworder2: any;
     HDWallet: bitcore.HDPrivateKey;
     /**
      * The summed balance across all of Wallet's discovered addresses, minus amount from pending transactions.
