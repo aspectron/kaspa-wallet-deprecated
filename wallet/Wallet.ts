@@ -32,6 +32,10 @@ import { DEFAULT_FEE, DEFAULT_NETWORK } from '../config.json';
 
 /** Class representing an HDWallet with derivable child addresses */
 class Wallet {
+
+  static passworder1:any = passworder1;
+  static passworder2:any = passworder2;
+
   HDWallet: bitcore.HDPrivateKey;
 
   /**
@@ -393,7 +397,7 @@ class Wallet {
    */
   static async import(password: string, encryptedMnemonic: string): Promise<Wallet> {
     const decrypted = await passworder.decrypt(password, encryptedMnemonic);
-    const savedWallet = decrypted as WalletSave;
+    const savedWallet = JSON.parse(decrypted) as WalletSave;
     const myWallet = new this(savedWallet.privKey, savedWallet.seedPhrase);
     return myWallet;
   }
