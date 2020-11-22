@@ -176,6 +176,46 @@ class Wallet {
   }
 
   /**
+   * Queries API for address[] UTXOs. Adds tx to transactions storage. Also sorts the entire transaction set.
+   * @param addresses
+   */
+  async findUtxos(addresses: string[]): Promise<string[]> {
+    logger.log('info', `Getting UTXOs for ${addresses.length} addresses.`);
+    const addressesWithUTXOs: string[] = [];
+    const utxoResults = await Promise.all(
+      addresses.map((address) => api.getUtxos(address))
+    );
+    addresses.forEach((address, i) => {
+      const { utxos } = utxoResults[i];
+      console.log("utxos", utxos)
+      logger.log('info', `${address}: ${utxos.length} utxos found.`);
+      if (utxos.length !== 0) {
+        //const confirmedTx = utxos.filter((tx:Api.Utxo) => tx.confirmations > 0);
+        this.utxoSet.utxoStorage[address] = utxos;
+        this.utxoSet.add(utxos, address);
+        addressesWithUTXOs.push(address);
+      }
+    });
+    /*/ @ts-ignore
+    this.transactions = txParser(this.transactionsStorage, Object.keys(this.addressManager.all));
+    const pendingTxHashes = Object.keys(this.pending.transactions);
+    if (pendingTxHashes.length > 0) {
+      pendingTxHashes.forEach((hash) => {
+        if (this.transactions.map((tx) => tx.transactionHash).includes(hash)) {
+          this.deletePendingTx(hash);
+        }
+      });
+    }
+    */
+    const isActivityOnReceiveAddr =
+      this.utxoSet.utxoStorage[this.addressManager.receiveAddress.current.address] !== undefined;
+    if (isActivityOnReceiveAddr) {
+      this.addressManager.receiveAddress.next();
+    }
+    return addressesWithUTXOs;
+  }
+
+  /**
    * Recalculates wallet balance.
    */
   updateBalance(): void {
@@ -203,7 +243,7 @@ class Wallet {
   /**
    * Derives receiveAddresses and changeAddresses and checks their transactions and UTXOs.
    * @param threshold stop discovering after `threshold` addresses with no activity
-   */
+   
   async addressDiscovery(threshold = 20): Promise<void> {
     const doDiscovery = async (
       n: number,
@@ -246,6 +286,59 @@ class Wallet {
       `receive address index: ${highestReceiveIndex}; change address index: ${highestChangeIndex}`
     );
     await this.updateUtxos(Object.keys(this.transactionsStorage));
+    this.runStateChangeHooks();
+  }
+  */
+
+  /**
+   * Derives receiveAddresses and changeAddresses and checks their transactions and UTXOs.
+   * @param threshold stop discovering after `threshold` addresses with no activity
+   */
+  async addressDiscovery(threshold = 20): Promise<void> {
+    let addressList:string[] = [];
+    let lastIndex = -1;
+    const doDiscovery = async (
+      n: number,
+      deriveType: 'receive' | 'change',
+      offset: number
+    ): Promise<number> => {
+      const derivedAddresses = this.addressManager.getAddresses(n, deriveType, offset);
+      const addresses = derivedAddresses.map((obj) => obj.address);
+      addressList = [...addressList, ...addresses];
+      logger.log(
+        'info',
+        `Fetching ${deriveType} address data for derived indices ${JSON.stringify(
+          derivedAddresses.map((obj) => obj.index)
+        )}`
+      );
+      const addressesWithUTXOs = await this.findUtxos(addresses);
+      if (addressesWithUTXOs.length === 0) {
+        // address discovery complete
+        const lastAddressIndexWithTx = offset - (threshold - n) - 1;
+        logger.log(
+          'info',
+          `${deriveType}Address discovery complete. Last activity on address #${lastAddressIndexWithTx}. No activity from ${deriveType}#${
+            lastAddressIndexWithTx + 1
+          }~${lastAddressIndexWithTx + threshold}.`
+        );
+        return lastAddressIndexWithTx;
+      }
+      // else keep doing discovery
+      const nAddressesLeft =
+        derivedAddresses
+          .filter((obj) => addressesWithUTXOs.includes(obj.address))
+          .reduce((prev, cur) => Math.max(prev, cur.index), 0) + 1;
+      return doDiscovery(nAddressesLeft, deriveType, offset + n);
+    };
+    const highestReceiveIndex = await doDiscovery(threshold, 'receive', 0);
+    const highestChangeIndex = await doDiscovery(threshold, 'change', 0);
+    this.addressManager.receiveAddress.advance(highestReceiveIndex + 1);
+    this.addressManager.changeAddress.advance(highestChangeIndex + 1);
+    logger.log(
+      'info',
+      `receive address index: ${highestReceiveIndex}; change address index: ${highestChangeIndex}`
+    );
+    //await this.updateUtxos(Object.keys(this.transactionsStorage));
     this.runStateChangeHooks();
   }
 

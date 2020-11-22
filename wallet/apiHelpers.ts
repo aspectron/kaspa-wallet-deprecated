@@ -74,12 +74,13 @@ export const getUtxos = async (address: string): Promise<Api.UtxoResponse> => {
 		.catch((e) => {
 			throw new ApiError(`API connection error. ${e}`); // eslint-disable-line
 		});
-		const json = response as Api.ErrorResponse & Api.Utxo[]; // eslint-disable-line
-		if (json.errorMessage) {
-			const err = json as Api.ErrorResponse;
-			throw new ApiError(`API error ${err.errorCode}: ${err.errorMessage}`);
+		//console.log("getUtxos:response", response)
+		const json = response as Api.ErrorResponse & Api.UTXOsByAddressResponse; // eslint-disable-line
+		if (json.error) {
+			const err = json.error as Api.RPCError;
+			throw new ApiError(`API error ${err.errorCode}: ${err.message}`);
 		}
-		let result: Api.Utxo[] = json;
+		let result: Api.Utxo[] = json.utxosVerboseData;
 		if (result.length === 1000) {
 			const utxos = await getRecursively(limit, skip + 1000);
 			result = [...utxos, ...result];

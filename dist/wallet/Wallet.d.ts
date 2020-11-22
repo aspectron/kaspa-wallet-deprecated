@@ -58,6 +58,11 @@ declare class Wallet {
      */
     updateTransactions(addresses: string[]): Promise<string[]>;
     /**
+     * Queries API for address[] UTXOs. Adds tx to transactions storage. Also sorts the entire transaction set.
+     * @param addresses
+     */
+    findUtxos(addresses: string[]): Promise<string[]>;
+    /**
      * Recalculates wallet balance.
      */
     updateBalance(): void;
@@ -67,6 +72,55 @@ declare class Wallet {
      */
     updateNetwork(network: SelectedNetwork): Promise<void>;
     demolishWalletState(networkPrefix?: Network): void;
+    /**
+     * Derives receiveAddresses and changeAddresses and checks their transactions and UTXOs.
+     * @param threshold stop discovering after `threshold` addresses with no activity
+     
+    async addressDiscovery(threshold = 20): Promise<void> {
+      const doDiscovery = async (
+        n: number,
+        deriveType: 'receive' | 'change',
+        offset: number
+      ): Promise<number> => {
+        const derivedAddresses = this.addressManager.getAddresses(n, deriveType, offset);
+        const addresses = derivedAddresses.map((obj) => obj.address);
+        logger.log(
+          'info',
+          `Fetching ${deriveType} address data for derived indices ${JSON.stringify(
+            derivedAddresses.map((obj) => obj.index)
+          )}`
+        );
+        const addressesWithTx = await this.updateTransactions(addresses);
+        if (addressesWithTx.length === 0) {
+          // address discovery complete
+          const lastAddressIndexWithTx = offset - (threshold - n) - 1;
+          logger.log(
+            'info',
+            `${deriveType}Address discovery complete. Last activity on address #${lastAddressIndexWithTx}. No activity from ${deriveType}#${
+              lastAddressIndexWithTx + 1
+            }~${lastAddressIndexWithTx + threshold}.`
+          );
+          return lastAddressIndexWithTx;
+        }
+        // else keep doing discovery
+        const nAddressesLeft =
+          derivedAddresses
+            .filter((obj) => addressesWithTx.indexOf(obj.address) !== -1)
+            .reduce((prev, cur) => Math.max(prev, cur.index), 0) + 1;
+        return doDiscovery(nAddressesLeft, deriveType, offset + n);
+      };
+      const highestReceiveIndex = await doDiscovery(threshold, 'receive', 0);
+      const highestChangeIndex = await doDiscovery(threshold, 'change', 0);
+      this.addressManager.receiveAddress.advance(highestReceiveIndex + 1);
+      this.addressManager.changeAddress.advance(highestChangeIndex + 1);
+      logger.log(
+        'info',
+        `receive address index: ${highestReceiveIndex}; change address index: ${highestChangeIndex}`
+      );
+      await this.updateUtxos(Object.keys(this.transactionsStorage));
+      this.runStateChangeHooks();
+    }
+    */
     /**
      * Derives receiveAddresses and changeAddresses and checks their transactions and UTXOs.
      * @param threshold stop discovering after `threshold` addresses with no activity

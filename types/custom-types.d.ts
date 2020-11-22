@@ -78,6 +78,15 @@ export namespace Api {
   interface UtxoResponse {
     utxos: Utxo[];
   }
+  interface UTXOsByAddressResponse{
+    address:string;
+    utxosVerboseData:Utxo[];
+    error:RPCError;
+  }
+  interface RPCError {
+    errorCode?: number;
+    message: string;
+  }
   interface ErrorResponse {
     errorCode: number;
     errorMessage: string;
@@ -140,7 +149,7 @@ export namespace Api {
 export interface IRPC {
   getBlock(blockHash:string): Promise<Api.BlockResponse>;
   getAddressTransactions(address:string, limit:number, skip:number): Promise<Api.Transaction[]>;
-  getUtxos(address:string, limit:number, skip:number): Promise<Api.Utxo[]>;
+  getUtxos(address:string, limit:number, skip:number): Promise<Api.UTXOsByAddressResponse>;
   postTx(rawTransaction: string): Promise<Api.SuccessResponse>;
 }
 
