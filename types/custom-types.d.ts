@@ -64,8 +64,8 @@ export interface TxSend {
 
 export namespace Api {
   interface Utxo {
-    transactionId: string;
-    value: number;
+    txID: string;
+    amount: number;
     scriptPubKey: string;
     acceptingBlockHash: string;
     acceptingBlockBlueScore: number;

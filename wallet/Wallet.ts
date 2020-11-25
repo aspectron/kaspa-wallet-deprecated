@@ -188,7 +188,7 @@ class Wallet {
     addresses.forEach((address, i) => {
       const { utxos } = utxoResults[i];
       console.log("utxos", utxos)
-      logger.log('info', `${address}: ${utxos.length} utxos found.`);
+      logger.log('info', `${address}: ${utxos.length} utxos found.`, utxos);
       if (utxos.length !== 0) {
         //const confirmedTx = utxos.filter((tx:Api.Utxo) => tx.confirmations > 0);
         this.utxoSet.utxoStorage[address] = utxos;
