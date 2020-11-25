@@ -1,7 +1,5 @@
-import Wallet from "./wallet/Wallet";
-import bitcoreKaspaSetup from './wallet/bitcoreKaspaSetup';
+import {Wallet} from "./wallet/Wallet";
+import {kaspaSetup} from './wallet/kaspaSetup';
 
-// module.exports.Wallet = Wallet;
-// module.exports.bitcoreKaspaSetup = bitcoreKaspaSetup;
 
-export default {Wallet, bitcoreKaspaSetup}
+export {Wallet, kaspaSetup}

@@ -2,7 +2,7 @@
 import * as bitcore from 'bitcore-lib-cash';
 import { Network } from 'custom-types';
 
-export default () => {
+export const kaspaSetup = () => {
   const networkPrefixes: Network[] = ['kaspa', 'kaspadev', 'kaspareg', 'kaspatest', 'kaspasim'];
 
   networkPrefixes.map((str: Network) => {
@@ -18,3 +18,4 @@ export default () => {
     });
   });
 };
+

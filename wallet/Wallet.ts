@@ -509,4 +509,4 @@ class Wallet {
   }
 }
 
-export default Wallet;
+export {Wallet}

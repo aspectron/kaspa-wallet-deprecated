@@ -1,5 +1,5 @@
 {
-  "name": "kaspa-node-module",
+  "name": "kaspa-wallet",
   "version": "0.0.1",
   "description": "Node module for kaspa",
   "main": "dist/index.js",
