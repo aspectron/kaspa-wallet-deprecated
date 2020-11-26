@@ -60,6 +60,7 @@ export interface TxSend {
   toAddr: string;
   amount: number;
   fee?: number;
+  tx: bitcore.Transaction;
 }
 
 export namespace Api {
@@ -151,6 +152,7 @@ export interface IRPC {
   getAddressTransactions(address:string, limit:number, skip:number): Promise<Api.Transaction[]>;
   getUtxos(address:string, limit:number, skip:number): Promise<Api.UTXOsByAddressResponse>;
   postTx(rawTransaction: string): Promise<Api.SuccessResponse>;
+  request?(method:string, data:any);
 }
 
 

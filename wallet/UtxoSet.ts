@@ -19,6 +19,7 @@ export class UtxoSet {
   totalBalance = 0;
 
   availableBalance = 0;
+  debug:boolean = false;
 
   get length(): number {
     return Object.keys(this.utxos).length;
@@ -33,7 +34,7 @@ export class UtxoSet {
    */
   add(utxos: Api.Utxo[], address: string): string[] {
     const utxoIds: string[] = [];
-    console.log("utxos", utxos)
+    this.debug && console.log("utxos", utxos)
     utxos.forEach((utxo) => {
       /***********************************************/
       /**** until gRPC response comes correctly *****

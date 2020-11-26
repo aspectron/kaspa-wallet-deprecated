@@ -187,8 +187,8 @@ class Wallet {
     );
     addresses.forEach((address, i) => {
       const { utxos } = utxoResults[i];
-      console.log("utxos", utxos)
-      logger.log('info', `${address}: ${utxos.length} utxos found.`, utxos);
+      //console.log("utxos", utxos)
+      logger.log('info', `${address}: ${utxos.length} utxos found.`);
       if (utxos.length !== 0) {
         //const confirmedTx = utxos.filter((tx:Api.Utxo) => tx.confirmations > 0);
         this.utxoSet.utxoStorage[address] = utxos;
@@ -359,6 +359,7 @@ class Wallet {
     fee = DEFAULT_FEE,
     changeAddrOverride,
   }: TxSend & { changeAddrOverride?: string }): {
+    tx: bitcore.Transaction;
     id: string;
     rawTx: string;
     utxoIds: string[];
@@ -383,7 +384,8 @@ class Wallet {
       this.utxoSet.inUse.push(...utxoIds);
       this.pending.add(tx.id, { rawTx: tx.toString(), utxoIds, amount, to: toAddr, fee });
       this.runStateChangeHooks();
-      return { id: tx.id, rawTx: tx.toString(), utxoIds, amount: amount + fee };
+      //window.txxxx = tx;
+      return { tx: tx, id: tx.id, rawTx: tx.toString(), utxoIds, amount: amount + fee };
     } catch (e) {
       this.addressManager.changeAddress.reverse();
       throw e;
@@ -399,9 +401,44 @@ class Wallet {
    * @throws `FetchError` if endpoint is down. API error message if tx error. Error if amount is too large to be represented as a javascript number.
    */
   async sendTx(txParams: TxSend): Promise<string> {
-    const { id, rawTx } = this.composeTx(txParams);
+    const { id, rawTx, tx } = this.composeTx(txParams);
+    //@ts-ignore
+    const txObj:any = tx.toObject();
+
+    const {nLockTime:lockTime, version} = txObj;
+    console.log("composeTx:tx", tx.inputs, tx.outputs)
+    console.log("composeTx:tx2", txObj);
+    const RPC = api.getRPC();
+    const inputs:any = tx.inputs.map((input:any)=>{
+      return {
+        previousOutpoint:{
+          transactionId: {bytes1: input.prevTxId.toString("hex")},  //<---
+          index: input.outputIndex
+        },
+        signatureScript: input.script.toHex(),
+        sequence: input.sequenceNumber
+      }
+    })
+
+    const outputs:any = tx.outputs.map((output:any)=>{
+      return {
+        value: output.satoshis,
+        scriptPubKey: output.script.toHex()
+      }
+    })
+    const rpcTX:any = {
+      transaction:{
+        version,
+        inputs,
+        outputs,
+        lockTime
+      }
+    }
+    console.log("rpcTX.transaction", rpcTX.transaction)
+    console.log("rpcTX.transaction.inputs[0]", rpcTX.transaction.inputs[0])
     try {
-      await api.postTx(rawTx);
+      //@ts-ignore
+      await RPC.request("submitTransactionRequest", rpcTX);
     } catch (e) {
       this.undoPendingTx(id);
       throw e;

@@ -19,6 +19,10 @@ export const setRPC = (rpc:IRPC)=>{
 	RPC = rpc;
 }
 
+export const getRPC = ():IRPC=>{
+	return RPC;
+}
+
 export const getBlock = async (
 	blockHash: string
 ): Promise<Api.BlockResponse> => {
