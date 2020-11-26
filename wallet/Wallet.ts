@@ -404,39 +404,38 @@ class Wallet {
    * @throws `FetchError` if endpoint is down. API error message if tx error. Error if amount is too large to be represented as a javascript number.
    */
   async sendTx(txParams: TxSend): Promise<string> {
-    const { id, rawTx, tx } = this.composeTx(txParams);
-    //@ts-ignore
-    const txObj:any = tx.toObject();
+    const { id, tx } = this.composeTx(txParams);
 
-    const {nLockTime:lockTime, version} = txObj;
+    const {nLockTime:lockTime, version} = tx;
     console.log("composeTx:tx", tx.inputs, tx.outputs)
-    console.log("composeTx:tx2", txObj);
-    const RPC = api.getRPC();
-    const inputs:any = tx.inputs.map((input:any)=>{
+
+    const inputs: Api.TransactionRequestTxInput[] = tx.inputs.map((input:bitcore.Transaction.Input)=>{
       return {
         previousOutpoint:{
-          transactionId: {bytes: input.prevTxId.toString("base64")},  //<---
+          transactionId: {
+            bytes: input.prevTxId.toString("base64")
+          },
           index: input.outputIndex
         },
         signatureScript: input.script.toBuffer().toString("base64"),
         sequence: input.sequenceNumber
-      }
+      };
     })
 
-    const outputs:any = tx.outputs.map((output:any)=>{
+    const outputs:Api.TransactionRequestTxOutput[] = tx.outputs.map((output:bitcore.Transaction.Output)=>{
       return {
         value: output.satoshis,
         scriptPubKey: output.script.toBuffer().toString("base64")
       }
     })
-    const rpcTX:any = {
-      transaction:{
+    const rpcTX: Api.TransactionRequest = {
+      transaction: {
         version,
         inputs,
         outputs,
         lockTime,
         subnetworkId: {
-          bytes:Buffer.from(this.subnetworkId).toString("base64")
+          bytes: Buffer.from(this.subnetworkId).toString("base64")
         }
       }
     }
@@ -444,7 +443,7 @@ class Wallet {
     console.log("rpcTX.transaction.inputs[0]", rpcTX.transaction.inputs[0])
     try {
       //@ts-ignore
-      await RPC.request("submitTransactionRequest", rpcTX);
+      await api.postTx(rpcTX);
     } catch (e) {
       this.undoPendingTx(id);
       throw e;

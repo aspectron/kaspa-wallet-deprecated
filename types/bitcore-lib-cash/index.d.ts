@@ -114,6 +114,8 @@ declare module 'bitcore-lib-cash' {
 
     inspect(): string;
     serialize(): string;
+    version: number;
+    nLockTime: number;
   }
 
   export class Block {

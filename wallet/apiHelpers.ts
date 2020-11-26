@@ -97,16 +97,16 @@ export const getUtxos = async (address: string): Promise<Api.UtxoResponse> => {
 	} as Api.UtxoResponse;
 };
 
-export const postTx = async (rawTransaction: string): Promise<Api.SendTxResponse> => {
+export const postTx = async (tx: Api.TransactionRequest): Promise<Api.TransactionResponse> => {
 	if(!RPC)
 		return missingRPCProviderError();
 	// eslint-disable-next-line
-	const response = await RPC.postTx(rawTransaction).catch((e) => {
+	const response = await RPC.postTx(tx).catch((e) => {
 		throw new ApiError(`API connection error. ${e}`); // eslint-disable-line
 	});
-	const json = response as Api.ErrorResponse & Api.SuccessResponse; // eslint-disable-line
-	if(json.success)
-		return true;
+	const json = response as Api.ErrorResponse & Api.TransactionResponse; // eslint-disable-line
+	if(json.txId)
+		return json;
 	if(!json.errorMessage)
 		json.errorMessage = 'Api error. Please try again later. (ERROR: POST-TX:100)';
 
