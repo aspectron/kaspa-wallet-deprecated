@@ -56,6 +56,9 @@ class Wallet {
   // @ts-ignore
   network: Network = DEFAULT_NETWORK.prefix as Network;
 
+
+  subnetworkId:string = "00000000000000000000";
+
   /**
    * Current API endpoint for selected network
    */
@@ -412,10 +415,10 @@ class Wallet {
     const inputs:any = tx.inputs.map((input:any)=>{
       return {
         previousOutpoint:{
-          transactionId: {bytes: input.prevTxId.toString("hex")},  //<---
+          transactionId: {bytes: input.prevTxId.toString("base64")},  //<---
           index: input.outputIndex
         },
-        signatureScript: input.script.toHex(),
+        signatureScript: input.script.toBuffer().toString("base64"),
         sequence: input.sequenceNumber
       }
     })
@@ -423,7 +426,7 @@ class Wallet {
     const outputs:any = tx.outputs.map((output:any)=>{
       return {
         value: output.satoshis,
-        scriptPubKey: output.script.toHex()
+        scriptPubKey: output.script.toBuffer().toString("base64")
       }
     })
     const rpcTX:any = {
@@ -431,7 +434,10 @@ class Wallet {
         version,
         inputs,
         outputs,
-        lockTime
+        lockTime,
+        subnetworkId: {
+          bytes:Buffer.from(this.subnetworkId).toString("base64")
+        }
       }
     }
     console.log("rpcTX.transaction", rpcTX.transaction)
