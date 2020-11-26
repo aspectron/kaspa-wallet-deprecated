@@ -412,7 +412,7 @@ class Wallet {
     const inputs:any = tx.inputs.map((input:any)=>{
       return {
         previousOutpoint:{
-          transactionId: {bytes1: input.prevTxId.toString("hex")},  //<---
+          transactionId: {bytes: input.prevTxId.toString("hex")},  //<---
           index: input.outputIndex
         },
         signatureScript: input.script.toHex(),
