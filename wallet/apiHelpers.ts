@@ -105,10 +105,16 @@ export const postTx = async (tx: Api.TransactionRequest): Promise<Api.Transactio
 		throw new ApiError(`API connection error. ${e}`); // eslint-disable-line
 	});
 	const json = response as Api.ErrorResponse & Api.TransactionResponse; // eslint-disable-line
+	//console.log("postTx:result", json)
 	if(json.txId)
 		return json;
-	if(!json.errorMessage)
-		json.errorMessage = 'Api error. Please try again later. (ERROR: POST-TX:100)';
 
-	throw new ApiError(`API error ${json.errorCode}: ${json.errorMessage}`);
+	if(!json.error)
+		json.error = {message: 'Api error. Please try again later. (ERROR: POST-TX:100)'};
+	if(!json.errorCode)
+		json.errorCode = 100;
+
+	const err:Api.RPCError = json.error;
+	throw new ApiError(`API error (${err.errorCode}): ${err.message}`);
+
 };
