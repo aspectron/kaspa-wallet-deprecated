@@ -93,6 +93,7 @@ export class UtxoSet {
     this.utxos = {};
     this.inUse = [];
     this.availableBalance = 0;
+    this.utxoStorage = {};
     logger.log('info', 'UTXO set cleared.');
   }
 
@@ -106,7 +107,7 @@ export class UtxoSet {
     const utxoIds: string[] = [];
     let totalVal = 0;
     for (const [utxoId, utxo] of Object.entries(this.utxos)) {
-      if (this.inUse.indexOf(utxoId) === -1) {
+      if (!this.inUse.includes(utxoId)) {
         utxoIds.push(utxoId);
         utxos.push(utxo);
         totalVal += utxo.satoshis;

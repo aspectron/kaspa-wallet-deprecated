@@ -57,7 +57,7 @@ class Wallet {
   network: Network = DEFAULT_NETWORK.prefix as Network;
 
 
-  subnetworkId:string = "00000000000000000000";
+  subnetworkId:string = "0000000000000000000000000000000000000000";//hex string
 
   /**
    * Current API endpoint for selected network
@@ -188,6 +188,13 @@ class Wallet {
     const utxoResults = await Promise.all(
       addresses.map((address) => api.getUtxos(address))
     );
+    /*
+    const address:string|null = addresses[0];
+    if(address){
+      const { utxos } = utxoResults[0];
+      console.log(`${address} first utxo`, utxos[0])
+    }
+    */
     addresses.forEach((address, i) => {
       const { utxos } = utxoResults[i];
       //console.log("utxos", utxos)
@@ -407,7 +414,7 @@ class Wallet {
     const { id, tx } = this.composeTx(txParams);
 
     const {nLockTime:lockTime, version} = tx;
-    console.log("composeTx:tx", tx.inputs, tx.outputs)
+    //console.log("composeTx:tx", tx.inputs, tx.outputs)
 
     const inputs: Api.TransactionRequestTxInput[] = tx.inputs.map((input:bitcore.Transaction.Input)=>{
       return {
@@ -428,21 +435,32 @@ class Wallet {
         scriptPubKey: output.script.toBuffer().toString("base64")
       }
     })
+    
+    //const payloadStr = "00000000000000000000000000000000";
+    //const payload = Buffer.from(payloadStr).toString("base64");
+    //console.log("payload-hex:", Buffer.from(payloadStr).toString("hex"))
+    //@ ts-ignore
+    //const payloadHash = bitcore.crypto.Hash.sha256sha256(Buffer.from(payloadStr));
     const rpcTX: Api.TransactionRequest = {
       transaction: {
         version,
         inputs,
         outputs,
         lockTime,
+        /*
+        payload,
+        payloadHash:{
+          bytes: payloadHash.toString("base64")
+        },
+        */
         subnetworkId: {
-          bytes: Buffer.from(this.subnetworkId).toString("base64")
+          bytes: Buffer.from(this.subnetworkId, "hex").toString("base64")
         }
       }
     }
-    console.log("rpcTX.transaction", rpcTX.transaction)
-    console.log("rpcTX.transaction.inputs[0]", rpcTX.transaction.inputs[0])
+    //console.log("rpcTX", JSON.stringify(rpcTX, null, "  "))
+    //console.log("rpcTX.transaction.inputs[0]", rpcTX.transaction.inputs[0])
     try {
-      //@ts-ignore
       await api.postTx(rpcTX);
     } catch (e) {
       this.undoPendingTx(id);
