@@ -188,13 +188,27 @@ class Wallet {
     const utxoResults = await Promise.all(
       addresses.map((address) => api.getUtxos(address))
     );
-    /*
+    
     const address:string|null = addresses[0];
     if(address){
+      let oldResult = ['25e6ceb6a3bf6e0bc43c844f6b7e2d6e698e2d32d85717800ae4d1b5af265f9b',
+  '5ed45b4571ebab2e114c4b36b6279671974b6840a70b4805bf68d62e6313d676',
+  '2627965f35cd6dbc222261bcafbf3c8c4b7df0af361a0447f428117d551af7be',
+  'd9b945195d0956b5ac1a4bae6500a2984b4e0d15badabae4dd5911a3bcc07e4f',
+  'cba6fe2d6de4214b7caeb14fb8dd12d19968ce71ca89ca93ff459b6e40fb8919',
+  '4f036a8291ce072b8ceddb7ff8048fa4781269878f75df20bc8f3fe7c488d7cd',
+  'd88a0dae69973c7150db1f078fce08a89836e71c9f7f3e7695db79be347a2e38',
+  '8b9775cd28729cd4ae6fe1d174389d4ae6a62575de1d85aa73e012f285bda97a'];
       const { utxos } = utxoResults[0];
+      const txIDs = utxos.map(t=>t.txID)
       console.log(`${address} first utxo`, utxos[0])
+      console.log(`${address} last utxo`, utxos[utxos.length-1])
+      console.log(`${address} txIDs`, txIDs)
+
+      let found = oldResult.filter(address=>txIDs.includes(address));
+      console.log("found::::::", found)
     }
-    */
+
     addresses.forEach((address, i) => {
       const { utxos } = utxoResults[i];
       //console.log("utxos", utxos)
@@ -416,7 +430,9 @@ class Wallet {
     const {nLockTime:lockTime, version} = tx;
     //console.log("composeTx:tx", tx.inputs, tx.outputs)
 
+
     const inputs: Api.TransactionRequestTxInput[] = tx.inputs.map((input:bitcore.Transaction.Input)=>{
+      console.log("prevTxId", input.prevTxId.toString("hex"))
       return {
         previousOutpoint:{
           transactionId: {
@@ -458,7 +474,7 @@ class Wallet {
         }
       }
     }
-    //console.log("rpcTX", JSON.stringify(rpcTX, null, "  "))
+    console.log("rpcTX", JSON.stringify(rpcTX, null, "  "))
     //console.log("rpcTX.transaction.inputs[0]", rpcTX.transaction.inputs[0])
     try {
       await api.postTx(rpcTX);

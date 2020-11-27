@@ -1,6 +1,6 @@
 import { Api } from 'custom-types';
 // @ts-ignore
-import bitcore from 'bitcore-lib-cash';
+import * as bitcore from 'bitcore-lib-cash';
 import { logger } from '../utils/logger';
 import * as crypto from 'crypto';
 
@@ -52,13 +52,13 @@ export class UtxoSet {
       //console.log("utxoInUse", {utxoInUse, alreadyHaveIt})
       if (!utxoInUse && !alreadyHaveIt /*&& utxo.isSpendable*/) {
         utxoIds.push(utxoId);
-        this.utxos[utxoId] = /*new bitcore.Transaction.UnspentOutput(*/{
+        this.utxos[utxoId] = new bitcore.Transaction.UnspentOutput({
           txid: utxo.txID,
           address,
           vout: utxo.index,
           scriptPubKey: utxo.scriptPubKey,
           satoshis: +utxo.amount,
-        }/*);*/
+        });
       }
     });
     if (utxoIds.length) {
