@@ -116,6 +116,7 @@ export class UtxoSet {
     }
     if (totalVal < txAmount)
       throw new Error(`Transaction compose error. Need: ${txAmount}, UTXO Balance: ${totalVal}`);
+
     return { utxoIds, utxos };
   }
 }

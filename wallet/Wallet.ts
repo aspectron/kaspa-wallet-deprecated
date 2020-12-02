@@ -195,6 +195,7 @@ class Wallet {
     
     if(debug){
       utxoResults.forEach(({utxos}, index)=>{
+        utxos.sort((b, a)=> a.index-b.index)
         utxos.map(t=>{
           let info = txID2Info.get(t.txID);
           if(!info){
@@ -208,6 +209,7 @@ class Wallet {
 
     addresses.forEach((address, i) => {
       const { utxos } = utxoResults[i];
+      utxos.sort((b, a)=> a.index-b.index)
       //console.log("utxos", utxos)
       logger.log('info', `${address}: ${utxos.length} utxos found.`);
       if (utxos.length !== 0) {
@@ -389,6 +391,7 @@ class Wallet {
     rawTx: string;
     utxoIds: string[];
     amount: number;
+    utxos: bitcore.Transaction.UnspentOutput[];
   } {
     if (!Number.isSafeInteger(amount)) throw new Error('Amount too large');
     const { utxos, utxoIds } = this.utxoSet.selectUtxos(amount + fee);
@@ -410,7 +413,7 @@ class Wallet {
       this.pending.add(tx.id, { rawTx: tx.toString(), utxoIds, amount, to: toAddr, fee });
       this.runStateChangeHooks();
       //window.txxxx = tx;
-      return { tx: tx, id: tx.id, rawTx: tx.toString(), utxoIds, amount: amount + fee };
+      return { tx: tx, id: tx.id, rawTx: tx.toString(), utxoIds, amount: amount + fee, utxos };
     } catch (e) {
       this.addressManager.changeAddress.reverse();
       throw e;
@@ -425,8 +428,11 @@ class Wallet {
    * @param txParams.fee Fee for miners in sompis
    * @throws `FetchError` if endpoint is down. API error message if tx error. Error if amount is too large to be represented as a javascript number.
    */
-  async sendTx(txParams: TxSend): Promise<string> {
-    const { id, tx } = this.composeTx(txParams);
+  async sendTx(txParams: TxSend, debug=false): Promise<string> {
+    const { id, tx, utxos } = this.composeTx(txParams);
+    if(debug){
+      console.log("sendTx:utxos", utxos)
+    }
 
     const {nLockTime:lockTime, version} = tx;
     //console.log("composeTx:tx", tx.inputs, tx.outputs)
@@ -485,7 +491,7 @@ class Wallet {
       this.undoPendingTx(id);
       throw e;
     }
-    return id;
+    return id
   }
 
   async updateState(): Promise<void> {
