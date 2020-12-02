@@ -433,7 +433,7 @@ class Wallet {
 
 
     const inputs: Api.TransactionRequestTxInput[] = tx.inputs.map((input:bitcore.Transaction.Input)=>{
-      console.log("prevTxId", input.prevTxId.toString("hex"))
+      //console.log("prevTxId", input.prevTxId.toString("hex"))
       return {
         previousOutpoint:{
           transactionId: {
@@ -472,7 +472,8 @@ class Wallet {
         */
         subnetworkId: {
           bytes: Buffer.from(this.subnetworkId, "hex").toString("base64")
-        }
+        },
+        fee: txParams.fee
       }
     }
     console.log("rpcTX", JSON.stringify(rpcTX, null, "  "))

@@ -60,7 +60,7 @@ type PendingTransactions = {
 export interface TxSend {
   toAddr: string;
   amount: number;
-  fee?: number;
+  fee: number;
   tx: bitcore.Transaction;
 }
 
@@ -135,6 +135,7 @@ export namespace Api {
     gas?:number;
     payloadHash?:Hash;
     payload?:bytes;
+    fee:number;
   }
 
   interface TransactionRequestTxInput{

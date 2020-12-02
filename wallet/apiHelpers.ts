@@ -111,8 +111,8 @@ export const postTx = async (tx: Api.TransactionRequest): Promise<Api.Transactio
 
 	if(!json.error)
 		json.error = {message: 'Api error. Please try again later. (ERROR: POST-TX:100)'};
-	if(!json.errorCode)
-		json.errorCode = 100;
+	if(!json.error.errorCode)
+		json.error.errorCode = 100;
 
 	const err:Api.RPCError = json.error;
 	throw new ApiError(`API error (${err.errorCode}): ${err.message}`);
