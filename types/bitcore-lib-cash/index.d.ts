@@ -42,6 +42,9 @@ declare module 'bitcore-lib-cash' {
   }
 
   export namespace Transaction {
+    static class sighash{
+      static sign(transaction, privateKey, sighashType, inputIndex, subscript, satoshisBN, flags, signingMethod);
+    };
     class UnspentOutput {
       static fromObject(o: object): UnspentOutput;
 

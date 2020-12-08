@@ -1,6 +1,22 @@
 const Mnemonic = require('bitcore-mnemonic');
 // @ts-ignore
 import * as bitcore from 'bitcore-lib-cash';
+/*
+let {sighash} = bitcore.Transaction;
+sighash.sign = (
+    transaction, privateKey, sighashType, inputIndex, subscript,
+    satoshisBN, flags, signingMethod="ecdsa")=>{
+      var hashbuf = sighash.sighash(transaction, sighashType, inputIndex, subscript, satoshisBN, flags);
+      console.log("sign::::", {
+        signingMethod,
+        hashbuf: hashbuf.toString("hex"),
+        privateKey: privateKey.toBuffer().toString("hex"),
+        sighashType
+      })
+
+}
+console.log("bitcore", bitcore.Transaction.sighash.sign)
+*/
 // @ts-ignore
 
 import * as passworder1 from 'browser-passworder';
@@ -21,13 +37,13 @@ import {
   Api,
   TxSend,
   PendingTransactions,
-  WalletCache, IRPC
+  WalletCache, IRPC, RPC
 } from '../types/custom-types';
 import { logger } from '../utils/logger';
 import { AddressManager } from './AddressManager';
 import { UtxoSet } from './UtxoSet';
 import * as api from './apiHelpers';
-import { txParser } from './txParser';
+//import { txParser } from './txParser';
 import { DEFAULT_FEE, DEFAULT_NETWORK } from '../config.json';
 
 /** Class representing an HDWallet with derivable child addresses */
@@ -127,7 +143,7 @@ class Wallet {
   /**
    * Queries API for address[] UTXOs. Adds UTXOs to UTXO set. Updates wallet balance.
    * @param addresses
-   */
+   * /
   async updateUtxos(addresses: string[]): Promise<void> {
     logger.log('info', `Getting utxos for ${addresses.length} addresses.`);
     const utxoResults = await Promise.all(
@@ -145,6 +161,7 @@ class Wallet {
    * Queries API for address[] transactions. Adds tx to transactions storage. Also sorts the entire transaction set.
    * @param addresses
    */
+   /*
   async updateTransactions(addresses: string[]): Promise<string[]> {
     logger.log('info', `Getting transactions for ${addresses.length} addresses.`);
     const addressesWithTx: string[] = [];
@@ -177,6 +194,7 @@ class Wallet {
     }
     return addressesWithTx;
   }
+  */
 
   /**
    * Queries API for address[] UTXOs. Adds tx to transactions storage. Also sorts the entire transaction set.
@@ -189,49 +207,35 @@ class Wallet {
     logger.log('info', `Getting UTXOs for ${addresses.length} addresses.`);
     const addressesWithUTXOs: string[] = [];
     const txID2Info = new Map();
-    const utxoResults = await Promise.all(
-      addresses.map((address) => api.getUtxos(address))
-    );
-    
+    const utxosMap = await api.getUTXOsByAddress(addresses)
+
     if(debug){
-      utxoResults.forEach(({utxos}, index)=>{
+      utxosMap.forEach((utxos, address)=>{
         utxos.sort((b, a)=> a.index-b.index)
         utxos.map(t=>{
-          let info = txID2Info.get(t.txID);
+          let info = txID2Info.get(t.transactionID);
           if(!info){
-            info = {utxos:[], address:addresses[index]};
-            txID2Info.set(t.txID, info);
+            info = {utxos:[], address};
+            txID2Info.set(t.transactionID, info);
           }
           info.utxos.push(t);
         })
       })
     }
 
-    addresses.forEach((address, i) => {
-      const { utxos } = utxoResults[i];
+    utxosMap.forEach((utxos, address)=>{
       utxos.sort((b, a)=> a.index-b.index)
       //console.log("utxos", utxos)
       logger.log('info', `${address}: ${utxos.length} utxos found.`);
       if (utxos.length !== 0) {
-        //const confirmedTx = utxos.filter((tx:Api.Utxo) => tx.confirmations > 0);
         this.utxoSet.utxoStorage[address] = utxos;
         this.utxoSet.add(utxos, address);
         addressesWithUTXOs.push(address);
       }
-    });
-    /*/ @ts-ignore
-    this.transactions = txParser(this.transactionsStorage, Object.keys(this.addressManager.all));
-    const pendingTxHashes = Object.keys(this.pending.transactions);
-    if (pendingTxHashes.length > 0) {
-      pendingTxHashes.forEach((hash) => {
-        if (this.transactions.map((tx) => tx.transactionHash).includes(hash)) {
-          this.deletePendingTx(hash);
-        }
-      });
-    }
-    */
+    })
+
     const isActivityOnReceiveAddr =
-      this.utxoSet.utxoStorage[this.addressManager.receiveAddress.current.address] !== undefined;
+      this.utxoSet.utxoStorage[this.receiveAddress] !== undefined;
     if (isActivityOnReceiveAddr) {
       this.addressManager.receiveAddress.next();
     }
@@ -262,56 +266,6 @@ class Wallet {
     this.transactions = [];
     this.transactionsStorage = {};
   }
-
-  /**
-   * Derives receiveAddresses and changeAddresses and checks their transactions and UTXOs.
-   * @param threshold stop discovering after `threshold` addresses with no activity
-   
-  async addressDiscovery(threshold = 20): Promise<void> {
-    const doDiscovery = async (
-      n: number,
-      deriveType: 'receive' | 'change',
-      offset: number
-    ): Promise<number> => {
-      const derivedAddresses = this.addressManager.getAddresses(n, deriveType, offset);
-      const addresses = derivedAddresses.map((obj) => obj.address);
-      logger.log(
-        'info',
-        `Fetching ${deriveType} address data for derived indices ${JSON.stringify(
-          derivedAddresses.map((obj) => obj.index)
-        )}`
-      );
-      const addressesWithTx = await this.updateTransactions(addresses);
-      if (addressesWithTx.length === 0) {
-        // address discovery complete
-        const lastAddressIndexWithTx = offset - (threshold - n) - 1;
-        logger.log(
-          'info',
-          `${deriveType}Address discovery complete. Last activity on address #${lastAddressIndexWithTx}. No activity from ${deriveType}#${
-            lastAddressIndexWithTx + 1
-          }~${lastAddressIndexWithTx + threshold}.`
-        );
-        return lastAddressIndexWithTx;
-      }
-      // else keep doing discovery
-      const nAddressesLeft =
-        derivedAddresses
-          .filter((obj) => addressesWithTx.indexOf(obj.address) !== -1)
-          .reduce((prev, cur) => Math.max(prev, cur.index), 0) + 1;
-      return doDiscovery(nAddressesLeft, deriveType, offset + n);
-    };
-    const highestReceiveIndex = await doDiscovery(threshold, 'receive', 0);
-    const highestChangeIndex = await doDiscovery(threshold, 'change', 0);
-    this.addressManager.receiveAddress.advance(highestReceiveIndex + 1);
-    this.addressManager.changeAddress.advance(highestChangeIndex + 1);
-    logger.log(
-      'info',
-      `receive address index: ${highestReceiveIndex}; change address index: ${highestChangeIndex}`
-    );
-    await this.updateUtxos(Object.keys(this.transactionsStorage));
-    this.runStateChangeHooks();
-  }
-  */
 
   /**
    * Derives receiveAddresses and changeAddresses and checks their transactions and UTXOs.
@@ -364,7 +318,6 @@ class Wallet {
       'info',
       `receive address index: ${highestReceiveIndex}; change address index: ${highestChangeIndex}`
     );
-    //await this.updateUtxos(Object.keys(this.transactionsStorage));
     this.runStateChangeHooks();
     return debugInfo;
   }
@@ -408,7 +361,7 @@ class Wallet {
         .fee(fee)
         .change(changeAddr)
         // @ts-ignore
-        .sign(privKeys, bitcore.crypto.Signature.SIGHASH_ALL, 'schnorr');
+        .sign(privKeys, bitcore.crypto.Signature.SIGHASH_ALL, 'ecdsa');
       this.utxoSet.inUse.push(...utxoIds);
       this.pending.add(tx.id, { rawTx: tx.toString(), utxoIds, amount, to: toAddr, fee });
       this.runStateChangeHooks();
@@ -428,7 +381,7 @@ class Wallet {
    * @param txParams.fee Fee for miners in sompis
    * @throws `FetchError` if endpoint is down. API error message if tx error. Error if amount is too large to be represented as a javascript number.
    */
-  async sendTx(txParams: TxSend, debug=false): Promise<string> {
+  async submitTransaction(txParams: TxSend, debug=false): Promise<string> {
     const { id, tx, utxos } = this.composeTx(txParams);
     if(debug){
       console.log("sendTx:utxos", utxos)
@@ -438,24 +391,22 @@ class Wallet {
     //console.log("composeTx:tx", tx.inputs, tx.outputs)
 
 
-    const inputs: Api.TransactionRequestTxInput[] = tx.inputs.map((input:bitcore.Transaction.Input)=>{
+    const inputs: RPC.TransactionInput[] = tx.inputs.map((input:bitcore.Transaction.Input)=>{
       //console.log("prevTxId", input.prevTxId.toString("hex"))
       return {
         previousOutpoint:{
-          transactionId: {
-            bytes: input.prevTxId.toString("base64")
-          },
+          transactionID: input.prevTxId.toString("hex"),
           index: input.outputIndex
         },
-        signatureScript: input.script.toBuffer().toString("base64"),
+        signatureScript: input.script.toBuffer().toString("hex"),
         sequence: input.sequenceNumber
       };
     })
 
-    const outputs:Api.TransactionRequestTxOutput[] = tx.outputs.map((output:bitcore.Transaction.Output)=>{
+    const outputs: RPC.TransactionOutput[] = tx.outputs.map((output:bitcore.Transaction.Output)=>{
       return {
-        value: output.satoshis,
-        scriptPubKey: output.script.toBuffer().toString("base64")
+        amount: output.satoshis,
+        scriptPubKey: output.script.toBuffer().toString("hex")
       }
     })
     
@@ -464,21 +415,19 @@ class Wallet {
     //console.log("payload-hex:", Buffer.from(payloadStr).toString("hex"))
     //@ ts-ignore
     //const payloadHash = bitcore.crypto.Hash.sha256sha256(Buffer.from(payloadStr));
-    const rpcTX: Api.TransactionRequest = {
+    const rpcTX: RPC.SubmitTransactionRequest = {
       transaction: {
         version,
         inputs,
         outputs,
         lockTime,
-        /*
-        payload,
-        payloadHash:{
-          bytes: payloadHash.toString("base64")
-        },
-        */
-        subnetworkId: {
-          bytes: Buffer.from(this.subnetworkId, "hex").toString("base64")
-        },
+        //
+        //payload,
+        //payloadHash:{
+        //  bytes: payloadHash.toString("base64")
+        //},
+        //
+        subnetworkID: this.subnetworkId,//Buffer.from(this.subnetworkId, "hex").toString("base64"),
         fee: txParams.fee
       }
     }
@@ -486,7 +435,7 @@ class Wallet {
     console.log("rpcTX", JSON.stringify(rpcTX))
     //console.log("rpcTX.transaction.inputs[0]", rpcTX.transaction.inputs[0])
     try {
-      await api.postTx(rpcTX);
+      await api.submitTransaction(rpcTX);
     } catch (e) {
       this.undoPendingTx(id);
       throw e;
@@ -494,11 +443,13 @@ class Wallet {
     return id
   }
 
+  /*
   async updateState(): Promise<void> {
     const activeAddrs = await this.updateTransactions(this.addressManager.shouldFetch);
     await this.updateUtxos(activeAddrs);
     this.runStateChangeHooks();
   }
+  */
 
   undoPendingTx(id: string): void {
     const { utxoIds } = this.pending.transactions[id];

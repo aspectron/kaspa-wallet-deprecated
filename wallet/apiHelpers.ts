@@ -1,4 +1,4 @@
-import { Api, IRPC } from 'custom-types';
+import { Api, IRPC, RPC } from 'custom-types';
 let RPC:IRPC;
 
 class ApiError extends Error {
@@ -23,98 +23,92 @@ export const getRPC = ():IRPC=>{
 	return RPC;
 }
 
-export const getBlock = async (
-	blockHash: string
-): Promise<Api.BlockResponse> => {
+export const getUTXOsByAddress = async (addresses: string[]): Promise<Map<string, Api.Utxo[]>> => {
+	if(!RPC)
+		return missingRPCProviderError();
+	
+	const response = await RPC.getUTXOsByAddress(addresses).catch((e) => {
+		throw new ApiError(`API connection error. ${e}`);
+	})
+	
+	if (response.error)
+		throw new ApiError(`API error (${response.error.errorCode}): ${response.error.message}`);
+
+	let result:Map<string, Api.Utxo[]> = new Map();
+
+	response.entries.map(entry=>{
+		let {transactionID, index} = entry.outpoint;
+		let {address, utxoEntry} = entry;
+		let {amount, scriptPubKey, blockBlueScore} = utxoEntry;
+
+		let item: Api.Utxo = {
+			amount,
+			scriptPubKey,
+			blockBlueScore,
+			transactionID,
+			index
+		}
+
+		let items:Api.Utxo[]|undefined = result.get(address);
+		if(!items){
+			items = [];
+			result.set(address, items);
+		}
+
+		items.push(item);
+	})
+
+	return result;
+}
+
+export const submitTransaction = async (tx: RPC.SubmitTransactionRequest): Promise<string> => {
 	if(!RPC)
 		return missingRPCProviderError();
 	// eslint-disable-next-line
-	const response = await RPC.getBlock(blockHash)
-	.catch((e) => {
+	const response = await RPC.submitTransaction(tx).catch((e) => {
+		throw new ApiError(`API connection error. ${e}`); // eslint-disable-line
+	})
+	//console.log("submitTransaction:result", response)
+	if(response.transactionID)
+		return response.transactionID;
+
+	if(!response.error)
+		response.error = {message: 'Api error. Please try again later. (ERROR: SUBMIT-TX:100)'};
+	if(!response.error.errorCode)
+		response.error.errorCode = 100;
+
+	throw new ApiError(`API error (${response.error.errorCode}): ${response.error.message}`);
+}
+
+
+export const getBlock = async (blockHash: string): Promise<Api.BlockResponse> => {
+	if(!RPC)
+		return missingRPCProviderError();
+	// eslint-disable-next-line
+	const response = await RPC.getBlock(blockHash).catch((e) => {
 		throw new ApiError(`API connection error. ${e}`); // eslint-disable-line
 	});
-	const json = response as Api.ErrorResponse & Api.BlockResponse; // eslint-disable-line
-	if (json.errorMessage) {
-		const err = json as Api.ErrorResponse;
-		throw new ApiError(`API error ${err.errorCode}: ${err.errorMessage}`);
-	}
-	return json as Api.BlockResponse;
+
+	if (response.error)
+		throw new ApiError(`API error (${response.error.errorCode}): ${response.error.message}`);
+
+	return response.blockVerboseData;
 };
 
 // TODO: handle pagination
-export const getTransactions = async (
-	address: string
-): Promise<Api.TransactionsResponse> => {
+export const getTransactionsByAddresses = async (
+	addresses: string[],
+	startingBlockHash: string = ""
+): Promise<Api.TransactionsByAddressesResponse> => {
 	if(!RPC)
 		return missingRPCProviderError();
-	const getTx = async (limit: number, skip: number): Promise<Api.Transaction[]> => {
-		// eslint-disable-next-line
-		const response = await RPC.getAddressTransactions(address, limit, skip)
-		.catch((e) => {
-			throw new ApiError(`API connection error. ${e}`); // eslint-disable-line
-		});
-		let json = response as Api.ErrorResponse & Api.Transaction[]; // eslint-disable-line
-		if (json.errorMessage) {
-			const err = json as Api.ErrorResponse;
-			throw new ApiError(`API error ${err.errorCode}: ${err.errorMessage}`);
-		}
-		let result: Api.Transaction[] = json;
-		if (result.length === 1000) {
-			const tx = await getTx(limit, skip + 1000);
-			result = [...tx, ...result];
-		}
-		return result;
-	};
-	const json = await getTx(1000, 0);
-	return { transactions: json } as Api.TransactionsResponse;
-};
-
-export const getUtxos = async (address: string): Promise<Api.UtxoResponse> => {
-	if(!RPC)
-		return missingRPCProviderError();
-	const getRecursively = async (limit: number, skip: number) => {
-		// eslint-disable-next-line
-		const response = await RPC.getUtxos(address, limit, skip)
-		.catch((e) => {
-			throw new ApiError(`API connection error. ${e}`); // eslint-disable-line
-		});
-		//console.log("getUtxos:response", response)
-		const json = response as Api.ErrorResponse & Api.UTXOsByAddressResponse; // eslint-disable-line
-		if (json.error) {
-			const err = json.error as Api.RPCError;
-			throw new ApiError(`API error ${err.errorCode}: ${err.message}`);
-		}
-		let result: Api.Utxo[] = json.utxosVerboseData;
-		if (result.length === 1000) {
-			const utxos = await getRecursively(limit, skip + 1000);
-			result = [...utxos, ...result];
-		}
-		return result;
-	};
-	const json = await getRecursively(1000, 0);
-	return {
-		utxos: json,
-	} as Api.UtxoResponse;
-};
-
-export const postTx = async (tx: Api.TransactionRequest): Promise<Api.TransactionResponse> => {
-	if(!RPC)
-		return missingRPCProviderError();
-	// eslint-disable-next-line
-	const response = await RPC.postTx(tx).catch((e) => {
-		throw new ApiError(`API connection error. ${e}`); // eslint-disable-line
+	const response = await RPC.getTransactionsByAddresses(startingBlockHash, addresses).catch((e) => {
+		throw new ApiError(`API connection error. ${e}`);
 	});
-	const json = response as Api.ErrorResponse & Api.TransactionResponse; // eslint-disable-line
-	//console.log("postTx:result", json)
-	if(json.txId)
-		return json;
 
-	if(!json.error)
-		json.error = {message: 'Api error. Please try again later. (ERROR: POST-TX:100)'};
-	if(!json.error.errorCode)
-		json.error.errorCode = 100;
+	if (response.error)
+		throw new ApiError(`API error (${response.error.errorCode}): ${response.error.message}`);
 
-	const err:Api.RPCError = json.error;
-	throw new ApiError(`API error (${err.errorCode}): ${err.message}`);
-
-};
+	let {transactions, lasBlockScanned} = response;
+	return { transactions, lasBlockScanned }
+}

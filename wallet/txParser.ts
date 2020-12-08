@@ -1,5 +1,6 @@
 import { Api } from 'custom-types';
 // eslint-disable-next-line
+/*
 interface NiceTx extends Api.Transaction {
   summary?: {
     direction?: 'in' | 'out';
@@ -48,9 +49,10 @@ export const txParser = (
         address: tx.inputs[0].address,
       };
     } else {
-      throw new Error(`Can't determine transaction metadata:\n${JSON.stringify(tx)}`);
+      throw new Error(`Can't determine transaction metadata:\n${JSON.stringify(tx)}`);//'
     }
     return tx;
   });
   return parsedTxs;
 };
+*/
