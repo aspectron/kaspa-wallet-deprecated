@@ -133,6 +133,38 @@ export namespace RPC {
 		selectedParentHash: string;
 		transactionIDs: string[];
 	}
+
+	/*
+	###################################################
+	###################################################
+	###################################################
+	*/
+	interface SubPromise<T> extends Promise<T>{
+		uid: string;
+	}
+
+	interface NotifyChainChangedResponse{
+		error: Error;
+	}
+
+	interface NotifyBlockAddedResponse{
+		error: Error;
+	}
+
+	interface ChainChangedNotification{
+		removedChainBlockHashes: string[];
+  		addedChainBlocks: ChainBlock[];
+	}
+
+	interface ChainBlock{
+		hash: string;
+		acceptedBlocks: AcceptedBlock[];
+	}
+
+	interface AcceptedBlock{
+		hash: string;
+		acceptedTxIds: string[];
+	}
 }
 
 export interface IRPC {
