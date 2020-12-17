@@ -5,6 +5,15 @@ export type bytes = string;//base84 string
 
 export * from './rpc';
 
+export interface UnspentOutputInfo{
+  txid:string,
+  address:string,
+  vout:number,
+  scriptPubKey:string,
+  satoshis:number,
+  blockBlueScore:number
+}
+
 export interface SelectedNetwork {
   prefix: Network;
   description: string;

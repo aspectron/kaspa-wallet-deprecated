@@ -1,11 +1,22 @@
 const Mnemonic = require('bitcore-mnemonic');
 // @ts-ignore
 import * as bitcore from 'bitcore-lib-cash';
-/*
+
+const secp256k1 = require('../secp256k1/secp.js');
+secp256k1.onRuntimeInitialized = ()=>{
+  console.log("onRuntimeInitialized")
+
+  let result = secp256k1.ecdsa_sign("hello i am test message", "79afbf7147841fca72b45a1978dd7669470ba67abbe5c220062924380c9c364b")
+  console.log("Module.ecdsa_sign()", result);
+  result = null;
+}
+//console.log("secp256k1", secp256k1)
+  
 let {sighash} = bitcore.Transaction;
 sighash.sign = (
     transaction, privateKey, sighashType, inputIndex, subscript,
     satoshisBN, flags, signingMethod="ecdsa")=>{
+
       var hashbuf = sighash.sighash(transaction, sighashType, inputIndex, subscript, satoshisBN, flags);
       console.log("sign::::", {
         signingMethod,
@@ -13,10 +24,16 @@ sighash.sign = (
         privateKey: privateKey.toBuffer().toString("hex"),
         sighashType
       })
+  let pubkey = privateKey.toPublicKey();
+  let result = secp256k1.ecdsa_sign(hashbuf.toString("hex"), privateKey.toBuffer().toString("hex"))
+  let sig = bitcore.crypto.Signature.fromString(result.sig)
+  sig.compressed = pubkey.compressed;
+  console.log("sigsigsigsigsigsigsigsigsig", result.sig, sig)
+  return sig
 
 }
 console.log("bitcore", bitcore.Transaction.sighash.sign)
-*/
+
 // @ts-ignore
 
 import * as passworder1 from 'browser-passworder';
@@ -46,8 +63,10 @@ import * as api from './apiHelpers';
 //import { txParser } from './txParser';
 import { DEFAULT_FEE, DEFAULT_NETWORK } from '../config.json';
 
+import {EventTargetImpl} from './event-target-impl';
+
 /** Class representing an HDWallet with derivable child addresses */
-class Wallet {
+class Wallet extends EventTargetImpl{
 
   //static passworder1:any = passworder1;
   //static passworder2:any = passworder2;
@@ -85,9 +104,11 @@ class Wallet {
    */
   mnemonic: string;
 
-  utxoSet = new UtxoSet();
+  utxoSet:UtxoSet;
 
   addressManager: AddressManager;
+
+  blueScore:number = -1;
 
   /* eslint-disable */
   pending: PendingTransactions = {
@@ -120,6 +141,8 @@ class Wallet {
    * @param walletSave.seedPhrase Saved wallet's seed phrase.
    */
   constructor(privKey?: string, seedPhrase?: string) {
+    super();
+    this.utxoSet = new UtxoSet(this);
     if (privKey && seedPhrase) {
       this.HDWallet = new bitcore.HDPrivateKey(privKey);
       this.mnemonic = seedPhrase;
@@ -352,6 +375,7 @@ class Wallet {
     const privKeys = utxos.reduce((prev: string[], cur) => {
       return [this.addressManager.all[String(cur.address)], ...prev];
     }, []);
+
     const changeAddr = changeAddrOverride || this.addressManager.changeAddress.next();
     try {
       const tx: bitcore.Transaction = new bitcore.Transaction()
@@ -361,7 +385,7 @@ class Wallet {
         .fee(fee)
         .change(changeAddr)
         // @ts-ignore
-        .sign(privKeys, bitcore.crypto.Signature.SIGHASH_ALL, 'ecdsa');
+        .sign(privKeys, bitcore.crypto.Signature.SIGHASH_ALL, 'schnorr');
       this.utxoSet.inUse.push(...utxoIds);
       this.pending.add(tx.id, { rawTx: tx.toString(), utxoIds, amount, to: toAddr, fee });
       this.runStateChangeHooks();
@@ -384,7 +408,7 @@ class Wallet {
   async submitTransaction(txParams: TxSend, debug=false): Promise<string> {
     const { id, tx, utxos } = this.composeTx(txParams);
     if(debug){
-      console.log("sendTx:utxos", utxos)
+      console.log("sendTx:utxos", utxos, utxos[0].address)
     }
 
     const {nLockTime:lockTime, version} = tx;
@@ -393,12 +417,13 @@ class Wallet {
 
     const inputs: RPC.TransactionInput[] = tx.inputs.map((input:bitcore.Transaction.Input)=>{
       //console.log("prevTxId", input.prevTxId.toString("hex"))
+      console.log("input.script.inspect", input.script.inspect())
       return {
         previousOutpoint:{
           transactionId: input.prevTxId.toString("hex"),
           index: input.outputIndex
         },
-        signatureScript: input.script.toBuffer().toString("hex") as string,
+        signatureScript: input.script.toBuffer().toString("hex"),
         sequence: input.sequenceNumber
       };
     })
@@ -410,11 +435,11 @@ class Wallet {
       }
     })
     
-    const payloadStr = "0000000000000000000000000000000";
-    const payload = Buffer.from(payloadStr).toString("base64");
+    //const payloadStr = "0000000000000000000000000000000";
+    //const payload = Buffer.from(payloadStr).toString("base64");
     //console.log("payload-hex:", Buffer.from(payloadStr).toString("hex"))
-    //@ts-ignore
-    const payloadHash = bitcore.crypto.Hash.sha256sha256(Buffer.from(payloadStr));
+    //@ ts-ignore
+    //const payloadHash = bitcore.crypto.Hash.sha256sha256(Buffer.from(payloadStr));
     const rpcTX: RPC.SubmitTransactionRequest = {
       transaction: {
         version,
@@ -503,6 +528,22 @@ class Wallet {
     // @ts-ignore
     this.transactions = txParser(this.transactionsStorage, Object.keys(this.addressManager.all));
     this.runStateChangeHooks();
+  }
+
+
+  getVirtualSelectedParentBlueScore(){
+    return api.getVirtualSelectedParentBlueScore();
+  }
+
+  async syncVirtualSelectedParentBlueScore(){
+    let {blueScore} = await this.getVirtualSelectedParentBlueScore();
+    this.blueScore = blueScore;
+    this.emit("blue-score-changed", {blueScore})
+    api.subscribeVirtualSelectedParentBlueScoreChanged((result)=>{
+      let {virtualSelectedParentBlueScore} = result;
+      this.blueScore = virtualSelectedParentBlueScore;
+      this.emit("blue-score-changed", {blueScore:virtualSelectedParentBlueScore})
+    });
   }
 
   /**

@@ -1,8 +1,9 @@
-import { Api } from 'custom-types';
+import { Api, UnspentOutputInfo } from 'custom-types';
 // @ts-ignore
 import * as bitcore from 'bitcore-lib-cash';
 import { logger } from '../utils/logger';
 import * as crypto from 'crypto';
+import {Wallet} from './wallet';
 
 const sha256 = (str:string)=>{
   const secret = 'xyz';
@@ -11,8 +12,17 @@ const sha256 = (str:string)=>{
     .digest('hex');
 }
 
+
+export class UnspentOutput extends bitcore.Transaction.UnspentOutput{
+  blockBlueScore:number;
+  constructor(o: UnspentOutputInfo){
+    super(o);
+    this.blockBlueScore = o.blockBlueScore;
+  }
+}
+
 export class UtxoSet {
-  utxos: Record<string, bitcore.Transaction.UnspentOutput> = {};
+  utxos: Record<string, UnspentOutput> = {};
 
   inUse: string[] = [];
 
@@ -26,6 +36,12 @@ export class UtxoSet {
   }
 
   utxoStorage: Record<string, Api.Utxo[]> = {};
+
+  wallet: Wallet;
+
+  constructor(wallet:Wallet){
+    this.wallet = wallet;
+  }
 
   /**
    * Add UTXOs to UTXO set.
@@ -52,12 +68,13 @@ export class UtxoSet {
       //console.log("utxoInUse", {utxoInUse, alreadyHaveIt})
       if (!utxoInUse && !alreadyHaveIt /*&& utxo.isSpendable*/) {
         utxoIds.push(utxoId);
-        this.utxos[utxoId] = new bitcore.Transaction.UnspentOutput({
+        this.utxos[utxoId] = new UnspentOutput({
           txid: utxo.transactionId,
           address,
           vout: utxo.index,
           scriptPubKey: utxo.scriptPubKey,
           satoshis: +utxo.amount,
+          blockBlueScore: utxo.blockBlueScore
         });
       }
     });
@@ -102,12 +119,12 @@ export class UtxoSet {
    * @param txAmount Provide the amount that the UTXOs should cover.
    * @throws Error message if the UTXOs can't cover the `txAmount`
    */
-  selectUtxos(txAmount: number): { utxoIds: string[]; utxos: bitcore.Transaction.UnspentOutput[] } {
-    const utxos: bitcore.Transaction.UnspentOutput[] = [];
+  selectUtxos(txAmount: number): { utxoIds: string[]; utxos: UnspentOutput[] } {
+    const utxos: UnspentOutput[] = [];
     const utxoIds: string[] = [];
     let totalVal = 0;
     for (const [utxoId, utxo] of Object.entries(this.utxos)) {
-      if (!this.inUse.includes(utxoId)) {
+      if (!this.inUse.includes(utxoId) && this.wallet.blueScore - utxo.blockBlueScore > 100) {
         utxoIds.push(utxoId);
         utxos.push(utxo);
         totalVal += utxo.satoshis;

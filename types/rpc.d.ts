@@ -34,24 +34,12 @@ export namespace RPC {
 	}
 
 	interface SubmitTransactionRequest{
-		transaction: SUBMIT_Transaction;
+		transaction: Transaction;
 	}
 
 	interface SubmitTransactionResponse{
 	    transactionId: string;
 	    error: Error;
-	}
-
-	interface SUBMIT_Transaction{
-		version: number;
-		inputs: TransactionInput[];
-		outputs: TransactionOutput[];
-		lockTime: number;
-		subnetworkId: string;
-		gas?: number;
-		payloadHash?: string;
-		payload?: string;
-		fee: number;
 	}
 
 	interface TransactionId{
@@ -63,7 +51,7 @@ export namespace RPC {
 		inputs: TransactionInput[];
 		outputs: TransactionOutput[];
 		lockTime: number;
-		subnetworkID: string;
+		subnetworkId: string;
 		gas?: number;
 		payloadHash?: string;
 		payload?: string;
@@ -169,6 +157,26 @@ export namespace RPC {
 		error: Error;
 	}
 
+	interface BlockAddedNotification{
+		block: BlockMessage;
+	}
+
+	interface BlockMessage{
+		header: BlockHeaderMessage;
+  		transactions: Transaction[];
+	}
+
+	interface BlockHeaderMessage{
+		version: number;
+		parentHashes:bytes;
+		hashMerkleRoot: bytes;
+		acceptedIdMerkleRoot: bytes;
+		utxoCommitment: bytes;
+		timestamp: number;
+		bits: number;
+		nonce: number;
+	}
+
 	interface ChainChangedNotification{
 		removedChainBlockHashes: string[];
   		addedChainBlocks: ChainBlock[];
@@ -183,6 +191,21 @@ export namespace RPC {
 		hash: string;
 		acceptedTxIds: string[];
 	}
+
+	interface NotifyVirtualSelectedParentBlueScoreChangedResponse{
+		error: Error;
+	}
+
+	interface VirtualSelectedParentBlueScoreResponse{
+		blueScore: number;
+		error: Error;
+	}
+
+	interface VirtualSelectedParentBlueScoreChangedNotification{
+		virtualSelectedParentBlueScore: number;
+	}
+
+	declare type callback<T> = (result: T) => void;
 }
 
 export interface IRPC {
@@ -190,5 +213,11 @@ export interface IRPC {
 	getTransactionsByAddresses(startingBlockHash:string, addresses:string[]): Promise<RPC.TransactionsByAddressesResponse>;
 	getUtxosByAddresses(addresses:string[]): Promise<RPC.UTXOsByAddressesResponse>;
 	submitTransaction(tx: RPC.SubmitTransactionRequest): Promise<RPC.SubmitTransactionResponse>;
+	getVirtualSelectedParentBlueScore(): Promise<RPC.VirtualSelectedParentBlueScoreResponse>;
+	
+	subscribeChainChanged(callback:Rpc.callback<Rpc.ChainChangedNotification>): Promise<RPC.NotifyChainChangedResponse>;
+	subscribeBlockAdded(callback:Rpc.callback<Rpc.BlockAddedNotification>): Promise<RPC.NotifyBlockAddedResponse>;
+	subscribeVirtualSelectedParentBlueScoreChanged(callback:RPC.callback<Rpc.VirtualSelectedParentBlueScoreChangedNotification>): Promise<RPC.NotifyVirtualSelectedParentBlueScoreChangedResponse>;
+
 	request?(method:string, data:any);
 }

@@ -23,6 +23,36 @@ export const getRPC = ():IRPC=>{
 	return RPC;
 }
 
+export const getVirtualSelectedParentBlueScore = async (): Promise<{blueScore:number}>=>{
+	if(!RPC)
+		return missingRPCProviderError();
+
+	const response = await RPC.getVirtualSelectedParentBlueScore()
+	.catch((e) => {
+		throw new ApiError(`API connection error. ${e}`);
+	})
+	
+	if (response.error)
+		throw new ApiError(`API error (${response.error.errorCode}): ${response.error.message}`);
+
+	return {blueScore: response.blueScore}
+}
+
+export const subscribeVirtualSelectedParentBlueScoreChanged = async(callback:RPC.callback<RPC.VirtualSelectedParentBlueScoreChangedNotification>)=>{
+	if(!RPC)
+		return missingRPCProviderError();
+
+	const response = await RPC.subscribeVirtualSelectedParentBlueScoreChanged(callback)
+	.catch((e) => {
+		throw new ApiError(`API connection error. ${e}`);
+	})
+	
+	if (response.error)
+		throw new ApiError(`API error (${response.error.errorCode}): ${response.error.message}`);
+
+	return response;
+}
+
 export const getUtxosByAddresses = async (addresses: string[]): Promise<Map<string, Api.Utxo[]>> => {
 	if(!RPC)
 		return missingRPCProviderError();
@@ -37,7 +67,7 @@ export const getUtxosByAddresses = async (addresses: string[]): Promise<Map<stri
 	let result:Map<string, Api.Utxo[]> = new Map();
 
 	response.entries.map(entry=>{
-		console.log("entry", entry)
+		//console.log("entry", entry)
 		let {transactionId, index} = entry.outpoint;
 		let {address, utxoEntry} = entry;
 		let {amount, scriptPubKey, blockBlueScore} = utxoEntry;
