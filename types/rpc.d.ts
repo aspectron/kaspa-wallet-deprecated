@@ -1,6 +1,8 @@
 //([^\n \t].*) (.*) = \d{1,};
 //$2: $1;
 
+export declare type bytes = string;//base64 encoded string
+
 export namespace RPC {
 
 	interface Error {
@@ -21,7 +23,7 @@ export namespace RPC {
 	}
 
 	interface Outpoint{
-		transactionID: string;
+		transactionId: string;
 		index: number;
 	}
 
@@ -32,12 +34,28 @@ export namespace RPC {
 	}
 
 	interface SubmitTransactionRequest{
-		transaction: Transaction;
+		transaction: SUBMIT_Transaction;
 	}
 
 	interface SubmitTransactionResponse{
-	    transactionID: string;
+	    transactionId: string;
 	    error: Error;
+	}
+
+	interface SUBMIT_Transaction{
+		version: number;
+		inputs: TransactionInput[];
+		outputs: TransactionOutput[];
+		lockTime: number;
+		subnetworkId: string;
+		gas?: number;
+		payloadHash?: string;
+		payload?: string;
+		fee: number;
+	}
+
+	interface TransactionId{
+		bytes: bytes;
 	}
 
 	interface Transaction{
@@ -170,7 +188,7 @@ export namespace RPC {
 export interface IRPC {
 	getBlock(blockHash:string): Promise<RPC.BlockResponse>;
 	getTransactionsByAddresses(startingBlockHash:string, addresses:string[]): Promise<RPC.TransactionsByAddressesResponse>;
-	getUTXOsByAddress(addresses:string[]): Promise<RPC.UTXOsByAddressesResponse>;
+	getUtxosByAddresses(addresses:string[]): Promise<RPC.UTXOsByAddressesResponse>;
 	submitTransaction(tx: RPC.SubmitTransactionRequest): Promise<RPC.SubmitTransactionResponse>;
 	request?(method:string, data:any);
 }

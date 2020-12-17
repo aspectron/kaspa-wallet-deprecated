@@ -46,14 +46,14 @@ export class UtxoSet {
       utxo.isSpendable = true;
       /***********************************************/
 
-      const utxoId = utxo.transactionID + utxo.index.toString();
+      const utxoId = utxo.transactionId + utxo.index.toString();
       const utxoInUse = this.inUse.includes(utxoId);
       const alreadyHaveIt = this.utxos[utxoId];
       //console.log("utxoInUse", {utxoInUse, alreadyHaveIt})
       if (!utxoInUse && !alreadyHaveIt /*&& utxo.isSpendable*/) {
         utxoIds.push(utxoId);
         this.utxos[utxoId] = new bitcore.Transaction.UnspentOutput({
-          txid: utxo.transactionID,
+          txid: utxo.transactionId,
           address,
           vout: utxo.index,
           scriptPubKey: utxo.scriptPubKey,

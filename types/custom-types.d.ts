@@ -98,7 +98,7 @@ export namespace Api{
   }
 
   interface Utxo {
-    transactionID: string;
+    transactionId: string;
     amount: number;
     scriptPubKey: string;
     blockBlueScore: number;

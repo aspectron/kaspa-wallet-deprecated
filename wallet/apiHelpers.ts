@@ -23,11 +23,11 @@ export const getRPC = ():IRPC=>{
 	return RPC;
 }
 
-export const getUTXOsByAddress = async (addresses: string[]): Promise<Map<string, Api.Utxo[]>> => {
+export const getUtxosByAddresses = async (addresses: string[]): Promise<Map<string, Api.Utxo[]>> => {
 	if(!RPC)
 		return missingRPCProviderError();
 	
-	const response = await RPC.getUTXOsByAddress(addresses).catch((e) => {
+	const response = await RPC.getUtxosByAddresses(addresses).catch((e) => {
 		throw new ApiError(`API connection error. ${e}`);
 	})
 	
@@ -37,7 +37,8 @@ export const getUTXOsByAddress = async (addresses: string[]): Promise<Map<string
 	let result:Map<string, Api.Utxo[]> = new Map();
 
 	response.entries.map(entry=>{
-		let {transactionID, index} = entry.outpoint;
+		console.log("entry", entry)
+		let {transactionId, index} = entry.outpoint;
 		let {address, utxoEntry} = entry;
 		let {amount, scriptPubKey, blockBlueScore} = utxoEntry;
 
@@ -45,7 +46,7 @@ export const getUTXOsByAddress = async (addresses: string[]): Promise<Map<string
 			amount,
 			scriptPubKey,
 			blockBlueScore,
-			transactionID,
+			transactionId,
 			index
 		}
 
@@ -69,8 +70,8 @@ export const submitTransaction = async (tx: RPC.SubmitTransactionRequest): Promi
 		throw new ApiError(`API connection error. ${e}`); // eslint-disable-line
 	})
 	//console.log("submitTransaction:result", response)
-	if(response.transactionID)
-		return response.transactionID;
+	if(response.transactionId)
+		return response.transactionId;
 
 	if(!response.error)
 		response.error = {message: 'Api error. Please try again later. (ERROR: SUBMIT-TX:100)'};

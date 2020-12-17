@@ -207,16 +207,16 @@ class Wallet {
     logger.log('info', `Getting UTXOs for ${addresses.length} addresses.`);
     const addressesWithUTXOs: string[] = [];
     const txID2Info = new Map();
-    const utxosMap = await api.getUTXOsByAddress(addresses)
+    const utxosMap = await api.getUtxosByAddresses(addresses)
 
     if(debug){
       utxosMap.forEach((utxos, address)=>{
         utxos.sort((b, a)=> a.index-b.index)
         utxos.map(t=>{
-          let info = txID2Info.get(t.transactionID);
+          let info = txID2Info.get(t.transactionId);
           if(!info){
             info = {utxos:[], address};
-            txID2Info.set(t.transactionID, info);
+            txID2Info.set(t.transactionId, info);
           }
           info.utxos.push(t);
         })
@@ -395,10 +395,10 @@ class Wallet {
       //console.log("prevTxId", input.prevTxId.toString("hex"))
       return {
         previousOutpoint:{
-          transactionID: input.prevTxId.toString("hex"),
+          transactionId: input.prevTxId.toString("hex"),
           index: input.outputIndex
         },
-        signatureScript: input.script.toBuffer().toString("hex"),
+        signatureScript: input.script.toBuffer().toString("hex") as string,
         sequence: input.sequenceNumber
       };
     })
@@ -410,11 +410,11 @@ class Wallet {
       }
     })
     
-    //const payloadStr = "00000000000000000000000000000000";
-    //const payload = Buffer.from(payloadStr).toString("base64");
+    const payloadStr = "0000000000000000000000000000000";
+    const payload = Buffer.from(payloadStr).toString("base64");
     //console.log("payload-hex:", Buffer.from(payloadStr).toString("hex"))
-    //@ ts-ignore
-    //const payloadHash = bitcore.crypto.Hash.sha256sha256(Buffer.from(payloadStr));
+    //@ts-ignore
+    const payloadHash = bitcore.crypto.Hash.sha256sha256(Buffer.from(payloadStr));
     const rpcTX: RPC.SubmitTransactionRequest = {
       transaction: {
         version,
@@ -423,11 +423,9 @@ class Wallet {
         lockTime,
         //
         //payload,
-        //payloadHash:{
-        //  bytes: payloadHash.toString("base64")
-        //},
+        payloadHash:'0000000000000000000000000000000000000000000000000000000000000000',//Buffer.from('000', "hex").toString("hex"),
         //
-        subnetworkID: this.subnetworkId,//Buffer.from(this.subnetworkId, "hex").toString("base64"),
+        subnetworkId: this.subnetworkId,//Buffer.from(this.subnetworkId, "hex").toString("base64"),
         fee: txParams.fee
       }
     }
