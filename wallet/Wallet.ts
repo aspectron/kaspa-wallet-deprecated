@@ -2,6 +2,11 @@ const Mnemonic = require('bitcore-mnemonic');
 // @ts-ignore
 import * as bitcore from 'bitcore-lib-cash';
 
+/*
+const buf = bitcore.deps.Buffer.from("76a9141f367f737f93acb70d4926bacf95fd47438ec0e788ac", "hex");
+console.log("xxxxx", buf, bitcore.Script.fromBuffer(buf))
+
+//rrrr.eee
 const secp256k1 = require('../secp256k1/secp.js');
 secp256k1.onRuntimeInitialized = ()=>{
   console.log("onRuntimeInitialized")
@@ -33,6 +38,7 @@ sighash.sign = (
 
 }
 console.log("bitcore", bitcore.Transaction.sighash.sign)
+*/
 
 // @ts-ignore
 
