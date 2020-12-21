@@ -1,45 +1,12 @@
+import { Buffer } from 'safe-buffer';
 const Mnemonic = require('bitcore-mnemonic');
 // @ts-ignore
 import * as bitcore from 'bitcore-lib-cash';
+const _ = require('lodash');
 
-/*
-const buf = bitcore.deps.Buffer.from("76a9141f367f737f93acb70d4926bacf95fd47438ec0e788ac", "hex");
-console.log("xxxxx", buf, bitcore.Script.fromBuffer(buf))
+const {preconditions:_$, buffer:BufferUtil} = bitcore.util;
 
-//rrrr.eee
-const secp256k1 = require('../secp256k1/secp.js');
-secp256k1.onRuntimeInitialized = ()=>{
-  console.log("onRuntimeInitialized")
-
-  let result = secp256k1.ecdsa_sign("hello i am test message", "79afbf7147841fca72b45a1978dd7669470ba67abbe5c220062924380c9c364b")
-  console.log("Module.ecdsa_sign()", result);
-  result = null;
-}
-//console.log("secp256k1", secp256k1)
-  
-let {sighash} = bitcore.Transaction;
-sighash.sign = (
-    transaction, privateKey, sighashType, inputIndex, subscript,
-    satoshisBN, flags, signingMethod="ecdsa")=>{
-
-      var hashbuf = sighash.sighash(transaction, sighashType, inputIndex, subscript, satoshisBN, flags);
-      console.log("sign::::", {
-        signingMethod,
-        hashbuf: hashbuf.toString("hex"),
-        privateKey: privateKey.toBuffer().toString("hex"),
-        sighashType
-      })
-  let pubkey = privateKey.toPublicKey();
-  let result = secp256k1.ecdsa_sign(hashbuf.toString("hex"), privateKey.toBuffer().toString("hex"))
-  let sig = bitcore.crypto.Signature.fromString(result.sig)
-  sig.compressed = pubkey.compressed;
-  console.log("sigsigsigsigsigsigsigsigsig", result.sig, sig)
-  return sig
-
-}
-console.log("bitcore", bitcore.Transaction.sighash.sign)
-*/
-
+const secp256k1 = require('../../secp256k1/secp.js');
 // @ts-ignore
 
 import * as passworder1 from 'browser-passworder';
@@ -52,7 +19,6 @@ if(typeof window != "undefined" && !window.nw){
   passworder = passworder2;
 }
 
-import { Buffer } from 'safe-buffer';
 import {
   Network,
   SelectedNetwork,
@@ -62,6 +28,85 @@ import {
   PendingTransactions,
   WalletCache, IRPC, RPC
 } from '../types/custom-types';
+
+
+
+
+secp256k1.onRuntimeInitialized = ()=>{
+  console.log("onRuntimeInitialized")
+  setTimeout(()=>{
+    Wallet.ready();
+  }, 1);
+}
+
+let {PrivateKey, PublicKey, Script} = bitcore;
+let {Schnorr, Signature} = bitcore.crypto;
+/*
+
+let {sighash} = bitcore.Transaction;
+sighash.sign = (
+  transaction, privateKey, sighashType, inputIndex, subscript,
+  satoshisBN, flags, signingMethod="ecdsa")=>{
+
+  var hashbuf = sighash.sighash(transaction, sighashType, inputIndex, subscript, satoshisBN, flags);
+  
+
+  console.log("sign::::", {
+    signingMethod,
+    hashbuf: hashbuf.toString("hex"),
+    privateKey: privateKey.toBuffer().toString("hex"),
+    sighashType
+  })
+  let pubkey = privateKey.toPublicKey();
+  let result = secp256k1.ecdsa_sign(hashbuf.toString("hex"), privateKey.toBuffer().toString("hex"))
+  let sig = bitcore.crypto.Signature.fromString(result.sig)
+  sig.compressed = pubkey.compressed;
+  console.log("sigsigsigsigsigsigsigsigsig", result.sig, sig)
+  return sig
+}
+
+console.log("bitcore", bitcore.Transaction.sighash.sign)
+*/
+
+//@ts-ignore
+Schnorr.sign = function(hashbuf:Buffer, privateKey:PrivateKey){
+  console.log(":::sighash:", hashbuf.toString("hex"))
+  let result = secp256k1.schnorrsig_sign(privateKey.toString(), hashbuf.toString("hex"));
+  let sig = bitcore.crypto.Signature.fromString(result.sig);
+  sig.compressed = true;
+  return sig;
+}
+//@ts-ignore
+Schnorr.verify = function(hashbuf, sig, pubkey, endian) {
+  return true;//TODO
+}
+
+Script.buildPublicKeyHashIn = function(publicKey, signature, sigtype) {
+  _$.checkArgument(signature instanceof Signature || BufferUtil.isBuffer(signature));
+  _$.checkArgument(_.isUndefined(sigtype) || _.isNumber(sigtype));
+  if (signature instanceof Signature) {
+    signature = signature.toBuffer();
+  }
+  var script = new Script()
+    .add(BufferUtil.concat([
+      signature,
+      BufferUtil.integerAsSingleByteBuffer(sigtype || Signature.SIGHASH_ALL)
+    ]))
+    .add(new PublicKey(publicKey).toBuffer().slice(1));
+  return script;
+};
+
+
+PrivateKey.prototype.toPublicKey = function(){
+  if (!this._pubkey) {
+    let publicKeys = secp256k1.export_public_keys(this.toString());
+    this._pubkey = new PublicKey(publicKeys.pubkey, {network:this.network.name});//PublicKey.fromPrivateKey(this);
+  }
+  return this._pubkey;
+};
+
+
+
 import { logger } from '../utils/logger';
 import { AddressManager } from './AddressManager';
 import { UtxoSet } from './UtxoSet';
@@ -148,6 +193,10 @@ class Wallet extends EventTargetImpl{
    */
   constructor(privKey?: string, seedPhrase?: string) {
     super();
+
+    //this.___test();
+    
+
     this.utxoSet = new UtxoSet(this);
     if (privKey && seedPhrase) {
       this.HDWallet = new bitcore.HDPrivateKey(privKey);
@@ -160,6 +209,18 @@ class Wallet extends EventTargetImpl{
     this.addressManager = new AddressManager(this.HDWallet, this.network);
     this.addressManager.receiveAddress.next();
   }
+  /*
+  ___test(){
+    let b = Buffer.from("5b7bb00d0cde4251a87b24d1d5204bb13ac123d379fbcd153b0f741617ab7b9f", "hex");
+    let pKey = bitcore.PrivateKey.fromBuffer(b, true);
+    console.log("privateKey", pKey.toString("hex"))
+    //pKey.publicKey.compressed = true;
+    console.log("publicKey", pKey.publicKey.toString("hex"), pKey.publicKey.toAddress("kaspatest").toString())
+    b = Buffer.from("0271454681B13AA6B9EBF37E19C927CDC7DD11E539CDD93BF561AB54A7FA6EAB69", "hex");
+    let pubkey = bitcore.PublicKey.fromBuffer(b)
+    console.log("publicKey imported", pubkey.toString("hex"), pubkey.toAddress("kaspatest").toString())
+  }
+  */
 
   /**
    * Set rpc provider
@@ -167,6 +228,16 @@ class Wallet extends EventTargetImpl{
    */
   static setRPC(rpc:IRPC){
     api.setRPC(rpc);
+  }
+
+  static _onReady:Function|undefined;
+  static ready(){
+    if(this._onReady)
+      this._onReady();
+  }
+
+  static onRaady(_onReady:Function){
+    this._onReady = _onReady;
   }
 
   /**
@@ -318,6 +389,7 @@ class Wallet extends EventTargetImpl{
           derivedAddresses.map((obj) => obj.index)
         )}`
       );
+      console.log("addressDiscovery: findUtxos for addresses::", addresses)
       const {addressesWithUTXOs, txID2Info} = await this.findUtxos(addresses, debug);
       if(!debugInfo)
         debugInfo = txID2Info;
@@ -382,6 +454,8 @@ class Wallet extends EventTargetImpl{
       return [this.addressManager.all[String(cur.address)], ...prev];
     }, []);
 
+    console.log("privKeys::::", privKeys)
+
     const changeAddr = changeAddrOverride || this.addressManager.changeAddress.next();
     try {
       const tx: bitcore.Transaction = new bitcore.Transaction()
@@ -414,7 +488,9 @@ class Wallet extends EventTargetImpl{
   async submitTransaction(txParams: TxSend, debug=false): Promise<string> {
     const { id, tx, utxos } = this.composeTx(txParams);
     if(debug){
-      console.log("sendTx:utxos", utxos, utxos[0].address)
+      console.log("sendTx:utxos", utxos)
+      console.log("::utxos[0].script::", utxos[0].script)
+      console.log("::utxos[0].address::", utxos[0].address)
     }
 
     const {nLockTime:lockTime, version} = tx;

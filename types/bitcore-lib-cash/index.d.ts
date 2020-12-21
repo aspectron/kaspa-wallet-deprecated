@@ -2,6 +2,13 @@
 // Modified for bitcore-lib-cash
 
 declare module 'bitcore-lib-cash' {
+
+  export namespace util {
+    export namespace preconditions{
+      function checkArgument(condition:boolean, argumentName?:string, message?:string, docsPath?:any):boolean;
+    }
+  }
+
   export namespace crypto {
     class BN {}
 
@@ -38,7 +45,17 @@ declare module 'bitcore-lib-cash' {
       static fromString(data: string): Signature;
       SIGHASH_ALL: number;
       toString(): string;
+      compressed: boolean;
+      toBuffer(): Buffer;
     }
+
+    namespace Schnorr{
+      function sign(hashbuf: Buffer, privateKey: PrivateKey): Signature;
+    }
+  }
+
+  export class Script{
+    static buildPublicKeyHashIn(publicKey:PublicKey, signature:Signature, sigtype): Script;
   }
 
   export namespace Transaction {
@@ -144,14 +161,16 @@ declare module 'bitcore-lib-cash' {
     toObject(): object;
     toJSON(): object;
     toWIF(): string;
+    _pubkey: PublicKey;
 
     constructor(key?: string, network?: Networks.Network);
   }
 
   export class PublicKey {
-    constructor(source: string);
+    constructor(source: string, extra?:{compressed?:boolean, network?:string});
 
     static fromPrivateKey(privateKey: PrivateKey): PublicKey;
+    toAddress(network?: string): Address;
 
     toBuffer(): Buffer;
     toDER(): Buffer;

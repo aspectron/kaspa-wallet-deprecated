@@ -1,6 +1,9 @@
 // @ts-ignore
-import bitcore from 'bitcore-lib-cash';
+import * as bitcore from 'bitcore-lib-cash';
 import { Network } from 'custom-types';
+
+const secp256k1 = require('../../secp256k1/secp.js');
+const bitcoin = require('bitcoinjs-lib');
 
 export class AddressManager {
   constructor(HDWallet: bitcore.HDPrivateKey, network: Network) {
@@ -98,9 +101,30 @@ export class AddressManager {
   ): { address: string; privateKey: bitcore.PrivateKey } {
     const dType = deriveType === 'receive' ? 0 : 1;
     const { privateKey } = this.HDWallet.deriveChild(`m/44'/972/0'/${dType}'/${index}'`);
+    
+    let publicKeys = secp256k1.export_public_keys(privateKey.toString());
+    let address1 = new bitcore.PublicKey(publicKeys.pubkey, {network:this.network}).toAddress().toString();
+    let address = privateKey.toAddress(this.network).toString();
+    //let pubkey = Buffer.from(publicKeys.pubkey, "hex");
+    //let {address:address3} = bitcoin.payments.p2pkh({pubkey});
+    let xonly = Buffer.from(publicKeys.xonly, "hex");
+    let address2 = bitcore.Address.fromPublicKeyHash(bitcore.crypto.Hash.sha256ripemd160(xonly), this.network).toString();
+    
+    /*
+    console.log("privateKey:xxxx:", {
+      privateKey: privateKey.toString(),
+      address,
+      address1,
+      address2,
+      "address1==address":address1==address,
+      publicKeys
+     });//, publicKeys)
+     */
+    console.log("xonly:address2", "privateKey:"+privateKey.toString(), "address:"+address2)
+    console.log("xonly", publicKeys.xonly)
     return {
-      address: privateKey.toAddress(this.network).toString(),
-      privateKey,
+      address:address2,
+      privateKey
     };
   }
 
