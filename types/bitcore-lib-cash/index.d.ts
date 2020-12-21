@@ -3,6 +3,15 @@
 
 declare module 'bitcore-lib-cash' {
 
+  export namespace encoding{
+    export class BufferReader{
+
+    }
+    export class BufferWriter{
+
+    }
+  }
+
   export namespace util {
     export namespace preconditions{
       function checkArgument(condition:boolean, argumentName?:string, message?:string, docsPath?:any):boolean;
@@ -10,7 +19,9 @@ declare module 'bitcore-lib-cash' {
   }
 
   export namespace crypto {
-    class BN {}
+    class BN {
+      static fromNumber(n:number): BN;
+    }
 
     namespace ECDSA {
       function sign(message: Buffer, key: PrivateKey): Signature;
@@ -61,7 +72,8 @@ declare module 'bitcore-lib-cash' {
   export namespace Transaction {
     static class sighash{
       static sign(transaction, privateKey, sighashType, inputIndex, subscript, satoshisBN, flags, signingMethod);
-    };
+      static sighash(transaction, sighashType, inputNumber, subscript, satoshisBN, flags): Buffer;
+    }
     class UnspentOutput {
       static fromObject(o: object): UnspentOutput;
 
@@ -95,6 +107,10 @@ declare module 'bitcore-lib-cash' {
       readonly sequenceNumber: number;
       readonly script: Script;
       readonly output?: Output;
+    }
+
+    class Signature{
+
     }
   }
 
@@ -136,6 +152,7 @@ declare module 'bitcore-lib-cash' {
     serialize(): string;
     version: number;
     nLockTime: number;
+    fromBufferReader(reader:BufferReader): Transaction;
   }
 
   export class Block {

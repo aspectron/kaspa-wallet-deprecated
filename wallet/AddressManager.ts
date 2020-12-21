@@ -108,6 +108,7 @@ export class AddressManager {
     //let pubkey = Buffer.from(publicKeys.pubkey, "hex");
     //let {address:address3} = bitcoin.payments.p2pkh({pubkey});
     let xonly = Buffer.from(publicKeys.xonly, "hex");
+    //@ts-ignore
     let address2 = bitcore.Address.fromPublicKeyHash(bitcore.crypto.Hash.sha256ripemd160(xonly), this.network).toString();
     
     /*

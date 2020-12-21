@@ -1,14 +1,10 @@
 import { Buffer } from 'safe-buffer';
 const Mnemonic = require('bitcore-mnemonic');
-// @ts-ignore
 import * as bitcore from 'bitcore-lib-cash';
-const _ = require('lodash');
-
-const {preconditions:_$, buffer:BufferUtil} = bitcore.util;
+import './bitcore-overrides';
 
 const secp256k1 = require('../../secp256k1/secp.js');
 // @ts-ignore
-
 import * as passworder1 from 'browser-passworder';
 import * as passworder2 from '@aspectron/flow-key-crypt';
 let passworder:typeof passworder1 | typeof passworder2;
@@ -30,82 +26,12 @@ import {
 } from '../types/custom-types';
 
 
-
-
 secp256k1.onRuntimeInitialized = ()=>{
   console.log("onRuntimeInitialized")
   setTimeout(()=>{
     Wallet.ready();
   }, 1);
 }
-
-let {PrivateKey, PublicKey, Script} = bitcore;
-let {Schnorr, Signature} = bitcore.crypto;
-/*
-
-let {sighash} = bitcore.Transaction;
-sighash.sign = (
-  transaction, privateKey, sighashType, inputIndex, subscript,
-  satoshisBN, flags, signingMethod="ecdsa")=>{
-
-  var hashbuf = sighash.sighash(transaction, sighashType, inputIndex, subscript, satoshisBN, flags);
-  
-
-  console.log("sign::::", {
-    signingMethod,
-    hashbuf: hashbuf.toString("hex"),
-    privateKey: privateKey.toBuffer().toString("hex"),
-    sighashType
-  })
-  let pubkey = privateKey.toPublicKey();
-  let result = secp256k1.ecdsa_sign(hashbuf.toString("hex"), privateKey.toBuffer().toString("hex"))
-  let sig = bitcore.crypto.Signature.fromString(result.sig)
-  sig.compressed = pubkey.compressed;
-  console.log("sigsigsigsigsigsigsigsigsig", result.sig, sig)
-  return sig
-}
-
-console.log("bitcore", bitcore.Transaction.sighash.sign)
-*/
-
-//@ts-ignore
-Schnorr.sign = function(hashbuf:Buffer, privateKey:PrivateKey){
-  console.log(":::sighash:", hashbuf.toString("hex"))
-  let result = secp256k1.schnorrsig_sign(privateKey.toString(), hashbuf.toString("hex"));
-  let sig = bitcore.crypto.Signature.fromString(result.sig);
-  sig.compressed = true;
-  return sig;
-}
-//@ts-ignore
-Schnorr.verify = function(hashbuf, sig, pubkey, endian) {
-  return true;//TODO
-}
-
-Script.buildPublicKeyHashIn = function(publicKey, signature, sigtype) {
-  _$.checkArgument(signature instanceof Signature || BufferUtil.isBuffer(signature));
-  _$.checkArgument(_.isUndefined(sigtype) || _.isNumber(sigtype));
-  if (signature instanceof Signature) {
-    signature = signature.toBuffer();
-  }
-  var script = new Script()
-    .add(BufferUtil.concat([
-      signature,
-      BufferUtil.integerAsSingleByteBuffer(sigtype || Signature.SIGHASH_ALL)
-    ]))
-    .add(new PublicKey(publicKey).toBuffer().slice(1));
-  return script;
-};
-
-
-PrivateKey.prototype.toPublicKey = function(){
-  if (!this._pubkey) {
-    let publicKeys = secp256k1.export_public_keys(this.toString());
-    this._pubkey = new PublicKey(publicKeys.pubkey, {network:this.network.name});//PublicKey.fromPrivateKey(this);
-  }
-  return this._pubkey;
-};
-
-
 
 import { logger } from '../utils/logger';
 import { AddressManager } from './AddressManager';
@@ -499,12 +425,14 @@ class Wallet extends EventTargetImpl{
 
     const inputs: RPC.TransactionInput[] = tx.inputs.map((input:bitcore.Transaction.Input)=>{
       //console.log("prevTxId", input.prevTxId.toString("hex"))
+      //@ts-ignore
       console.log("input.script.inspect", input.script.inspect())
       return {
         previousOutpoint:{
           transactionId: input.prevTxId.toString("hex"),
           index: input.outputIndex
         },
+        //@ts-ignore
         signatureScript: input.script.toBuffer().toString("hex"),
         sequence: input.sequenceNumber
       };
@@ -513,6 +441,7 @@ class Wallet extends EventTargetImpl{
     const outputs: RPC.TransactionOutput[] = tx.outputs.map((output:bitcore.Transaction.Output)=>{
       return {
         amount: output.satoshis,
+        //@ts-ignore
         scriptPubKey: output.script.toBuffer().toString("hex")
       }
     })
