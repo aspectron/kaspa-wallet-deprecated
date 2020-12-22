@@ -45,6 +45,12 @@ const setWasmLoadStatus = (mod:string, loaded:boolean)=>{
     Wallet.ready();
 }
 
+/*
+setTimeout(()=>{
+  Wallet.ready();
+}, 2000)
+*/
+
 blake2b.ready(()=>{
   setWasmLoadStatus("blake2b", true);
 })

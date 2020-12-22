@@ -1548,7 +1548,7 @@ function createWasm() {
 
   // Prefer streaming instantiation if available.
   function instantiateAsync() {
-    if (!wasmBinary &&
+    if (!ENVIRONMENT_IS_NODE && !wasmBinary &&
         typeof WebAssembly.instantiateStreaming === 'function' &&
         !isDataURI(wasmBinaryFile) &&
         // Don't use streaming for file:// delivered objects in a webview, fetch them synchronously.
