@@ -6,13 +6,6 @@ export const setup = ()=>{
 
 }
 
-console.log("########################")
-console.log("########################")
-console.log("########################")
-console.log("########################")
-console.log("########################")
-console.log("########################")
-
 const Output = require('bitcore-lib-cash/lib/transaction/output');
 const Input = require('bitcore-lib-cash/lib/transaction/input');
 const Interpreter = require('bitcore-lib-cash/lib/script/interpreter');
@@ -38,11 +31,7 @@ const blake2b_256 = (buf:Buffer, key:string):Buffer=>{
 const {preconditions:_$, buffer:BufferUtil} = bitcore.util;
 
 //@ts-ignore
-if(!sighash._sighash){
-  //@ts-ignore
-  sighash._sighash = sighash.sighash;
-  //@ts-ignore
-  sighash.sighash = (transaction, sighashType, inputNumber, subscript, satoshisBN, flags)=>{
+const calcTxHash = (transaction, sighashType, inputNumber, subscript, satoshisBN, flags): Buffer=>{
     //ssss.sss
     //var Transaction = require('./transaction');
     //var Input = require('./input');
@@ -126,13 +115,23 @@ if(!sighash._sighash){
     //var ret = Hash.sha256sha256(buf);
     //@ts-ignore
     let ret = blake2b_256(buf, TransactionSigningHashKey);
-    console.log("\n\n\n $$$$$$$$$$tx_hash::::", ret.toString("hex"))
+    console.log("$$$$$$$$$$tx_hash::::", ret.toString("hex"))
     //@ts-ignore
-    ret = new BufferReader(ret).readReverse();
+    //ret = new BufferReader(ret).readReverse();
     return ret;
-  }
 }
 
+//@ts-ignore
+sighash.sign = (transaction, privateKey, sighashType, inputIndex, subscript, satoshisBN, flags, signingMethod)=>{
+   console.log("$$$$$$$$$$ :::::sighash.sign")
+  //@ts-ignore
+  let hashbuf = calcTxHash(transaction, sighashType, inputIndex, subscript, satoshisBN, flags);
+  
+  //@ts-ignore
+  return Schnorr.sign(hashbuf, privateKey).set({
+    nhashtype: sighashType
+  });
+}
 //@ts-ignore
 Schnorr.sign = function(hashbuf:Buffer, privateKey:PrivateKey){
   console.log(":::sighash:", hashbuf.toString("hex"))
