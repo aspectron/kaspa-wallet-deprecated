@@ -12,7 +12,8 @@ const Interpreter = require('bitcore-lib-cash/lib/script/interpreter');
 const DEFAULT_SIGN_FLAGS = Interpreter.SCRIPT_ENABLE_SIGHASH_FORKID;
 const SIGHASH_SINGLE_BUG = '0000000000000000000000000000000000000000000000000000000000000001';
 const BITS_64_ON = 'ffffffffffffffff';
-const blake2 = require('blake2');
+//const blake2 = require('blake2');
+const blake2b = require('blake2b-wasm');
 const secp256k1 = require('../../secp256k1/secp.js');
 
 let {PrivateKey, PublicKey, Script, Transaction} = bitcore;
@@ -21,9 +22,14 @@ let {BufferReader, BufferWriter} = bitcore.encoding;
 let {sighash} = Transaction;
 
 const TransactionSigningHashKey  = Buffer.from("TransactionSigningHash");
+// const blake2b_256 = (buf:Buffer, key:string):Buffer=>{
+//   //let buf = Buffer.from(str, "hex");
+//   return blake2.createKeyedHash("blake2b", key, {digestLength:32}).update(buf).digest();
+// }
+
 const blake2b_256 = (buf:Buffer, key:string):Buffer=>{
   //let buf = Buffer.from(str, "hex");
-  return blake2.createKeyedHash("blake2b", key, {digestLength:32}).update(buf).digest();
+  return blake2b(32, key).update(buf).digest();
 }
 
 
