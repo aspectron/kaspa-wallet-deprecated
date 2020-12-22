@@ -1,7 +1,8 @@
 import { Buffer } from 'safe-buffer';
 const Mnemonic = require('bitcore-mnemonic');
 import * as bitcore from 'bitcore-lib-cash';
-import './bitcore-overrides';
+import * as bitcoreOverrides from './bitcore-overrides';
+bitcoreOverrides.setup();
 
 const secp256k1 = require('../../secp256k1/secp.js');
 // @ts-ignore

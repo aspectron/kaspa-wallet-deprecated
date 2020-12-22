@@ -5,10 +5,13 @@ declare module 'bitcore-lib-cash' {
 
   export namespace encoding{
     export class BufferReader{
-
+      constructor(buf:Buffer);
+      readReverse():Buffer;
     }
     export class BufferWriter{
-
+      write(buf:Buffer):BufferWriter;
+      writeInt32LE(n: number): BufferWriter;
+      toBuffer(): Buffer;
     }
   }
 
@@ -21,6 +24,7 @@ declare module 'bitcore-lib-cash' {
   export namespace crypto {
     class BN {
       static fromNumber(n:number): BN;
+      static fromBuffer(buf: Buffer): BN;
     }
 
     namespace ECDSA {
@@ -55,6 +59,11 @@ declare module 'bitcore-lib-cash' {
       static fromDER(sig: Buffer): Signature;
       static fromString(data: string): Signature;
       SIGHASH_ALL: number;
+      static SIGHASH_ALL:number;
+      static SIGHASH_NONE:number;
+      static SIGHASH_SINGLE:number;
+      static SIGHASH_FORKID:number;
+      static SIGHASH_ANYONECANPAY:number;
       toString(): string;
       compressed: boolean;
       toBuffer(): Buffer;
@@ -66,7 +75,9 @@ declare module 'bitcore-lib-cash' {
   }
 
   export class Script{
+    constructor(script?:Script);
     static buildPublicKeyHashIn(publicKey:PublicKey, signature:Signature, sigtype): Script;
+    static empty():Script;
   }
 
   export namespace Transaction {
@@ -104,7 +115,7 @@ declare module 'bitcore-lib-cash' {
     class Input {
       readonly prevTxId: Buffer;
       readonly outputIndex: number;
-      readonly sequenceNumber: number;
+      sequenceNumber: number;
       readonly script: Script;
       readonly output?: Output;
     }
@@ -153,6 +164,8 @@ declare module 'bitcore-lib-cash' {
     version: number;
     nLockTime: number;
     fromBufferReader(reader:BufferReader): Transaction;
+    toBuffer(): Buffer;
+    static shallowCopy(tx:Transaction): Transaction;
   }
 
   export class Block {

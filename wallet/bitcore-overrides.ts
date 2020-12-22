@@ -2,15 +2,36 @@ import { Buffer } from 'safe-buffer';
 const _ = require('lodash');
 import * as bitcore from 'bitcore-lib-cash';
 
+export const setup = ()=>{
+
+}
+
+console.log("########################")
+console.log("########################")
+console.log("########################")
+console.log("########################")
+console.log("########################")
+console.log("########################")
+
 const Output = require('bitcore-lib-cash/lib/transaction/output');
 const Input = require('bitcore-lib-cash/lib/transaction/input');
-
+const Interpreter = require('bitcore-lib-cash/lib/script/interpreter');
+const DEFAULT_SIGN_FLAGS = Interpreter.SCRIPT_ENABLE_SIGHASH_FORKID;
+const SIGHASH_SINGLE_BUG = '0000000000000000000000000000000000000000000000000000000000000001';
+const BITS_64_ON = 'ffffffffffffffff';
+const blake2 = require('blake2');
 const secp256k1 = require('../../secp256k1/secp.js');
 
 let {PrivateKey, PublicKey, Script, Transaction} = bitcore;
 let {Schnorr, Signature, BN, Hash} = bitcore.crypto;
 let {BufferReader, BufferWriter} = bitcore.encoding;
 let {sighash} = Transaction;
+
+const TransactionSigningHashKey  = Buffer.from("TransactionSigningHash");
+const blake2b_256 = (buf:Buffer, key:string):Buffer=>{
+  //let buf = Buffer.from(str, "hex");
+  return blake2.createKeyedHash("blake2b", key, {digestLength:32}).update(buf).digest();
+}
 
 
 //@ts-ignore
@@ -21,11 +42,94 @@ if(!sighash._sighash){
   //@ts-ignore
   sighash._sighash = sighash.sighash;
   //@ts-ignore
-  sighash.sighash = (...args:any[]):buffer=>{
+  sighash.sighash = (transaction, sighashType, inputNumber, subscript, satoshisBN, flags)=>{
+    //ssss.sss
+    //var Transaction = require('./transaction');
+    //var Input = require('./input');
+    
+    if (_.isUndefined(flags)){
+      flags = DEFAULT_SIGN_FLAGS;
+    }
+
+    // Copy transaction
+    var txcopy = Transaction.shallowCopy(transaction);
+
+    // Copy script
+    subscript = new Script(subscript);
+
+    if (flags & Interpreter.SCRIPT_ENABLE_REPLAY_PROTECTION) {
+      // Legacy chain's value for fork id must be of the form 0xffxxxx.
+      // By xoring with 0xdead, we ensure that the value will be different
+      // from the original one, even if it already starts with 0xff.
+      var forkValue = sighashType >> 8;
+      var newForkValue =  0xff0000 | ( forkValue ^ 0xdead);
+      sighashType =  (newForkValue << 8) | (sighashType & 0xff)
+    }
+
+    if ( ( sighashType & Signature.SIGHASH_FORKID)  && (flags & Interpreter.SCRIPT_ENABLE_SIGHASH_FORKID) ) {
+      //@ts-ignore
+      return sighash.sighashForForkId(txcopy, sighashType, inputNumber, subscript, satoshisBN);
+    }
+
+    // For no ForkId sighash, separators need to be removed.
+    subscript.removeCodeseparators();
+
+    var i;
+
+    for (i = 0; i < txcopy.inputs.length; i++) {
+      // Blank signatures for other inputs
+      txcopy.inputs[i] = new Input(txcopy.inputs[i]).setScript(Script.empty());
+    }
+
+    txcopy.inputs[inputNumber] = new Input(txcopy.inputs[inputNumber]).setScript(subscript);
+
+    if ((sighashType & 31) === Signature.SIGHASH_NONE ||
+      (sighashType & 31) === Signature.SIGHASH_SINGLE) {
+
+      // clear all sequenceNumbers
+      for (i = 0; i < txcopy.inputs.length; i++) {
+        if (i !== inputNumber) {
+          txcopy.inputs[i].sequenceNumber = 0;
+        }
+      }
+    }
+
+    if ((sighashType & 31) === Signature.SIGHASH_NONE) {
+      txcopy.outputs = [];
+
+    } else if ((sighashType & 31) === Signature.SIGHASH_SINGLE) {
+      // The SIGHASH_SINGLE bug.
+      // https://bitcointalk.org/index.php?topic=260595.0
+      if (inputNumber >= txcopy.outputs.length) {
+        return Buffer.from(SIGHASH_SINGLE_BUG, 'hex');
+      }
+
+      txcopy.outputs.length = inputNumber + 1;
+
+      for (i = 0; i < inputNumber; i++) {
+        txcopy.outputs[i] = new Output({
+          //@ts-ignore
+          satoshis: BN.fromBuffer(Buffer.from(BITS_64_ON, 'hex')),
+          script: Script.empty()
+        });
+      }
+    }
+    
+    if (sighashType & Signature.SIGHASH_ANYONECANPAY) {
+      txcopy.inputs = [txcopy.inputs[inputNumber]];
+    }
+
+    let buf = new BufferWriter()
+      .write(txcopy.toBuffer())
+      .writeInt32LE(sighashType)
+      .toBuffer()
+    //var ret = Hash.sha256sha256(buf);
     //@ts-ignore
-    let buf:Buffer = sighash._sighash(...args);
+    let ret = blake2b_256(buf, TransactionSigningHashKey);
+    console.log("\n\n\n $$$$$$$$$$tx_hash::::", ret.toString("hex"))
     //@ts-ignore
-    return new BufferReader(buf).readReverse();
+    ret = new BufferReader(ret).readReverse();
+    return ret;
   }
 }
 
@@ -72,8 +176,8 @@ PrivateKey.prototype.toPublicKey = function(){
 let _txlogBuffer = false;
 const txlogBuffer = (...args:any[])=>{
   //@ts-ignore
-  if(!_txlogBuffer)
-    return
+  //if(!_txlogBuffer)
+  //  return
   args[args.length-1] = args[args.length-1].map((buf:Buffer)=>buf.toString("hex"));
   console.log(...args)
 }
