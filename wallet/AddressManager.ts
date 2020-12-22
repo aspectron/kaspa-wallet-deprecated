@@ -3,7 +3,6 @@ import * as bitcore from 'bitcore-lib-cash';
 import { Network } from 'custom-types';
 
 const secp256k1 = require('../../secp256k1/secp.js');
-const bitcoin = require('bitcoinjs-lib');
 
 export class AddressManager {
   constructor(HDWallet: bitcore.HDPrivateKey, network: Network) {

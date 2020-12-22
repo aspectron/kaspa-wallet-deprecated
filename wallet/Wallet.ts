@@ -5,6 +5,7 @@ import * as bitcoreOverrides from './bitcore-overrides';
 bitcoreOverrides.setup();
 
 const secp256k1 = require('../../secp256k1/secp.js');
+const blake2b = require('blake2b-wasm');
 // @ts-ignore
 import * as passworder1 from 'browser-passworder';
 import * as passworder2 from '@aspectron/flow-key-crypt';
@@ -26,11 +27,32 @@ import {
   WalletCache, IRPC, RPC
 } from '../types/custom-types';
 
+const wasmModulesLoadStatus:Map<string, boolean> = new Map();
+wasmModulesLoadStatus.set("blake2b", false);
+wasmModulesLoadStatus.set("secp256k1", false);
+
+const setWasmLoadStatus = (mod:string, loaded:boolean)=>{
+  console.log("setWasmLoadStatus:", mod, loaded)
+  wasmModulesLoadStatus.set(mod, loaded);
+  let allLoaded = true;
+  wasmModulesLoadStatus.forEach((loaded, mod)=>{
+    console.log("wasmModulesLoadStatus:", mod, loaded)
+    if(!loaded)
+      allLoaded = false;
+  })
+
+  if(allLoaded)
+    Wallet.ready();
+}
+
+blake2b.ready(()=>{
+  setWasmLoadStatus("blake2b", true);
+})
 
 secp256k1.onRuntimeInitialized = ()=>{
   console.log("onRuntimeInitialized")
   setTimeout(()=>{
-    Wallet.ready();
+    setWasmLoadStatus("secp256k1", true);
   }, 1);
 }
 
@@ -46,6 +68,9 @@ import {EventTargetImpl} from './event-target-impl';
 /** Class representing an HDWallet with derivable child addresses */
 class Wallet extends EventTargetImpl{
 
+
+  static Mnemonic:typeof Mnemonic = Mnemonic;
+  static isReady:Boolean = false;
   //static passworder1:any = passworder1;
   //static passworder2:any = passworder2;
 
@@ -159,12 +184,15 @@ class Wallet extends EventTargetImpl{
 
   static _onReady:Function|undefined;
   static ready(){
+    this.isReady = true;
     if(this._onReady)
       this._onReady();
   }
 
-  static onRaady(_onReady:Function){
+  static onReady(_onReady:Function){
     this._onReady = _onReady;
+    if(this.isReady)
+      this.ready();
   }
 
   /**
