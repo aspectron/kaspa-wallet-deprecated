@@ -205,6 +205,21 @@ export namespace RPC {
 		virtualSelectedParentBlueScore: number;
 	}
 
+	interface NotifyUtxosChangedResponse{
+		error: Error;
+	}
+
+	interface UtxosChangedNotification{
+		added:UtxosByAddressesEntry[];
+		removed:UtxosByAddressesEntry[];
+	}
+
+	interface UtxosByAddressesEntry {
+		address:string;
+		outpoint:Outpoint;
+		utxoEntry:UtxoEntry;
+	}
+
 	declare type callback<T> = (result: T) => void;
 }
 
@@ -218,6 +233,7 @@ export interface IRPC {
 	subscribeChainChanged(callback:Rpc.callback<Rpc.ChainChangedNotification>): Promise<RPC.NotifyChainChangedResponse>;
 	subscribeBlockAdded(callback:Rpc.callback<Rpc.BlockAddedNotification>): Promise<RPC.NotifyBlockAddedResponse>;
 	subscribeVirtualSelectedParentBlueScoreChanged(callback:RPC.callback<Rpc.VirtualSelectedParentBlueScoreChangedNotification>): Promise<RPC.NotifyVirtualSelectedParentBlueScoreChangedResponse>;
+	subscribeUtxosChanged(addresses:string[], callback:Rpc.callback<Rpc.UtxosChangedNotification>): Promise<RPC.NotifyUtxosChangedResponse>;
 
 	request?(method:string, data:any);
 }
