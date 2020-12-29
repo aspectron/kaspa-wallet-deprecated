@@ -125,7 +125,7 @@ const calcTxHash = (transaction, sighashType, inputNumber, subscript, satoshisBN
     console.log("$$$$$$$$$$tx_hash::::", ret.toString("hex"))
     //@ts-ignore
     //ret = new BufferReader(ret).readReverse();
-    return ret;
+    return Buffer.from(ret);
 }
 
 //@ts-ignore
