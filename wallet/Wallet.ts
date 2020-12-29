@@ -2,6 +2,7 @@ import { Buffer } from 'safe-buffer';
 const Mnemonic = require('bitcore-mnemonic');
 import * as bitcore from 'bitcore-lib-cash';
 import * as bitcoreOverrides from './bitcore-overrides';
+import * as helper from '../utils/helper';
 bitcoreOverrides.setup();
 
 //const secp256k1 = require('secp256k1-wasm');
@@ -25,7 +26,7 @@ import {
   Api,
   TxSend,
   PendingTransactions,
-  WalletCache, IRPC, RPC, WalletOptions
+  WalletCache, IRPC, RPC, WalletOptions, WalletOpt
 } from '../types/custom-types';
 
 const wasmModulesLoadStatus:Map<string, boolean> = new Map();
@@ -144,8 +145,9 @@ class Wallet extends EventTargetImpl{
    * Transaction arrays keyed by address.
    */
   transactionsStorage: Record<string, Api.Transaction[]> = {};
+  
 
-  options:WalletOptions;
+  options:WalletOpt;
 
   /** Create a wallet.
    * @param walletSave (optional)
@@ -155,11 +157,17 @@ class Wallet extends EventTargetImpl{
   constructor(privKey?: string, seedPhrase?: string, options:WalletOptions={}) {
     super();
 
-    //this.___test();
-    this.options = options;
+    let defaultOpt = {
+      skipSyncBalance:false,
+      utxoSyncThrottleDelay:100
+    };
+
+    this.options = {...defaultOpt, ...options};
     
 
     this.utxoSet = new UtxoSet(this);
+    this.utxoSet.on("balance-update", this.updateBalance.bind(this));
+
     if (privKey && seedPhrase) {
       this.HDWallet = new bitcore.HDPrivateKey(privKey);
       this.mnemonic = seedPhrase;
@@ -168,21 +176,23 @@ class Wallet extends EventTargetImpl{
       this.mnemonic = temp.toString();
       this.HDWallet = new bitcore.HDPrivateKey(temp.toHDPrivateKey().toString());
     }
+
     this.addressManager = new AddressManager(this.HDWallet, this.network);
+    this.initAddressManager();
+  }
+
+  initAddressManager(){
     this.addressManager.receiveAddress.next();
+    this.addressManager.on("new-address", detail=>{
+      if(this.options.skipSyncBalance)
+        return
+
+      //console.log("new-address:detail", detail)
+
+      const {address, type} = detail;
+      this.utxoSet.syncAddressesUtxos([address]);
+    })
   }
-  /*
-  ___test(){
-    let b = Buffer.from("5b7bb00d0cde4251a87b24d1d5204bb13ac123d379fbcd153b0f741617ab7b9f", "hex");
-    let pKey = bitcore.PrivateKey.fromBuffer(b, true);
-    console.log("privateKey", pKey.toString("hex"))
-    //pKey.publicKey.compressed = true;
-    console.log("publicKey", pKey.publicKey.toString("hex"), pKey.publicKey.toAddress("kaspatest").toString())
-    b = Buffer.from("0271454681B13AA6B9EBF37E19C927CDC7DD11E539CDD93BF561AB54A7FA6EAB69", "hex");
-    let pubkey = bitcore.PublicKey.fromBuffer(b)
-    console.log("publicKey imported", pubkey.toString("hex"), pubkey.toAddress("kaspatest").toString())
-  }
-  */
 
   /**
    * Set rpc provider
@@ -270,9 +280,11 @@ class Wallet extends EventTargetImpl{
     addressesWithUTXOs:string[]
   }> {
     logger.log('info', `Getting UTXOs for ${addresses.length} addresses.`);
+    
+    const utxosMap = await api.getUtxosByAddresses(addresses)
+
     const addressesWithUTXOs: string[] = [];
     const txID2Info = new Map();
-    const utxosMap = await api.getUtxosByAddresses(addresses)
 
     if(debug){
       utxosMap.forEach((utxos, address)=>{
@@ -311,6 +323,7 @@ class Wallet extends EventTargetImpl{
    */
   updateBalance(): void {
     this.balance = this.utxoSet.totalBalance - this.pending.amount;
+    this.emit("balance-update", {balance:this.balance});
   }
 
   /**

@@ -1,17 +1,12 @@
-import { Api, UnspentOutputInfo } from 'custom-types';
+import { Api, RPC, UnspentOutputInfo } from 'custom-types';
 // @ts-ignore
 import * as bitcore from 'bitcore-lib-cash';
 import { logger } from '../utils/logger';
 import * as crypto from 'crypto';
+import * as helper from '../utils/helper';
+import * as api from './apiHelpers';
 import {Wallet} from './wallet';
-
-const sha256 = (str:string)=>{
-  const secret = 'xyz';
-  return crypto.createHmac('sha256', secret)
-    .update(str)
-    .digest('hex');
-}
-
+import {EventTargetImpl} from './event-target-impl';
 
 export class UnspentOutput extends bitcore.Transaction.UnspentOutput{
   blockBlueScore:number;
@@ -21,7 +16,7 @@ export class UnspentOutput extends bitcore.Transaction.UnspentOutput{
   }
 }
 
-export class UtxoSet {
+export class UtxoSet extends EventTargetImpl{
   utxos: Record<string, UnspentOutput> = {};
 
   inUse: string[] = [];
@@ -39,8 +34,13 @@ export class UtxoSet {
 
   wallet: Wallet;
 
+  addressesUtxoSyncStatuses:Map<string, boolean> = new Map();
+  throttledUtxoSync:Function;
+
   constructor(wallet:Wallet){
+    super();
     this.wallet = wallet;
+    this.throttledUtxoSync = helper.throttle(this.utxoSync.bind(this), wallet.options.utxoSyncThrottleDelay)
   }
 
   /**
@@ -149,5 +149,90 @@ export class UtxoSet {
       throw new Error(`Transaction compose error. Need: ${txAmount}, UTXO Balance: ${totalVal}`);
 
     return { utxoIds, utxos };
+  }
+
+  syncAddressesUtxos(addresses:string[]){
+    const newAddresses = addresses.map(address=>{
+      if(this.addressesUtxoSyncStatuses.has(address))
+        return
+      this.addressesUtxoSyncStatuses.set(address, false);
+      return address;
+    }).filter(address=>address);
+
+    if(!newAddresses.length)
+      return
+    this.throttledUtxoSync();
+  }
+
+  async utxoSync():Promise<string[]>{
+    let addresses:string[] = [];
+    this.addressesUtxoSyncStatuses.forEach((sent, address)=>{
+      if(sent)
+        return
+      this.addressesUtxoSyncStatuses.set(address, true);
+      addresses.push(address);
+    });
+
+    if(!addresses.length)
+      return addresses;
+
+    let utxoChangedRes = await api.subscribeUtxosChanged(addresses, this.onUtxosChanged.bind(this))
+    .catch((error:RPC.Error)=>{
+      addresses.map(address=>{
+        this.addressesUtxoSyncStatuses.set(address, false);
+      })
+    })
+
+    console.log("utxoSync:utxoChangedRes, addresses:", utxoChangedRes, addresses)
+    return addresses;
+  }
+
+  onUtxosChanged(added:Map<string, Api.Utxo[]>, removed:Map<string, RPC.Outpoint[]>){
+    console.log("onUtxosChanged:res", added, removed)
+
+    added.forEach((utxos, address)=>{
+      // utxos.sort((b, a)=> a.index-b.index)
+      logger.log('info', `${address}: ${utxos.length} utxos found.+=+=+=+=+=+=+++++=======+===+====+====+====+`);
+      if (!utxos.length)
+        return
+      if(!this.utxoStorage[address]){
+        this.utxoStorage[address] = utxos;
+      }else{
+        let txid2Utxo:Record<string, Api.Utxo> = {};
+        utxos.forEach(utxo=>{
+          txid2Utxo[utxo.transactionId+utxo.index] = utxo;
+        })
+        let oldUtxos = this.utxoStorage[address].filter(utxo=>{
+          return !txid2Utxo[utxo.transactionId+utxo.index]
+        });
+        this.utxoStorage[address] = [...oldUtxos, ...utxos];
+      }
+      this.add(utxos, address);
+    })
+
+    let utxoIds:string[] = [];
+    removed.forEach((utxos, address)=>{
+      let txid2Outpoint:Record<string, RPC.Outpoint> = {};
+      utxos.forEach(utxo=>{
+        txid2Outpoint[utxo.transactionId+utxo.index] = utxo;
+        utxoIds.push(utxo.transactionId+utxo.index);
+      })
+      if(!this.utxoStorage[address])
+        return
+      this.utxoStorage[address] = this.utxoStorage[address].filter(utxo=>{
+        return !txid2Outpoint[utxo.transactionId+utxo.index]
+      });
+    })
+
+    if(utxoIds.length)
+      this.remove(utxoIds);
+
+    const isActivityOnReceiveAddr =
+      this.utxoStorage[this.wallet.receiveAddress] !== undefined;
+    if (isActivityOnReceiveAddr)
+      this.wallet.addressManager.receiveAddress.next();
+
+    this.updateUtxoBalance();
+    this.emit("balance-update");
   }
 }

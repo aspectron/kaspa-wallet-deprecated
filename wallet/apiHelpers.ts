@@ -23,6 +23,50 @@ export const getRPC = ():IRPC=>{
 	return RPC;
 }
 
+export const buildUtxoMap = (entries:RPC.UTXOsByAddressesEntry[]): 	=>{
+	let result:Map<string, Api.Utxo[]> = new Map();
+	entries.map(entry=>{
+		//console.log("entry", entry)
+		let {transactionId, index} = entry.outpoint;
+		let {address, utxoEntry} = entry;
+		let {amount, scriptPubKey, blockBlueScore, isCoinbase} = utxoEntry;
+
+		let item: Api.Utxo = {
+			amount,
+			scriptPubKey,
+			blockBlueScore,
+			transactionId,
+			index,
+			isCoinbase
+		}
+
+		let items:Api.Utxo[]|undefined = result.get(address);
+		if(!items){
+			items = [];
+			result.set(address, items);
+		}
+
+		items.push(item);
+	});
+
+	return result;
+}
+
+const buildOutpointMap = (outpoints: {address:string, outpoint:RPC.Outpoint}[])=>{
+	const map:Map<string, RPC.Outpoint[]> = new Map();
+	outpoints.map(item=>{
+		let list:RPC.Outpoint[]|undefined = map.get(item.address);
+		if(!list){
+			list = [];
+			map.set(item.address, list);
+		}
+
+		list.push(item.outpoint);
+	});
+
+	return map;
+}
+
 export const getVirtualSelectedParentBlueScore = async (): Promise<{blueScore:number}>=>{
 	if(!RPC)
 		return missingRPCProviderError();
@@ -53,6 +97,27 @@ export const subscribeVirtualSelectedParentBlueScoreChanged = async(callback:RPC
 	return response;
 }
 
+export const subscribeUtxosChanged = async(addresses:string[], callback:(added:Map<string, Api.Utxo[]>, removed:Map<string, RPC.Outpoint[]>)=>void)=>{
+	if(!RPC)
+		return missingRPCProviderError();
+
+	const cb:RPC.callback<RPC.UtxosChangedNotification> = (res)=>{
+		const added = buildUtxoMap(res.added);
+		const removed = buildOutpointMap(res.removed);
+		callback(added, removed);
+	}
+
+	const response = await RPC.subscribeUtxosChanged(addresses, cb)
+	.catch((e) => {
+		throw new ApiError(`API connection error. ${e}`);
+	})
+	
+	if (response.error)
+		throw new ApiError(`API error (${response.error.errorCode}): ${response.error.message}`);
+
+	return response;
+}
+
 export const getUtxosByAddresses = async (addresses: string[]): Promise<Map<string, Api.Utxo[]>> => {
 	if(!RPC)
 		return missingRPCProviderError();
@@ -64,33 +129,8 @@ export const getUtxosByAddresses = async (addresses: string[]): Promise<Map<stri
 	if (response.error)
 		throw new ApiError(`API error (${response.error.errorCode}): ${response.error.message}`);
 
-	let result:Map<string, Api.Utxo[]> = new Map();
 
-	response.entries.map(entry=>{
-		//console.log("entry", entry)
-		let {transactionId, index} = entry.outpoint;
-		let {address, utxoEntry} = entry;
-		let {amount, scriptPubKey, blockBlueScore, isCoinbase} = utxoEntry;
-
-		let item: Api.Utxo = {
-			amount,
-			scriptPubKey,
-			blockBlueScore,
-			transactionId,
-			index,
-			isCoinbase
-		}
-
-		let items:Api.Utxo[]|undefined = result.get(address);
-		if(!items){
-			items = [];
-			result.set(address, items);
-		}
-
-		items.push(item);
-	})
-
-	return result;
+	return buildUtxoMap(response.entries);
 }
 
 export const submitTransaction = async (tx: RPC.SubmitTransactionRequest): Promise<string> => {

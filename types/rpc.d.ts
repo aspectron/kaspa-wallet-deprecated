@@ -211,14 +211,8 @@ export namespace RPC {
 	}
 
 	interface UtxosChangedNotification{
-		added:UtxosByAddressesEntry[];
-		removed:UtxosByAddressesEntry[];
-	}
-
-	interface UtxosByAddressesEntry {
-		address:string;
-		outpoint:Outpoint;
-		utxoEntry:UtxoEntry;
+		added:UTXOsByAddressesEntry[];
+		removed:UTXOsByAddressesEntry[];
 	}
 
 	declare type callback<T> = (result: T) => void;

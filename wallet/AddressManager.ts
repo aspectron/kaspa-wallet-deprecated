@@ -4,9 +4,12 @@ import { Network } from 'custom-types';
 
 //const secp256k1 = require('secp256k1-wasm');
 const secp256k1 = require('../../deprecated/secp256k1/secp.js');
+import {EventTargetImpl} from './event-target-impl';
+import {dpc} from '../utils/helper';
 
-export class AddressManager {
+export class AddressManager extends EventTargetImpl{
   constructor(HDWallet: bitcore.HDPrivateKey, network: Network) {
+    super();
     this.HDWallet = HDWallet;
     this.network = network;
   }
@@ -103,13 +106,13 @@ export class AddressManager {
     const { privateKey } = this.HDWallet.deriveChild(`m/44'/972/0'/${dType}'/${index}'`);
     
     let publicKeys = secp256k1.export_public_keys(privateKey.toString());
-    let address1 = new bitcore.PublicKey(publicKeys.pubkey, {network:this.network}).toAddress().toString();
-    let address = privateKey.toAddress(this.network).toString();
+    //let address1 = new bitcore.PublicKey(publicKeys.pubkey, {network:this.network}).toAddress().toString();
+    //let address = privateKey.toAddress(this.network).toString();
     //let pubkey = Buffer.from(publicKeys.pubkey, "hex");
     //let {address:address3} = bitcoin.payments.p2pkh({pubkey});
     let xonly = Buffer.from(publicKeys.xonly, "hex");
     //@ts-ignore
-    let address2 = bitcore.Address.fromPublicKeyHash(bitcore.crypto.Hash.sha256ripemd160(xonly), this.network).toString();
+    let address = bitcore.Address.fromPublicKeyHash(bitcore.crypto.Hash.sha256ripemd160(xonly), this.network).toString();
     
     /*
     console.log("privateKey:xxxx:", {
@@ -121,10 +124,14 @@ export class AddressManager {
       publicKeys
      });//, publicKeys)
      */
-    console.log("xonly:address2", "privateKey:"+privateKey.toString(), "address:"+address2)
-    console.log("xonly", publicKeys.xonly)
+    //console.log("xonly:address2", "privateKey:"+privateKey.toString(), "address:"+address2)
+    //console.log("xonly", publicKeys.xonly)
+    dpc(()=>{
+      this.emit("new-address", {type:deriveType, address, index});
+    })
+    
     return {
-      address:address2,
+      address,
       privateKey
     };
   }

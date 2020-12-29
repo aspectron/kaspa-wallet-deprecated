@@ -5,9 +5,18 @@ export type bytes = string;//base84 string
 
 export * from './rpc';
 
+
+export interface WalletOpt{
+  skipSyncBalance:boolean;
+  utxoSyncThrottleDelay:number;
+}
+
 export interface WalletOptions{
   skipSyncBalance?:boolean;
+  utxoSyncThrottleDelay?:number;
 }
+
+
 
 export interface UnspentOutputInfo{
   txid:string,
