@@ -183,7 +183,7 @@ export class UtxoSet extends EventTargetImpl{
       })
     })
 
-    console.log("utxoSync:utxoChangedRes, addresses:", utxoChangedRes, addresses)
+    console.log("utxoSync:utxoChangedRes:", utxoChangedRes, "\naddresses:", addresses)
     return addresses;
   }
 
