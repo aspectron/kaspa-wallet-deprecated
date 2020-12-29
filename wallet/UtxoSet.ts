@@ -123,8 +123,22 @@ export class UtxoSet {
     const utxos: UnspentOutput[] = [];
     const utxoIds: string[] = [];
     let totalVal = 0;
-    for (const [utxoId, utxo] of Object.entries(this.utxos)) {
+    let list = Object.values(this.utxos);
+
+    list = list.filter((utxo)=>{
+      const utxoId = utxo.txId+utxo.outputIndex;
+        return (!this.inUse.includes(utxoId) && this.wallet.blueScore - utxo.blockBlueScore > 100);
+    });
+
+    list.sort((a:UnspentOutput, b:UnspentOutput): number=>{
+      return a.blockBlueScore - b.blockBlueScore || a.satoshis - b.satoshis || a.txId.localeCompare(b.txId) || a.outputIndex - b.outputIndex; 
+    })
+
+    for (const utxo of list ){ 
+      const utxoId = utxo.txId+utxo.outputIndex;
+      console.log("info",`UTXO ID: ${utxoId}  , UTXO: ${utxo}`);
       if (!this.inUse.includes(utxoId) && this.wallet.blueScore - utxo.blockBlueScore > 100) {
+    
         utxoIds.push(utxoId);
         utxos.push(utxo);
         totalVal += utxo.satoshis;

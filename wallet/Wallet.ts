@@ -273,7 +273,7 @@ class Wallet extends EventTargetImpl{
 
     if(debug){
       utxosMap.forEach((utxos, address)=>{
-        utxos.sort((b, a)=> a.index-b.index)
+       // utxos.sort((b, a)=> a.index-b.index)
         utxos.map(t=>{
           let info = txID2Info.get(t.transactionId);
           if(!info){
@@ -286,9 +286,8 @@ class Wallet extends EventTargetImpl{
     }
 
     utxosMap.forEach((utxos, address)=>{
-      utxos.sort((b, a)=> a.index-b.index)
-      //console.log("utxos", utxos)
-      logger.log('info', `${address}: ${utxos.length} utxos found.`);
+     // utxos.sort((b, a)=> a.index-b.index)
+      logger.log('info', `${address}: ${utxos.length} utxos found.+=+=+=+=+=+=+++++=======+===+====+====+====+`);
       if (utxos.length !== 0) {
         this.utxoSet.utxoStorage[address] = utxos;
         this.utxoSet.add(utxos, address);
