@@ -25,7 +25,7 @@ import {
   Api,
   TxSend,
   PendingTransactions,
-  WalletCache, IRPC, RPC
+  WalletCache, IRPC, RPC, WalletOptions
 } from '../types/custom-types';
 
 const wasmModulesLoadStatus:Map<string, boolean> = new Map();
@@ -145,15 +145,18 @@ class Wallet extends EventTargetImpl{
    */
   transactionsStorage: Record<string, Api.Transaction[]> = {};
 
+  options:WalletOptions;
+
   /** Create a wallet.
    * @param walletSave (optional)
    * @param walletSave.privKey Saved wallet's private key.
    * @param walletSave.seedPhrase Saved wallet's seed phrase.
    */
-  constructor(privKey?: string, seedPhrase?: string) {
+  constructor(privKey?: string, seedPhrase?: string, options:WalletOptions={}) {
     super();
 
     //this.___test();
+    this.options = options;
     
 
     this.utxoSet = new UtxoSet(this);
@@ -597,9 +600,9 @@ class Wallet extends EventTargetImpl{
    * @param seedPhrase The 12 word seed phrase.
    * @returns new Wallet
    */
-  static fromMnemonic(seedPhrase: string): Wallet {
+  static fromMnemonic(seedPhrase: string, options:WalletOptions={}): Wallet {
     const privKey = new Mnemonic(seedPhrase.trim()).toHDPrivateKey().toString();
-    const wallet = new this(privKey, seedPhrase);
+    const wallet = new this(privKey, seedPhrase, options);
     return wallet;
   }
 
@@ -609,10 +612,10 @@ class Wallet extends EventTargetImpl{
    * @param encryptedMnemonic the encrypted seed phrase from local storage
    * @throws Will throw "Incorrect password" if password is wrong
    */
-  static async import(password: string, encryptedMnemonic: string): Promise<Wallet> {
+  static async import(password: string, encryptedMnemonic: string, options:WalletOptions={}): Promise<Wallet> {
     const decrypted = await passworder.decrypt(password, encryptedMnemonic);
     const savedWallet = JSON.parse(decrypted) as WalletSave;
-    const myWallet = new this(savedWallet.privKey, savedWallet.seedPhrase);
+    const myWallet = new this(savedWallet.privKey, savedWallet.seedPhrase, options);
     return myWallet;
   }
 

@@ -5,6 +5,10 @@ export type bytes = string;//base84 string
 
 export * from './rpc';
 
+export interface WalletOptions{
+  skipSyncBalance?:boolean;
+}
+
 export interface UnspentOutputInfo{
   txid:string,
   address:string,
