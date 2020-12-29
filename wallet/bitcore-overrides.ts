@@ -115,6 +115,7 @@ const calcTxHash = (transaction, sighashType, inputNumber, subscript, satoshisBN
       txcopy.inputs = [txcopy.inputs[inputNumber]];
     }
 
+    _txlogBuffer = true;
     let buf = new BufferWriter()
       .write(txcopy.toBuffer())
       .writeInt32LE(sighashType)
@@ -125,6 +126,8 @@ const calcTxHash = (transaction, sighashType, inputNumber, subscript, satoshisBN
     console.log("$$$$$$$$$$tx_hash::::", ret.toString("hex"))
     //@ts-ignore
     //ret = new BufferReader(ret).readReverse();
+    _txlogBuffer = false;
+
     return Buffer.from(ret);
 }
 
@@ -182,8 +185,8 @@ PrivateKey.prototype.toPublicKey = function(){
 let _txlogBuffer = false;
 const txlogBuffer = (...args:any[])=>{
   //@ts-ignore
-  //if(!_txlogBuffer)
-  //  return
+  if(!_txlogBuffer)
+    return
   args[args.length-1] = args[args.length-1].map((buf:Buffer)=>buf.toString("hex"));
   console.log(...args)
 }
