@@ -70,14 +70,15 @@ export const getUtxosByAddresses = async (addresses: string[]): Promise<Map<stri
 		//console.log("entry", entry)
 		let {transactionId, index} = entry.outpoint;
 		let {address, utxoEntry} = entry;
-		let {amount, scriptPubKey, blockBlueScore} = utxoEntry;
+		let {amount, scriptPubKey, blockBlueScore, isCoinbase} = utxoEntry;
 
 		let item: Api.Utxo = {
 			amount,
 			scriptPubKey,
 			blockBlueScore,
 			transactionId,
-			index
+			index,
+			isCoinbase
 		}
 
 		let items:Api.Utxo[]|undefined = result.get(address);

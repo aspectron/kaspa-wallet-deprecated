@@ -30,7 +30,8 @@ export namespace RPC {
 	interface UTXOEntry{
 		amount: number;
 		scriptPubKey: string;
-		blockBlueScore: number; 
+		blockBlueScore: number;
+		isCoinbase: boolean; 
 	}
 
 	interface SubmitTransactionRequest{

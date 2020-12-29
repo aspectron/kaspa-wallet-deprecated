@@ -114,7 +114,7 @@ export namespace Api{
     index: number;
     //acceptingBlockHash: string;
     //isSpent: boolean;
-    //isCoinbase: boolean;
+    isCoinbase: boolean;
     //isSpendable: boolean;
     //confirmations: number;
   }
