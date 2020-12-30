@@ -167,8 +167,8 @@ export class UtxoSet extends EventTargetImpl{
   async utxoSync():Promise<string[]>{
     let addresses:string[] = [];
     this.addressesUtxoSyncStatuses.forEach((sent, address)=>{
-      if(sent)
-        return
+      //if(sent)
+      //  return
       this.addressesUtxoSyncStatuses.set(address, true);
       addresses.push(address);
     });
@@ -183,7 +183,7 @@ export class UtxoSet extends EventTargetImpl{
       })
     })
 
-    console.log("utxoSync:utxoChangedRes:", utxoChangedRes, "\naddresses:", addresses)
+    //console.log("utxoSync:utxoChangedRes:", utxoChangedRes, "\n utxoSync addresses:", addresses)
     return addresses;
   }
 

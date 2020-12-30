@@ -23,7 +23,7 @@ export const getRPC = ():IRPC=>{
 	return RPC;
 }
 
-export const buildUtxoMap = (entries:RPC.UTXOsByAddressesEntry[]): 	=>{
+export const buildUtxoMap = (entries:RPC.UTXOsByAddressesEntry[]):Map<string, Api.Utxo[]> =>{
 	let result:Map<string, Api.Utxo[]> = new Map();
 	entries.map(entry=>{
 		//console.log("entry", entry)
@@ -52,7 +52,7 @@ export const buildUtxoMap = (entries:RPC.UTXOsByAddressesEntry[]): 	=>{
 	return result;
 }
 
-const buildOutpointMap = (outpoints: {address:string, outpoint:RPC.Outpoint}[])=>{
+const buildOutpointMap = (outpoints: {address:string, outpoint:RPC.Outpoint}[]):Map<string, RPC.Outpoint[]>=>{
 	const map:Map<string, RPC.Outpoint[]> = new Map();
 	outpoints.map(item=>{
 		let list:RPC.Outpoint[]|undefined = map.get(item.address);
@@ -102,6 +102,7 @@ export const subscribeUtxosChanged = async(addresses:string[], callback:(added:M
 		return missingRPCProviderError();
 
 	const cb:RPC.callback<RPC.UtxosChangedNotification> = (res)=>{
+		//console.log("UtxosChangedNotification:", res)
 		const added = buildUtxoMap(res.added);
 		const removed = buildOutpointMap(res.removed);
 		callback(added, removed);
