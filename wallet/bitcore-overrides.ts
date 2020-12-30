@@ -14,8 +14,8 @@ const SIGHASH_SINGLE_BUG = '0000000000000000000000000000000000000000000000000000
 const BITS_64_ON = 'ffffffffffffffff';
 //const blake2 = require('blake2');
 const blake2b = require('blake2b-wasm');
-//const secp256k1 = require('secp256k1-wasm');
-const secp256k1 = require('../../deprecated/secp256k1/secp.js');
+const secp256k1 = require('secp256k1-wasm');
+//const secp256k1 = require('../../deprecated/secp256k1/secp.js');
 
 let {PrivateKey, PublicKey, Script, Transaction} = bitcore;
 let {Schnorr, Signature, BN, Hash} = bitcore.crypto;

@@ -2,8 +2,8 @@
 import * as bitcore from 'bitcore-lib-cash';
 import { Network } from 'custom-types';
 
-//const secp256k1 = require('secp256k1-wasm');
-const secp256k1 = require('../../deprecated/secp256k1/secp.js');
+const secp256k1 = require('secp256k1-wasm');
+//const secp256k1 = require('../../deprecated/secp256k1/secp.js');
 import {EventTargetImpl} from './event-target-impl';
 import {dpc} from '../utils/helper';
 

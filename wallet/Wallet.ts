@@ -5,8 +5,8 @@ import * as bitcoreOverrides from './bitcore-overrides';
 import * as helper from '../utils/helper';
 bitcoreOverrides.setup();
 
-//const secp256k1 = require('secp256k1-wasm');
-const secp256k1 = require('../../deprecated/secp256k1/secp.js');
+const secp256k1 = require('secp256k1-wasm');
+//const secp256k1 = require('../../deprecated/secp256k1/secp.js');
 const blake2b = require('blake2b-wasm');
 // @ts-ignore
 import * as passworder1 from 'browser-passworder';
