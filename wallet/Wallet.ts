@@ -3,6 +3,7 @@ const Mnemonic = require('bitcore-mnemonic');
 import * as bitcore from 'bitcore-lib-cash';
 import * as bitcoreOverrides from './bitcore-overrides';
 import * as helper from '../utils/helper';
+import {storage, StorageType, classes as storageClasses} from './storage';
 bitcoreOverrides.setup();
 
 const secp256k1 = require('secp256k1-wasm');
@@ -34,11 +35,11 @@ wasmModulesLoadStatus.set("blake2b", false);
 wasmModulesLoadStatus.set("secp256k1", false);
 
 const setWasmLoadStatus = (mod:string, loaded:boolean)=>{
-  console.log("setWasmLoadStatus:", mod, loaded)
+  //console.log("setWasmLoadStatus:", mod, loaded)
   wasmModulesLoadStatus.set(mod, loaded);
   let allLoaded = true;
   wasmModulesLoadStatus.forEach((loaded, mod)=>{
-    console.log("wasmModulesLoadStatus:", mod, loaded)
+    //console.log("wasmModulesLoadStatus:", mod, loaded)
     if(!loaded)
       allLoaded = false;
   })
@@ -58,7 +59,7 @@ blake2b.ready(()=>{
 })
 
 secp256k1.onRuntimeInitialized = ()=>{
-  console.log("onRuntimeInitialized")
+  //console.log("onRuntimeInitialized")
   setTimeout(()=>{
     setWasmLoadStatus("secp256k1", true);
   }, 1);
@@ -214,6 +215,28 @@ class Wallet extends EventTargetImpl{
     if(this.isReady)
       this.ready();
   }
+
+  static setStorageType(type:StorageType){
+    storage.setType(type);
+  }
+  static setStorageFolder(folder:string){
+    storage.setFolder(folder);
+  }
+  static setStorageFileName(fileName:string){
+    storage.setFileName(fileName);
+  }
+  static setStoragePassword(password:string){
+    storage.setPassword(password);
+  }
+  static getStorage():typeof storageClasses.Storage{
+    return storage;
+  }
+
+  static openFileStorage(fileName:string, password:string){
+    this.setStorageFileName(fileName);
+    this.setStoragePassword(password);
+  }
+
 
   /**
    * Queries API for address[] UTXOs. Adds UTXOs to UTXO set. Updates wallet balance.
