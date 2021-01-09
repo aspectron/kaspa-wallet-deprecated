@@ -120,9 +120,9 @@ if(IS_NODE){
 		}
 
 		getHomeFolder(){
-			let {APPDATA, HOME} = process.env;
-			if(APPDATA)
-				return path.join(HOME, APPDATA, 'Kaspa');
+			let {LOCALAPPDATA, HOME} = process.env;
+			if(LOCALAPPDATA)
+				return path.join(LOCALAPPDATA, 'Kaspa');
 			if(!HOME){
 				const os = require("os");
 				HOME = os.homedir();

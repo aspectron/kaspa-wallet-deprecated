@@ -1,5 +1,5 @@
 import {Wallet} from "./wallet/Wallet";
-import {kaspaSetup} from './wallet/kaspaSetup';
+import {initKaspaFramework} from './wallet/initKaspaFramework';
 
 
-export {Wallet, kaspaSetup}
+export {Wallet, initKaspaFramework}

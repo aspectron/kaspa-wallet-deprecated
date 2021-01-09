@@ -22,6 +22,7 @@ if(typeof window != "undefined" && !window.nw){
 
 import {
   Network,
+  NetworkOptions,
   SelectedNetwork,
   WalletSave,
   Api,
@@ -35,11 +36,11 @@ wasmModulesLoadStatus.set("blake2b", false);
 wasmModulesLoadStatus.set("secp256k1", false);
 
 const setWasmLoadStatus = (mod:string, loaded:boolean)=>{
-  //console.log("setWasmLoadStatus:", mod, loaded)
+  console.log("setWasmLoadStatus:", mod, loaded)
   wasmModulesLoadStatus.set(mod, loaded);
   let allLoaded = true;
   wasmModulesLoadStatus.forEach((loaded, mod)=>{
-    //console.log("wasmModulesLoadStatus:", mod, loaded)
+    console.log("wasmModulesLoadStatus:", mod, loaded)
     if(!loaded)
       allLoaded = false;
   })
@@ -68,7 +69,7 @@ secp256k1.onRuntimeInitialized = ()=>{
 import { logger } from '../utils/logger';
 import { AddressManager } from './AddressManager';
 import { UtxoSet } from './UtxoSet';
-import * as api from './apiHelpers';
+import { KaspaAPI } from './apiHelpers';
 //import { txParser } from './txParser';
 import { DEFAULT_FEE, DEFAULT_NETWORK } from '../config.json';
 
@@ -101,15 +102,30 @@ class Wallet extends EventTargetImpl{
    * Current network.
    */
   // @ts-ignore
-  network: Network = DEFAULT_NETWORK.prefix as Network;
+  network: Network = 'kaspa' as Network; // DEFAULT_NETWORK.prefix as Network;
 
+  // @ts-ignore
+  api: KaspaAPI; //new KaspaAPI();
+
+  static networks:Object = {
+    kaspa : { port : 16110, prefix : 'kaspa' },
+    kaspatest : { port : 16210, prefix : 'kaspatest' },
+    kaspasim : { port : 16510, prefix : 'kaspasim' },
+    kaspadev : { port : 16610, prefix : 'kaspadev' }
+  }
+
+  /**
+   * Default fee
+   */
+
+  defaultFee: number = 1000;
 
   subnetworkId:string = "0000000000000000000000000000000000000000";//hex string
 
   /**
    * Current API endpoint for selected network
    */
-  apiEndpoint = DEFAULT_NETWORK.apiBaseUrl;
+  apiEndpoint = 'localhost:16210';// DEFAULT_NETWORK.apiBaseUrl;
 
   /**
    * A 12 word mnemonic.
@@ -155,14 +171,22 @@ class Wallet extends EventTargetImpl{
    * @param walletSave.privKey Saved wallet's private key.
    * @param walletSave.seedPhrase Saved wallet's seed phrase.
    */
-  constructor(privKey?: string, seedPhrase?: string, options:WalletOptions={}) {
+  constructor(privKey: string, seedPhrase: string, networkOptions: NetworkOptions, options:WalletOptions={}) {
     super();
+
+    this.api = new KaspaAPI();
 
     let defaultOpt = {
       skipSyncBalance:false,
       utxoSyncThrottleDelay:100
     };
 
+    this.network = networkOptions.network;
+    this.defaultFee = networkOptions.defaultFee || this.defaultFee;
+    if(networkOptions.rpc)
+      this.api.setRPC(networkOptions.rpc);
+
+    console.log("CREATING WALLET FOR NETWORK",this.network);
     this.options = {...defaultOpt, ...options};
     
 
@@ -199,8 +223,8 @@ class Wallet extends EventTargetImpl{
    * Set rpc provider
    * @param rpc
    */
-  static setRPC(rpc:IRPC){
-    api.setRPC(rpc);
+  setRPC(rpc:IRPC){
+    this.api.setRPC(rpc);
   }
 
   static _onReady:Function|undefined;
@@ -304,7 +328,7 @@ class Wallet extends EventTargetImpl{
   }> {
     logger.log('info', `Getting UTXOs for ${addresses.length} addresses.`);
     
-    const utxosMap = await api.getUtxosByAddresses(addresses)
+    const utxosMap = await this.api.getUtxosByAddresses(addresses)
 
     const addressesWithUTXOs: string[] = [];
     const txID2Info = new Map();
@@ -543,7 +567,7 @@ class Wallet extends EventTargetImpl{
     console.log("rpcTX", JSON.stringify(rpcTX))
     //console.log("rpcTX.transaction.inputs[0]", rpcTX.transaction.inputs[0])
     try {
-      await api.submitTransaction(rpcTX);
+      await this.api.submitTransaction(rpcTX);
     } catch (e) {
       this.undoPendingTx(id);
       throw e;
@@ -617,14 +641,14 @@ class Wallet extends EventTargetImpl{
 
 
   getVirtualSelectedParentBlueScore(){
-    return api.getVirtualSelectedParentBlueScore();
+    return this.api.getVirtualSelectedParentBlueScore();
   }
 
   async syncVirtualSelectedParentBlueScore(){
     let {blueScore} = await this.getVirtualSelectedParentBlueScore();
     this.blueScore = blueScore;
     this.emit("blue-score-changed", {blueScore})
-    api.subscribeVirtualSelectedParentBlueScoreChanged((result)=>{
+    this.api.subscribeVirtualSelectedParentBlueScoreChanged((result)=>{
       let {virtualSelectedParentBlueScore} = result;
       this.blueScore = virtualSelectedParentBlueScore;
       this.emit("blue-score-changed", {blueScore:virtualSelectedParentBlueScore})
@@ -636,9 +660,11 @@ class Wallet extends EventTargetImpl{
    * @param seedPhrase The 12 word seed phrase.
    * @returns new Wallet
    */
-  static fromMnemonic(seedPhrase: string, options:WalletOptions={}): Wallet {
+  static fromMnemonic(seedPhrase: string, networkOptions: NetworkOptions, options:WalletOptions={}): Wallet {
+    if(!networkOptions || !networkOptions.network)
+      throw new Error(`fromMnemonic(seedPhrase,networkOptions): missing network argument`);
     const privKey = new Mnemonic(seedPhrase.trim()).toHDPrivateKey().toString();
-    const wallet = new this(privKey, seedPhrase, options);
+    const wallet = new this(privKey, seedPhrase, networkOptions, options);
     return wallet;
   }
 
@@ -648,10 +674,10 @@ class Wallet extends EventTargetImpl{
    * @param encryptedMnemonic the encrypted seed phrase from local storage
    * @throws Will throw "Incorrect password" if password is wrong
    */
-  static async import(password: string, encryptedMnemonic: string, options:WalletOptions={}): Promise<Wallet> {
+  static async import(password: string, encryptedMnemonic: string, networkOptions: NetworkOptions, options:WalletOptions={}): Promise<Wallet> {
     const decrypted = await passworder.decrypt(password, encryptedMnemonic);
     const savedWallet = JSON.parse(decrypted) as WalletSave;
-    const myWallet = new this(savedWallet.privKey, savedWallet.seedPhrase, options);
+    const myWallet = new this(savedWallet.privKey, savedWallet.seedPhrase, networkOptions, options);
     return myWallet;
   }
 

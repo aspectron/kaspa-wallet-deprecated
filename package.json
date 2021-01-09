@@ -8,7 +8,8 @@
   "scripts": {
     "build": "tsc",
     "watch": "tsc --watch",
-    "prepare": "npm run build"
+    "prepare": "npm run build",
+    "install": "npm run build"
   },
   "dependencies": {
     "@aspectron/flow-key-crypt": "aspectron/flow-key-crypt",

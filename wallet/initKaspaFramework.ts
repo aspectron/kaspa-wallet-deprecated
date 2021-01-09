@@ -2,7 +2,7 @@
 import * as bitcore from 'bitcore-lib-cash';
 import { Network } from 'custom-types';
 
-export const kaspaSetup = () => {
+export const initKaspaFramework = () => {
   const networkPrefixes: Network[] = ['kaspa', 'kaspadev', 'kaspareg', 'kaspatest', 'kaspasim'];
 
   networkPrefixes.map((str: Network) => {

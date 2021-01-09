@@ -20,6 +20,7 @@ export namespace RPC {
 		outpoint: Outpoint;
 		utxoEntry: UTXOEntry;
 		transaction: Transaction;
+		isCoinbase:boolean;
 	}
 
 	interface Outpoint{

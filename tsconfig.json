@@ -8,7 +8,7 @@
     "skipLibCheck": true,
     "typeRoots": ["types", "node_modules/@types"],
     "paths": {
-      "*": ["./types/*"]
+      "*": ["./types/*","./lib/*"] 
     },
     "baseUrl": ".",
     "outDir": "./dist",

@@ -1,9 +1,12 @@
 import bitcore from 'bitcore-lib-cash';
+import { KaspaAPI } from 'wallet/apiHelpers';
 
 export type Network = 'kaspa' | 'kaspadev' | 'kaspareg' | 'kaspatest' | 'kaspasim';
 export type bytes = string;//base84 string
 
 export * from './rpc';
+import IRPC from './rpc';
+import { KaspaAPI } from './apiHelpers';
 
 
 export interface WalletOpt{
@@ -16,7 +19,11 @@ export interface WalletOptions{
   utxoSyncThrottleDelay?:number;
 }
 
-
+export interface NetworkOptions{
+  network:Network;
+  defaultFee?:number;
+  rpc?:IRPC;
+}
 
 export interface UnspentOutputInfo{
   txid:string,

@@ -4,7 +4,7 @@ import * as bitcore from 'bitcore-lib-cash';
 import { logger } from '../utils/logger';
 import * as crypto from 'crypto';
 import * as helper from '../utils/helper';
-import * as api from './apiHelpers';
+// import * as api from './apiHelpers';
 import {Wallet} from './wallet';
 import {EventTargetImpl} from './event-target-impl';
 
@@ -160,7 +160,7 @@ export class UtxoSet extends EventTargetImpl{
     }).filter(address=>address);
 
     if(!newAddresses.length)
-      return
+      return 
     this.throttledUtxoSync();
   }
 
@@ -176,7 +176,7 @@ export class UtxoSet extends EventTargetImpl{
     if(!addresses.length)
       return addresses;
 
-    let utxoChangedRes = await api.subscribeUtxosChanged(addresses, this.onUtxosChanged.bind(this))
+    let utxoChangedRes = await this.wallet.api.subscribeUtxosChanged(addresses, this.onUtxosChanged.bind(this))
     .catch((error:RPC.Error)=>{
       addresses.map(address=>{
         this.addressesUtxoSyncStatuses.set(address, false);
