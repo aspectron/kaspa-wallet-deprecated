@@ -188,11 +188,11 @@ export class UtxoSet extends EventTargetImpl{
   }
 
   onUtxosChanged(added:Map<string, Api.Utxo[]>, removed:Map<string, RPC.Outpoint[]>){
-    console.log("onUtxosChanged:res", added, removed)
+    //console.log("onUtxosChanged:res", added, removed)
 
     added.forEach((utxos, address)=>{
       // utxos.sort((b, a)=> a.index-b.index)
-      logger.log('info', `${address}: ${utxos.length} utxos found.+=+=+=+=+=+=+++++=======+===+====+====+====+`);
+//      logger.log('info', `${address}: ${utxos.length} utxos found.+=+=+=+=+=+=+++++=======+===+====+====+====+`);
       if (!utxos.length)
         return
       if(!this.utxoStorage[address]){
@@ -222,7 +222,7 @@ export class UtxoSet extends EventTargetImpl{
       this.utxoStorage[address] = this.utxoStorage[address].filter(utxo=>{
         return !txid2Outpoint[utxo.transactionId+utxo.index]
       });
-    })
+    })  
 
     if(utxoIds.length)
       this.remove(utxoIds);
@@ -234,5 +234,6 @@ export class UtxoSet extends EventTargetImpl{
 
     this.updateUtxoBalance();
     this.emit("balance-update");
+    this.wallet.emit("utxo-change", {added,removed});
   }
 }

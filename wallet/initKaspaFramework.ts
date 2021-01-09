@@ -1,8 +1,9 @@
 // @ts-ignore
 import * as bitcore from 'bitcore-lib-cash';
 import { Network } from 'custom-types';
+import { Wallet } from './wallet';
 
-export const initKaspaFramework = () => {
+export const initKaspaFramework = async () => {
   const networkPrefixes: Network[] = ['kaspa', 'kaspadev', 'kaspareg', 'kaspatest', 'kaspasim'];
 
   networkPrefixes.map((str: Network) => {
@@ -17,5 +18,9 @@ export const initKaspaFramework = () => {
       networkMagic: 0xdab5bffa, // network magic number
     });
   });
+
+  console.log("STARTING INIT");
+  await Wallet.initRuntime();
+  console.log("FINISHING INIT");
 };
 

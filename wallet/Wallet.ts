@@ -240,6 +240,14 @@ class Wallet extends EventTargetImpl{
       this.ready();
   }
 
+  static async initRuntime() {
+    return new Promise<void>((resolve) => {
+      this.onReady(()=>{
+        resolve();
+      });
+    })
+  }
+
   static setStorageType(type:StorageType){
     storage.setType(type);
   }
