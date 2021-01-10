@@ -15,7 +15,7 @@ export class UnspentOutput extends bitcore.Transaction.UnspentOutput{
     this.blockBlueScore = o.blockBlueScore;
   }
 }
-
+let seq = 0;
 export class UtxoSet extends EventTargetImpl{
   utxos: Record<string, UnspentOutput> = {};
 
@@ -169,15 +169,20 @@ export class UtxoSet extends EventTargetImpl{
     this.addressesUtxoSyncStatuses.forEach((sent, address)=>{
       //if(sent)
       //  return
-      this.addressesUtxoSyncStatuses.set(address, true);
-      addresses.push(address);
+
+      //  !!!FIXME prevent multiple address subscriptions
+//      if(!this.addressesUtxoSyncStatuses.get(address)) {
+        this.addressesUtxoSyncStatuses.set(address, true);
+        addresses.push(address);
+//      }
     });
 
     if(!addresses.length)
       return addresses;
-
+console.log(`[${this.wallet.network}] !!! +++++++++++++++ SUBSCRIBING TO ADDRESSES:)\n`,addresses);
     let utxoChangedRes = await this.wallet.api.subscribeUtxosChanged(addresses, this.onUtxosChanged.bind(this))
     .catch((error:RPC.Error)=>{
+      console.log(`[${this.wallet.network}] RPC ERROR in uxtoSync! while registering addresses:`, addresses);
       addresses.map(address=>{
         this.addressesUtxoSyncStatuses.set(address, false);
       })
@@ -190,11 +195,17 @@ export class UtxoSet extends EventTargetImpl{
   onUtxosChanged(added:Map<string, Api.Utxo[]>, removed:Map<string, RPC.Outpoint[]>){
     //console.log("onUtxosChanged:res", added, removed)
 
+
     added.forEach((utxos, address)=>{
+
+
       // utxos.sort((b, a)=> a.index-b.index)
 //      logger.log('info', `${address}: ${utxos.length} utxos found.+=+=+=+=+=+=+++++=======+===+====+====+====+`);
       if (!utxos.length)
         return
+
+      console.log('seq:',seq++,'tx:',utxos[0].transactionId);
+
       if(!this.utxoStorage[address]){
         this.utxoStorage[address] = utxos;
       }else{
