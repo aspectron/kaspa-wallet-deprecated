@@ -3,11 +3,10 @@ const Mnemonic = require('bitcore-mnemonic');
 import * as bitcore from 'bitcore-lib-cash';
 import * as bitcoreOverrides from './bitcore-overrides';
 import * as helper from '../utils/helper';
-import {storage, StorageType, classes as storageClasses} from './storage';
+import {CreateStorage, StorageType, classes as storageClasses} from './storage';
 bitcoreOverrides.setup();
 
 const secp256k1 = require('secp256k1-wasm');
-//const secp256k1 = require('../../deprecated/secp256k1/secp.js');
 const blake2b = require('blake2b-wasm');
 // @ts-ignore
 import * as passworder1 from 'browser-passworder';
@@ -239,6 +238,8 @@ class Wallet extends EventTargetImpl{
     if(this.isReady)
       this.ready();
   }
+  static _storage:typeof storageClasses.Storage;
+
 
   static async initRuntime() {
     return new Promise<void>((resolve) => {
@@ -248,6 +249,7 @@ class Wallet extends EventTargetImpl{
     })
   }
 
+  /*
   static setStorageType(type:StorageType){
     storage.setType(type);
   }
@@ -257,16 +259,24 @@ class Wallet extends EventTargetImpl{
   static setStorageFileName(fileName:string){
     storage.setFileName(fileName);
   }
+  */
+
   static setStoragePassword(password:string){
-    storage.setPassword(password);
+    if(!this.storage)
+      throw new Error("Please init storage")
+    this.storage.setPassword(password); 
   }
-  static getStorage():typeof storageClasses.Storage{
-    return storage;
+  static get storage():typeof storageClasses.Storage|undefined{
+    return this._storage;
   }
 
-  static openFileStorage(fileName:string, password:string){
-    this.setStorageFileName(fileName);
-    this.setStoragePassword(password);
+  static openFileStorage(fileName:string, password:string, folder:string=''){
+    let storage = CreateStorage();
+    if(folder)
+      storage.setFolder(folder);
+    storage.setFileName(fileName);
+    storage.setPassword(password);
+    this._storage = storage;
   }
 
 

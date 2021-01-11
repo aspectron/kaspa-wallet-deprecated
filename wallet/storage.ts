@@ -163,46 +163,22 @@ if(IS_NODE){
 				this.onFileFolderChange();
 		}
 
-		/*
-		onFileChange(oldFile:string){
-			if(!fs.existsSync(this.file) && this.password){
-				this.saveFile();
-			}
-		}
-		*/
-
 		onFileFolderChange(){
 			if(!this.folder || !this.fileName)
 				return;
-
-			//let {file:oldFile} = this;
 			this.file 	= path.join(this.folder, this.fileName);
-			//if(oldFile && oldFile!=this.file)
-			//	this.onFileChange(oldFile)
-
-			
 			this.log("this.file", this.file)
 
-			//this.data 	= {};
 			if(fs.existsSync(this.file)){
-				//let data 	= {};
 				let content 	= fs.readFileSync(this.file)+"";
-				
 				try{
 					let {iv, data:encodedDataStr} = JSON.parse(content);
 					this.iv = Buffer.from(iv, 'hex');
 					this.encodedDataStr = encodedDataStr;
-					//if(this.password)
-					//	data = JSON.parse(this.decrypt(encodedDataStr));
 				}catch(error){
-					console.log("FILEStorage::error", error)
-					if(!fs.existsSync(this.file+".error"))
-						fs.writeFileSync(this.file+".error", content);
-
-					//data = {};
-				}
-
-				//this.data = data;	
+					this.log("parse::error", error)
+					fs.writeFileSync(this.file+".error."+Date.now(), content);
+				}	
 			}else{
 				this.iv = crypto.randomBytes(16);
 				this.encodedDataStr = '';
@@ -286,17 +262,26 @@ if(IS_NODE){
 			if(!this.file)
 				return
 			let json = {
+				version:1,
 				iv:this.iv.toString("hex"),
 				data:this.encrypt(JSON.stringify(this.data))
 			}
 			let content = JSON.stringify(json);
 			fs.writeFileSync(this.file, content);
+			/*
+			//TODO
+			let content = Buffer.from(Buffer.from(JSON.stringify(json)).toString("hex"), "hex");
+			console.log("content", content)
+			fs.writeFileSync(this.file, content, {encoding:'binary'});
+			*/
 		}
 	}
 
 	classes.NodeStorage = NodeStorage;
 }
 
-let storage:Storage = IS_NODE? new classes.NodeStorage() : new Storage();
 
-export {storage, classes};
+
+export const CreateStorage = ()=>IS_NODE? new classes.NodeStorage() : new Storage();
+
+export {classes};
