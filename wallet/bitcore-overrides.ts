@@ -7,7 +7,12 @@ export const setup = ()=>{
 }
 
 const Output = require('bitcore-lib-cash/lib/transaction/output');
+const UnspentOutput = require('bitcore-lib-cash/lib/transaction/unspentoutput');
 const Input = require('bitcore-lib-cash/lib/transaction/input');
+const PublicKeyHashInput = Input.PublicKeyHash;
+const PublicKeyInput = Input.PublicKey;
+const MultiSigScriptHashInput = Input.MultiSigScriptHash;
+const MultiSigInput = Input.MultiSig;
 const Interpreter = require('bitcore-lib-cash/lib/script/interpreter');
 const DEFAULT_SIGN_FLAGS = Interpreter.SCRIPT_ENABLE_SIGHASH_FORKID;
 const SIGHASH_SINGLE_BUG = '0000000000000000000000000000000000000000000000000000000000000001';
@@ -193,9 +198,10 @@ const txlogBuffer = (...args:any[])=>{
 
 //@ts-ignore
 Transaction.prototype.toBufferWriter = function(writer, extra) {
-  writer.writeInt32LE(this.version);
+  let bn;// = BN.fromNumber(this.version);
+  writer.writeUInt16LE(this.version);
   txlogBuffer("$$$$ version: ", this.version, writer.bufs)
-  let bn = BN.fromNumber(this.inputs.length);
+  bn = BN.fromNumber(this.inputs.length);
   writer.writeUInt64LEBN(bn);
   txlogBuffer("$$$$ inputs.length: ", this.inputs.length, writer.bufs)
   //@ts-ignore
@@ -237,7 +243,7 @@ Transaction.prototype.fromBufferReader = function(reader) {
   _$.checkArgument(!reader.finished(), 'No transaction data received');
   var i, sizeTxIns, sizeTxOuts;
 
-  this.version = reader.readInt32LE();
+  this.version = reader.readUInt16LE();
   sizeTxIns = reader.readUInt64LEBN().toNumber();
   for (i = 0; i < sizeTxIns; i++) {
     var input = Input.fromBufferReader(reader);
@@ -251,9 +257,35 @@ Transaction.prototype.fromBufferReader = function(reader) {
   return this;
 };
 
+
+//@ts-ignore
+Transaction.prototype._fromNonP2SH = function(utxo) {
+  var clazz;
+  const {scriptPublicKeyVersion} = utxo;
+  utxo = new UnspentOutput(utxo);
+  if (utxo.script.isPublicKeyHashOut()) {
+    clazz = PublicKeyHashInput;
+  } else if (utxo.script.isPublicKeyOut()) {
+    clazz = PublicKeyInput;
+  } else {
+    clazz = Input;
+  }
+  this.addInput(new clazz({
+    output: new Output({
+      script: utxo.script,
+      satoshis: utxo.satoshis
+    }),
+    prevTxId: utxo.txId,
+    outputIndex: utxo.outputIndex,
+    script: Script.empty(),
+    version: scriptPublicKeyVersion
+  }));
+};
+
 Output.fromBufferReader = function(br:any) {
   var obj:any = {};
   obj.satoshis = br.readUInt64LEBN();
+  var version = br.readUInt16LE();
   var size = br.readUInt64LEBN().toNumber();
   if (size !== 0) {
     obj.script = br.read(size);
@@ -268,24 +300,33 @@ Output.prototype.toBufferWriter = function(writer:any) {
     writer = new BufferWriter();
   }
   writer.writeUInt64LEBN(this._satoshisBN);
+  writer.writeUInt16LE(1);
   var script = this._scriptBuffer;
   let bn = BN.fromNumber(script.length);
   writer.writeUInt64LEBN(bn);
   writer.write(script);
   return writer;
 };
+let Input_fromObject = Input.prototype._fromObject;
+Input.prototype._fromObject = function(params:any) {
+  Input_fromObject.call(this, params);
+  if(params.version !== undefined)
+    this.version = params.version;
+}
 
 Input.fromBufferReader = function(br:any) {
   var input = new Input();
   input.prevTxId = br.read(32);
   input.outputIndex = br.readUInt32LE();
-  input._scriptBuffer = br.read(br.readUInt64LEBN().toNumber());
+  let length = br.readUInt64LEBN().toNumber()-2;
+  input.version = br.readUInt16LE();
+  input._scriptBuffer = br.read(length);
   input.sequenceNumber = br.readUInt64LEBN().toNumber();
   // TODO: return different classes according to which input it is
   // e.g: CoinbaseInput, PublicKeyHashInput, MultiSigScriptHashInput, etc.
   return input;
 };
-
+Input.prototype.version = 0;
 Input.prototype.toBufferWriter = function(writer:any) {
   if (!writer) {
     writer = new BufferWriter();
@@ -299,10 +340,13 @@ Input.prototype.toBufferWriter = function(writer:any) {
   txlogBuffer("$$$$ prevTxId1: ", this.prevTxId.toString("hex"), writer.bufs)
   writer.writeUInt32LE(this.outputIndex);
   txlogBuffer("$$$$ outputIndex: ", this.outputIndex, writer.bufs)
-  let bn = BN.fromNumber(script.length);
-  writer.writeUInt64LEBN(bn);
-  txlogBuffer("$$$$ script.length: ", script.length, writer.bufs)
   let scriptBuf = Buffer.from(script, "hex");
+  //console.log("this.versionthis.version", this.version)
+  let versionBuf = BN.fromNumber(this.version);
+  scriptBuf = Buffer.concat([versionBuf.toBuffer({endian:'little', size:2}), scriptBuf]);
+  let bn = BN.fromNumber(scriptBuf.length);
+  writer.writeUInt64LEBN(bn);
+  txlogBuffer("$$$$ script.length: ", scriptBuf.length, writer.bufs)
   writer.write(scriptBuf);
   txlogBuffer("$$$$ script: ", script.toString("hex"), writer.bufs)
   bn = BN.fromNumber(this.sequenceNumber);

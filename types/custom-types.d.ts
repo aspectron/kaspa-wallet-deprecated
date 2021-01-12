@@ -5,7 +5,7 @@ export type Network = 'kaspa' | 'kaspadev' | 'kaspareg' | 'kaspatest' | 'kaspasi
 export type bytes = string;//base84 string
 
 export * from './rpc';
-import IRPC from './rpc';
+import {IRPC, RPC} from './rpc';
 import { KaspaAPI } from './apiHelpers';
 
 
@@ -31,7 +31,8 @@ export interface UnspentOutputInfo{
   vout:number,
   scriptPubKey:string,
   satoshis:number,
-  blockBlueScore:number
+  blockBlueScore:number,
+  scriptPublicKeyVersion:number
 }
 
 export interface SelectedNetwork {
@@ -129,7 +130,7 @@ export namespace Api{
   interface Utxo {
     transactionId: string;
     amount: number;
-    scriptPubKey: string;
+    scriptPublicKey: RPC.ScriptPublicKey;
     blockBlueScore: number;
     index: number;
     //acceptingBlockHash: string;

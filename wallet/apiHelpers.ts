@@ -51,7 +51,7 @@ class KaspaAPI {
 
 			let item: Api.Utxo = {
 				amount,
-				scriptPubKey:scriptPublicKey.scriptPublicKey,
+				scriptPublicKey,
 				blockBlueScore,
 				transactionId,
 				index,

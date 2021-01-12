@@ -505,7 +505,7 @@ class Wallet extends EventTargetImpl{
       const tx: bitcore.Transaction = new bitcore.Transaction()
         .from(utxos)
         .to(toAddr, amount)
-        .setVersion(1)
+        .setVersion(0)
         .fee(fee)
         .change(changeAddr)
         // @ts-ignore
@@ -560,7 +560,10 @@ class Wallet extends EventTargetImpl{
       return {
         amount: output.satoshis,
         //@ts-ignore
-        scriptPubKey: output.script.toBuffer().toString("hex")
+        scriptPublicKey: {
+          scriptPublicKey: output.script.toBuffer().toString("hex"),
+          version: 1
+        }
       }
     })
     

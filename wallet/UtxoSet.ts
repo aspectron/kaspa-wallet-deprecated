@@ -10,9 +10,11 @@ import {EventTargetImpl} from './event-target-impl';
 
 export class UnspentOutput extends bitcore.Transaction.UnspentOutput{
   blockBlueScore:number;
+  scriptPublicKeyVersion:number;
   constructor(o: UnspentOutputInfo){
     super(o);
     this.blockBlueScore = o.blockBlueScore;
+    this.scriptPublicKeyVersion = o.scriptPublicKeyVersion;
   }
 }
 let seq = 0;
@@ -65,7 +67,7 @@ export class UtxoSet extends EventTargetImpl{
       const utxoId = utxo.transactionId + utxo.index.toString();
       const utxoInUse = this.inUse.includes(utxoId);
       const alreadyHaveIt = this.utxos[utxoId];
-      //console.log("utxo.scriptPubKey", utxo.scriptPubKey+"", utxo)
+      //console.log("utxo.scriptPubKey", utxo)
       //console.log("utxoInUse", {utxoInUse, alreadyHaveIt})
       if (!utxoInUse && !alreadyHaveIt /*&& utxo.isSpendable*/) {
         utxoIds.push(utxoId);
@@ -73,7 +75,8 @@ export class UtxoSet extends EventTargetImpl{
           txid: utxo.transactionId,
           address,
           vout: utxo.index,
-          scriptPubKey: utxo.scriptPubKey,
+          scriptPubKey:utxo.scriptPublicKey.scriptPublicKey,
+          scriptPublicKeyVersion:utxo.scriptPublicKey.version,
           satoshis: +utxo.amount,
           blockBlueScore: utxo.blockBlueScore
         });

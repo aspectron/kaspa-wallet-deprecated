@@ -72,7 +72,7 @@ export namespace RPC {
 
 	interface TransactionOutput{
 		amount: number;
-		scriptPubKey: string;
+		scriptPublicKey: ScriptPublicKey;
 	}
 
 
