@@ -343,6 +343,7 @@ Input.prototype.toBufferWriter = function(writer:any) {
   let scriptBuf = Buffer.from(script, "hex");
   //console.log("this.versionthis.version", this.version)
   let versionBuf = BN.fromNumber(this.version);
+  //@ts-ignore
   scriptBuf = Buffer.concat([versionBuf.toBuffer({endian:'little', size:2}), scriptBuf]);
   let bn = BN.fromNumber(scriptBuf.length);
   writer.writeUInt64LEBN(bn);

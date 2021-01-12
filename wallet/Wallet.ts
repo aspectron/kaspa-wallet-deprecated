@@ -563,8 +563,8 @@ class Wallet extends EventTargetImpl{
     const outputs: RPC.TransactionOutput[] = tx.outputs.map((output:bitcore.Transaction.Output)=>{
       return {
         amount: output.satoshis,
-        //@ts-ignore
         scriptPublicKey: {
+          //@ts-ignore
           scriptPublicKey: output.script.toBuffer().toString("hex"),
           version: 1
         }
