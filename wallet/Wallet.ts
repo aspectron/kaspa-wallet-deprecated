@@ -489,6 +489,10 @@ class Wallet extends EventTargetImpl{
     amount: number;
     utxos: bitcore.Transaction.UnspentOutput[];
   } {
+    // TODO: bn!
+    amount = parseInt(amount as any);
+    for(let i = 0; i < 100; i++)
+      console.log('Wallet transaction request for', amount, typeof amount);
 //    if (!Number.isSafeInteger(amount)) throw new Error(`Amount ${amount} is too large`);
     const { utxos, utxoIds } = this.utxoSet.selectUtxos(amount + fee);
     // @ts-ignore
