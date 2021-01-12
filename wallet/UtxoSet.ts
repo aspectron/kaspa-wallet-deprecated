@@ -65,7 +65,7 @@ export class UtxoSet extends EventTargetImpl{
       const utxoId = utxo.transactionId + utxo.index.toString();
       const utxoInUse = this.inUse.includes(utxoId);
       const alreadyHaveIt = this.utxos[utxoId];
-      console.log("utxo.scriptPubKey", utxo.scriptPubKey+"", utxo)
+      //console.log("utxo.scriptPubKey", utxo.scriptPubKey+"", utxo)
       //console.log("utxoInUse", {utxoInUse, alreadyHaveIt})
       if (!utxoInUse && !alreadyHaveIt /*&& utxo.isSpendable*/) {
         utxoIds.push(utxoId);
