@@ -28,9 +28,14 @@ export namespace RPC {
 		index: number;
 	}
 
+	interface ScriptPublicKey{
+		version:number;
+		scriptPublicKey:string;
+	}
+
 	interface UTXOEntry{
 		amount: number;
-		scriptPubKey: string;
+		scriptPublicKey: ScriptPublicKey;
 		blockBlueScore: number;
 		isCoinbase: boolean; 
 	}

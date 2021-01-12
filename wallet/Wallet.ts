@@ -57,7 +57,9 @@ setTimeout(()=>{
 blake2b.ready(()=>{
   setWasmLoadStatus("blake2b", true);
 })
-
+secp256k1.onAbort = (error:any)=>{
+  console.log("onAbort:", error)
+}
 secp256k1.onRuntimeInitialized = ()=>{
   //console.log("onRuntimeInitialized")
   setTimeout(()=>{
