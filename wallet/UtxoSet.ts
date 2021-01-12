@@ -65,6 +65,7 @@ export class UtxoSet extends EventTargetImpl{
       const utxoId = utxo.transactionId + utxo.index.toString();
       const utxoInUse = this.inUse.includes(utxoId);
       const alreadyHaveIt = this.utxos[utxoId];
+      console.log("utxo.scriptPubKey", utxo.scriptPubKey+"", utxo)
       //console.log("utxoInUse", {utxoInUse, alreadyHaveIt})
       if (!utxoInUse && !alreadyHaveIt /*&& utxo.isSpendable*/) {
         utxoIds.push(utxoId);
@@ -171,18 +172,18 @@ export class UtxoSet extends EventTargetImpl{
       //  return
 
       //  !!!FIXME prevent multiple address subscriptions
-//      if(!this.addressesUtxoSyncStatuses.get(address)) {
+      //      if(!this.addressesUtxoSyncStatuses.get(address)) {
         this.addressesUtxoSyncStatuses.set(address, true);
         addresses.push(address);
-//      }
+      //      }
     });
 
     if(!addresses.length)
       return addresses;
-console.log(`[${this.wallet.network}] !!! +++++++++++++++ SUBSCRIBING TO ADDRESSES:)\n`,addresses);
+    console.log(`[${this.wallet.network}] !!! +++++++++++++++ SUBSCRIBING TO ADDRESSES :)\n`,addresses);
     let utxoChangedRes = await this.wallet.api.subscribeUtxosChanged(addresses, this.onUtxosChanged.bind(this))
     .catch((error:RPC.Error)=>{
-      console.log(`[${this.wallet.network}] RPC ERROR in uxtoSync! while registering addresses:`, addresses);
+      console.log(`[${this.wallet.network}] RPC ERROR in uxtoSync! while registering addresses:`, error, addresses);
       addresses.map(address=>{
         this.addressesUtxoSyncStatuses.set(address, false);
       })

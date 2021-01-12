@@ -47,11 +47,11 @@ class KaspaAPI {
 			//console.log("entry", entry)
 			let {transactionId, index} = entry.outpoint;
 			let {address, utxoEntry} = entry;
-			let {amount, scriptPubKey, blockBlueScore, isCoinbase} = utxoEntry;
+			let {amount, scriptPublicKey, blockBlueScore, isCoinbase} = utxoEntry;
 
 			let item: Api.Utxo = {
 				amount,
-				scriptPubKey,
+				scriptPubKey:scriptPublicKey.scriptPublicKey,
 				blockBlueScore,
 				transactionId,
 				index,
