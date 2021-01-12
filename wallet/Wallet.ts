@@ -489,7 +489,7 @@ class Wallet extends EventTargetImpl{
     amount: number;
     utxos: bitcore.Transaction.UnspentOutput[];
   } {
-    if (!Number.isSafeInteger(amount)) throw new Error('Amount too large');
+//    if (!Number.isSafeInteger(amount)) throw new Error(`Amount ${amount} is too large`);
     const { utxos, utxoIds } = this.utxoSet.selectUtxos(amount + fee);
     // @ts-ignore
     const privKeys = utxos.reduce((prev: string[], cur) => {
