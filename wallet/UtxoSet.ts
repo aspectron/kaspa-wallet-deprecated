@@ -54,16 +54,6 @@ export class UtxoSet extends EventTargetImpl{
     const utxoIds: string[] = [];
     this.debug && console.log("utxos", utxos)
     utxos.forEach((utxo) => {
-      /***********************************************/
-      /**** until gRPC response comes correctly *****
-      if(!utxo.transactionId){
-        utxo.transactionId = sha256( `${Date.now()+Math.random()}` )
-      }
-      if(utxo.index ===  undefined)
-        utxo.index = 0;
-      utxo.isSpendable = true;
-      /***********************************************/
-
       const utxoId = utxo.transactionId + utxo.index.toString();
       const utxoInUse = this.inUse.includes(utxoId);
       const alreadyHaveIt = this.utxos[utxoId];
@@ -156,6 +146,10 @@ export class UtxoSet extends EventTargetImpl{
   }
 
   syncAddressesUtxos(addresses:string[]){
+    (async ()=>{
+      await this.wallet.findUtxos(addresses);
+      this.wallet.runStateChangeHooks();
+    })();
     const newAddresses = addresses.map(address=>{
       if(this.addressesUtxoSyncStatuses.has(address))
         return
@@ -175,10 +169,10 @@ export class UtxoSet extends EventTargetImpl{
       //  return
 
       //  !!!FIXME prevent multiple address subscriptions
-      //      if(!this.addressesUtxoSyncStatuses.get(address)) {
-        this.addressesUtxoSyncStatuses.set(address, true);
+      //if(!this.addressesUtxoSyncStatuses.get(address)) {
+        //this.addressesUtxoSyncStatuses.set(address, true);
         addresses.push(address);
-      //      }
+      //}
     });
 
     if(!addresses.length)
@@ -204,7 +198,7 @@ export class UtxoSet extends EventTargetImpl{
 
 
       // utxos.sort((b, a)=> a.index-b.index)
-//      logger.log('info', `${address}: ${utxos.length} utxos found.+=+=+=+=+=+=+++++=======+===+====+====+====+`);
+      //logger.log('info', `${address}: ${utxos.length} utxos found.+=+=+=+=+=+=+++++=======+===+====+====+====+`);
       if (!utxos.length)
         return
 

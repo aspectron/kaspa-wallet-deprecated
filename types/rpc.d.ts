@@ -231,10 +231,11 @@ export interface IRPC {
 	submitTransaction(tx: RPC.SubmitTransactionRequest): Promise<RPC.SubmitTransactionResponse>;
 	getVirtualSelectedParentBlueScore(): Promise<RPC.VirtualSelectedParentBlueScoreResponse>;
 	
-	subscribeChainChanged(callback:Rpc.callback<Rpc.ChainChangedNotification>): Promise<RPC.NotifyChainChangedResponse>;
-	subscribeBlockAdded(callback:Rpc.callback<Rpc.BlockAddedNotification>): Promise<RPC.NotifyBlockAddedResponse>;
-	subscribeVirtualSelectedParentBlueScoreChanged(callback:RPC.callback<Rpc.VirtualSelectedParentBlueScoreChangedNotification>): Promise<RPC.NotifyVirtualSelectedParentBlueScoreChangedResponse>;
-	subscribeUtxosChanged(addresses:string[], callback:Rpc.callback<Rpc.UtxosChangedNotification>): Promise<RPC.NotifyUtxosChangedResponse>;
+	subscribeChainChanged(callback:Rpc.callback<Rpc.ChainChangedNotification>): RPC.SubPromise<RPC.NotifyChainChangedResponse>;
+	subscribeBlockAdded(callback:Rpc.callback<Rpc.BlockAddedNotification>): RPC.SubPromise<RPC.NotifyBlockAddedResponse>;
+	subscribeVirtualSelectedParentBlueScoreChanged(callback:RPC.callback<Rpc.VirtualSelectedParentBlueScoreChangedNotification>): RPC.SubPromise<RPC.NotifyVirtualSelectedParentBlueScoreChangedResponse>;
+	subscribeUtxosChanged(addresses:string[], callback:Rpc.callback<Rpc.UtxosChangedNotification>): RPC.SubPromise<RPC.NotifyUtxosChangedResponse>;
+	unSubscribeUtxosChanged(uid:string='');
 
 	request?(method:string, data:any);
 }

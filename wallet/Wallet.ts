@@ -208,8 +208,8 @@ class Wallet extends EventTargetImpl{
   }
 
   initAddressManager(){
-    this.addressManager.receiveAddress.next();
     this.addressManager.on("new-address", detail=>{
+      //console.log("new-address", detail)
       if(this.options.skipSyncBalance)
         return
 
@@ -218,6 +218,7 @@ class Wallet extends EventTargetImpl{
       const {address, type} = detail;
       this.utxoSet.syncAddressesUtxos([address]);
     })
+    this.addressManager.receiveAddress.next();
   }
 
   /**

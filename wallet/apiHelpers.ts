@@ -26,6 +26,7 @@ const missingRPCProviderError = ()=>{
 class KaspaAPI {
 
 	rpc?:IRPC;
+	_utxosChangedSubUid:string|undefined;
 
 	// constructor(rpc:IRPC) {
 	// 	this.rpc = rpc;
@@ -125,11 +126,16 @@ class KaspaAPI {
 			const removed = this.buildOutpointMap(res.removed);
 			callback(added, removed);
 		}
+		if(this._utxosChangedSubUid)
+			this.rpc.unSubscribeUtxosChanged(this._utxosChangedSubUid);
+		let p = this.rpc.subscribeUtxosChanged(addresses, cb)
+		let {uid} = p;
+		this._utxosChangedSubUid = uid;
 
-		const response = await this.rpc.subscribeUtxosChanged(addresses, cb)
-		.catch((e) => {
+		const response = await p.catch((e) => {
 			throw new ApiError(`API connection error. ${e}`);
 		})
+		
 		
 		if (response.error)
 			throw new ApiError(`API error (${response.error.errorCode}): ${response.error.message}`);
