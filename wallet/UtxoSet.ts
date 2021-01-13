@@ -98,6 +98,8 @@ export class UtxoSet extends EventTargetImpl{
       (prev, cur) => prev + this.utxos[cur].satoshis,
       0
     );
+
+    this.emit("balance-update");
   }
 
   clear(): void {
@@ -130,7 +132,7 @@ export class UtxoSet extends EventTargetImpl{
 
     for (const utxo of list ){ 
       const utxoId = utxo.txId+utxo.outputIndex;
-      console.log("info",`UTXO ID: ${utxoId}  , UTXO: ${utxo}`);
+      //console.log("info",`UTXO ID: ${utxoId}  , UTXO: ${utxo}`);
       if (!this.inUse.includes(utxoId) && this.wallet.blueScore - utxo.blockBlueScore > 100) {
     
         utxoIds.push(utxoId);
@@ -177,7 +179,7 @@ export class UtxoSet extends EventTargetImpl{
 
     if(!addresses.length)
       return addresses;
-    console.log(`[${this.wallet.network}] !!! +++++++++++++++ SUBSCRIBING TO ADDRESSES :)\n`,addresses);
+    //console.log(`[${this.wallet.network}] !!! +++++++++++++++ SUBSCRIBING TO ADDRESSES :)\n`,addresses);
     let utxoChangedRes = await this.wallet.api.subscribeUtxosChanged(addresses, this.onUtxosChanged.bind(this))
     .catch((error:RPC.Error)=>{
       console.log(`[${this.wallet.network}] RPC ERROR in uxtoSync! while registering addresses:`, error, addresses);
@@ -191,7 +193,7 @@ export class UtxoSet extends EventTargetImpl{
   }
 
   onUtxosChanged(added:Map<string, Api.Utxo[]>, removed:Map<string, RPC.Outpoint[]>){
-    //console.log("onUtxosChanged:res", added, removed)
+    console.log("onUtxosChanged:res", added, removed)
 
 
     added.forEach((utxos, address)=>{
@@ -242,7 +244,6 @@ export class UtxoSet extends EventTargetImpl{
       this.wallet.addressManager.receiveAddress.next();
 
     this.updateUtxoBalance();
-    this.emit("balance-update");
     this.wallet.emit("utxo-change", {added,removed});
   }
 }

@@ -128,7 +128,7 @@ const calcTxHash = (transaction, sighashType, inputNumber, subscript, satoshisBN
     //var ret = Hash.sha256sha256(buf);
     //@ts-ignore
     let ret = blake2b_256(buf, TransactionSigningHashKey);
-    console.log("$$$$$$$$$$tx_hash::::", ret.toString("hex"))
+    //console.log("$$$$$$$$$$tx_hash::::", ret.toString("hex"))
     //@ts-ignore
     //ret = new BufferReader(ret).readReverse();
     _txlogBuffer = false;
@@ -138,7 +138,7 @@ const calcTxHash = (transaction, sighashType, inputNumber, subscript, satoshisBN
 
 //@ts-ignore
 sighash.sign = (transaction, privateKey, sighashType, inputIndex, subscript, satoshisBN, flags, signingMethod)=>{
-   console.log("$$$$$$$$$$ :::::sighash.sign")
+  //console.log("$$$$$$$$$$ :::::sighash.sign")
   //@ts-ignore
   let hashbuf = calcTxHash(transaction, sighashType, inputIndex, subscript, satoshisBN, flags);
   
@@ -189,11 +189,13 @@ PrivateKey.prototype.toPublicKey = function(){
 
 let _txlogBuffer = false;
 const txlogBuffer = (...args:any[])=>{
+  /*
   //@ts-ignore
   if(!_txlogBuffer)
     return
   args[args.length-1] = args[args.length-1].map((buf:Buffer)=>buf.toString("hex"));
   console.log(...args)
+  */
 }
 
 //@ts-ignore
@@ -342,9 +344,11 @@ Input.prototype.toBufferWriter = function(writer:any) {
   txlogBuffer("$$$$ outputIndex: ", this.outputIndex, writer.bufs)
   let scriptBuf = Buffer.from(script, "hex");
   //console.log("this.versionthis.version", this.version)
-  let versionBuf = BN.fromNumber(this.version);
-  //@ts-ignore
-  scriptBuf = Buffer.concat([versionBuf.toBuffer({endian:'little', size:2}), scriptBuf]);
+  if(scriptBuf.length){
+    let versionBuf = BN.fromNumber(this.version);
+    //@ts-ignore
+    scriptBuf = Buffer.concat([versionBuf.toBuffer({endian:'little', size:2}), scriptBuf]);
+  }
   let bn = BN.fromNumber(scriptBuf.length);
   writer.writeUInt64LEBN(bn);
   txlogBuffer("$$$$ script.length: ", scriptBuf.length, writer.bufs)

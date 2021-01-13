@@ -109,9 +109,9 @@ class Wallet extends EventTargetImpl{
   api: KaspaAPI; //new KaspaAPI();
 
   static networkTypes:Object = {
-    kaspa : { port : 16110, network : 'kaspa' },
-    kaspatest : { port : 16210, network : 'kaspatest' },
-    kaspasim : { port : 16510, network : 'kaspasim' },
+    //kaspa : { port : 16110, network : 'kaspa' },
+    //kaspatest : { port : 16210, network : 'kaspatest' },
+    //kaspasim : { port : 16510, network : 'kaspasim' },
     kaspadev : { port : 16610, network : 'kaspadev' }
   }
 
@@ -503,7 +503,7 @@ class Wallet extends EventTargetImpl{
       return [this.addressManager.all[String(cur.address)], ...prev];
     }, []);
 
-    console.log("privKeys::::", privKeys)
+    //console.log("privKeys::::", privKeys)
 
     const changeAddr = changeAddrOverride || this.addressManager.changeAddress.next();
     try {
@@ -539,7 +539,7 @@ class Wallet extends EventTargetImpl{
     if(debug){
       console.log("sendTx:utxos", utxos)
       console.log("::utxos[0].script::", utxos[0].script)
-      console.log("::utxos[0].address::", utxos[0].address)
+      //console.log("::utxos[0].address::", utxos[0].address)
     }
 
     const {nLockTime:lockTime, version} = tx;
@@ -548,8 +548,11 @@ class Wallet extends EventTargetImpl{
 
     const inputs: RPC.TransactionInput[] = tx.inputs.map((input:bitcore.Transaction.Input)=>{
       //console.log("prevTxId", input.prevTxId.toString("hex"))
-      //@ts-ignore
-      console.log("input.script.inspect", input.script.inspect())
+      
+      if(debug){
+        //@ts-ignore
+        console.log("input.script.inspect", input.script.inspect())
+      }
       return {
         previousOutpoint:{
           transactionId: input.prevTxId.toString("hex"),
@@ -595,12 +598,13 @@ class Wallet extends EventTargetImpl{
     console.log("rpcTX", JSON.stringify(rpcTX))
     //console.log("rpcTX.transaction.inputs[0]", rpcTX.transaction.inputs[0])
     try {
-      await this.api.submitTransaction(rpcTX);
+      let result:string = await this.api.submitTransaction(rpcTX);
+      console.log("submitTransaction:result", result, id)
+      return result;
     } catch (e) {
       this.undoPendingTx(id);
       throw e;
     }
-    return id
   }
 
   /*

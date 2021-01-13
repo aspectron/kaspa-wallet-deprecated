@@ -126,9 +126,11 @@ class KaspaAPI {
 			const removed = this.buildOutpointMap(res.removed);
 			callback(added, removed);
 		}
+		
+		let p = this.rpc.subscribeUtxosChanged(addresses, cb)
 		if(this._utxosChangedSubUid)
 			this.rpc.unSubscribeUtxosChanged(this._utxosChangedSubUid);
-		let p = this.rpc.subscribeUtxosChanged(addresses, cb)
+
 		let {uid} = p;
 		this._utxosChangedSubUid = uid;
 
