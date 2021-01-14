@@ -1,5 +1,5 @@
 // @ts-ignore
-import * as bitcore from 'bitcore-lib-cash';
+import * as kaspacore from 'kaspacore-lib';
 import { Network } from 'custom-types';
 
 const secp256k1 = require('secp256k1-wasm');
@@ -8,17 +8,17 @@ import {EventTargetImpl} from './event-target-impl';
 import {dpc} from '../utils/helper';
 
 export class AddressManager extends EventTargetImpl{
-  constructor(HDWallet: bitcore.HDPrivateKey, network: Network) {
+  constructor(HDWallet: kaspacore.HDPrivateKey, network: Network) {
     super();
     this.HDWallet = HDWallet;
     this.network = network;
   }
 
-  private HDWallet: bitcore.HDPrivateKey;
+  private HDWallet: kaspacore.HDPrivateKey;
 
   network: Network;
 
-  get all(): Record<string, bitcore.PrivateKey> {
+  get all(): Record<string, kaspacore.PrivateKey> {
     return { ...this.receiveAddress.keypairs, ...this.changeAddress.keypairs };
   }
 
@@ -39,8 +39,8 @@ export class AddressManager extends EventTargetImpl{
    */
   receiveAddress: {
     counter: number;
-    current: { address: string; privateKey: bitcore.PrivateKey };
-    keypairs: Record<string, bitcore.PrivateKey>;
+    current: { address: string; privateKey: kaspacore.PrivateKey };
+    keypairs: Record<string, kaspacore.PrivateKey>;
     atIndex: Record<string, string>;
     next: () => string;
     advance: (n: number) => void;
@@ -69,8 +69,8 @@ export class AddressManager extends EventTargetImpl{
    */
   changeAddress: {
     counter: number;
-    current: { address: string; privateKey: bitcore.PrivateKey };
-    keypairs: Record<string, bitcore.PrivateKey>;
+    current: { address: string; privateKey: kaspacore.PrivateKey };
+    keypairs: Record<string, kaspacore.PrivateKey>;
     atIndex: Record<string, string>;
     next: () => string;
     advance: (n: number) => void;
@@ -101,18 +101,18 @@ export class AddressManager extends EventTargetImpl{
   private deriveAddress(
     deriveType: 'receive' | 'change',
     index: number
-  ): { address: string; privateKey: bitcore.PrivateKey } {
+  ): { address: string; privateKey: kaspacore.PrivateKey } {
     const dType = deriveType === 'receive' ? 0 : 1;
     const { privateKey } = this.HDWallet.deriveChild(`m/44'/972/0'/${dType}'/${index}'`);
     
     let publicKeys = secp256k1.export_public_keys(privateKey.toString());
-    //let address1 = new bitcore.PublicKey(publicKeys.pubkey, {network:this.network}).toAddress().toString();
+    //let address1 = new kaspacore.PublicKey(publicKeys.pubkey, {network:this.network}).toAddress().toString();
     //let address = privateKey.toAddress(this.network).toString();
     //let pubkey = Buffer.from(publicKeys.pubkey, "hex");
     //let {address:address3} = bitcoin.payments.p2pkh({pubkey});
     let xonly = Buffer.from(publicKeys.xonly, "hex");
     //@ts-ignore
-    let address = bitcore.Address.fromPublicKeyHash(bitcore.crypto.Hash.sha256ripemd160(xonly), this.network).toString();
+    let address = kaspacore.Address.fromPublicKeyHash(kaspacore.crypto.Hash.sha256ripemd160(xonly), this.network).toString();
     
     /*
     console.log("privateKey:xxxx:", {

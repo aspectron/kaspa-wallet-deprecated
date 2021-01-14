@@ -1,13 +1,8 @@
 import { Buffer } from 'safe-buffer';
 const Mnemonic = require('bitcore-mnemonic');
-import * as bitcore from 'bitcore-lib-cash';
-import * as bitcoreOverrides from './bitcore-overrides';
+import * as kaspacore from 'kaspacore-lib';
 import * as helper from '../utils/helper';
 import {CreateStorage, StorageType, classes as storageClasses} from './storage';
-bitcoreOverrides.setup();
-
-const secp256k1 = require('secp256k1-wasm');
-const blake2b = require('blake2b-wasm');
 // @ts-ignore
 import * as passworder1 from 'browser-passworder';
 import * as passworder2 from '@aspectron/flow-key-crypt';
@@ -30,62 +25,23 @@ import {
   WalletCache, IRPC, RPC, WalletOptions, WalletOpt
 } from '../types/custom-types';
 
-const wasmModulesLoadStatus:Map<string, boolean> = new Map();
-wasmModulesLoadStatus.set("blake2b", false);
-wasmModulesLoadStatus.set("secp256k1", false);
-
-const setWasmLoadStatus = (mod:string, loaded:boolean)=>{
-  console.log("setWasmLoadStatus:", mod, loaded)
-  wasmModulesLoadStatus.set(mod, loaded);
-  let allLoaded = true;
-  wasmModulesLoadStatus.forEach((loaded, mod)=>{
-    console.log("wasmModulesLoadStatus:", mod, loaded)
-    if(!loaded)
-      allLoaded = false;
-  })
-
-  if(allLoaded)
-    Wallet.ready();
-}
-
-/*
-setTimeout(()=>{
-  Wallet.ready();
-}, 2000)
-*/
-
-blake2b.ready(()=>{
-  setWasmLoadStatus("blake2b", true);
-})
-secp256k1.onAbort = (error:any)=>{
-  console.log("onAbort:", error)
-}
-secp256k1.onRuntimeInitialized = ()=>{
-  //console.log("onRuntimeInitialized")
-  setTimeout(()=>{
-    setWasmLoadStatus("secp256k1", true);
-  }, 1);
-}
-
 import { logger } from '../utils/logger';
 import { AddressManager } from './AddressManager';
 import { UtxoSet } from './UtxoSet';
 import { KaspaAPI } from './apiHelpers';
 //import { txParser } from './txParser';
 import { DEFAULT_FEE, DEFAULT_NETWORK } from '../config.json';
-
 import {EventTargetImpl} from './event-target-impl';
 
 /** Class representing an HDWallet with derivable child addresses */
 class Wallet extends EventTargetImpl{
-
 
   static Mnemonic:typeof Mnemonic = Mnemonic;
   static isReady:Boolean = false;
   //static passworder1:any = passworder1;
   //static passworder2:any = passworder2;
 
-  HDWallet: bitcore.HDPrivateKey;
+  HDWallet: kaspacore.HDPrivateKey;
 
   /**
    * The summed balance across all of Wallet's discovered addresses, minus amount from pending transactions.
@@ -195,12 +151,12 @@ class Wallet extends EventTargetImpl{
     this.utxoSet.on("balance-update", this.updateBalance.bind(this));
 
     if (privKey && seedPhrase) {
-      this.HDWallet = new bitcore.HDPrivateKey(privKey);
+      this.HDWallet = new kaspacore.HDPrivateKey(privKey);
       this.mnemonic = seedPhrase;
     } else {
       const temp = new Mnemonic(Mnemonic.Words.ENGLISH);
       this.mnemonic = temp.toString();
-      this.HDWallet = new bitcore.HDPrivateKey(temp.toHDPrivateKey().toString());
+      this.HDWallet = new kaspacore.HDPrivateKey(temp.toHDPrivateKey().toString());
     }
 
     this.addressManager = new AddressManager(this.HDWallet, this.network);
@@ -228,28 +184,9 @@ class Wallet extends EventTargetImpl{
   setRPC(rpc:IRPC){
     this.api.setRPC(rpc);
   }
-
-  static _onReady:Function|undefined;
-  static ready(){
-    this.isReady = true;
-    if(this._onReady)
-      this._onReady();
-  }
-
-  static onReady(_onReady:Function){
-    this._onReady = _onReady;
-    if(this.isReady)
-      this.ready();
-  }
   static _storage:typeof storageClasses.Storage;
-
-
-  static async initRuntime() {
-    return new Promise<void>((resolve) => {
-      this.onReady(()=>{
-        resolve();
-      });
-    })
+  static initRuntime() {
+    return kaspacore.initRuntime();
   }
 
   /*
@@ -485,12 +422,12 @@ class Wallet extends EventTargetImpl{
     fee = DEFAULT_FEE,
     changeAddrOverride,
   }: TxSend & { changeAddrOverride?: string }): {
-    tx: bitcore.Transaction;
+    tx: kaspacore.Transaction;
     id: string;
     rawTx: string;
     utxoIds: string[];
     amount: number;
-    utxos: bitcore.Transaction.UnspentOutput[];
+    utxos: kaspacore.Transaction.UnspentOutput[];
   } {
     // TODO: bn!
     amount = parseInt(amount as any);
@@ -507,14 +444,14 @@ class Wallet extends EventTargetImpl{
 
     const changeAddr = changeAddrOverride || this.addressManager.changeAddress.next();
     try {
-      const tx: bitcore.Transaction = new bitcore.Transaction()
+      const tx: kaspacore.Transaction = new kaspacore.Transaction()
         .from(utxos)
         .to(toAddr, amount)
         .setVersion(0)
         .fee(fee)
         .change(changeAddr)
         // @ts-ignore
-        .sign(privKeys, bitcore.crypto.Signature.SIGHASH_ALL, 'schnorr');
+        .sign(privKeys, kaspacore.crypto.Signature.SIGHASH_ALL, 'schnorr');
       this.utxoSet.inUse.push(...utxoIds);
       this.pending.add(tx.id, { rawTx: tx.toString(), utxoIds, amount, to: toAddr, fee });
       this.runStateChangeHooks();
@@ -546,7 +483,7 @@ class Wallet extends EventTargetImpl{
     //console.log("composeTx:tx", tx.inputs, tx.outputs)
 
 
-    const inputs: RPC.TransactionInput[] = tx.inputs.map((input:bitcore.Transaction.Input)=>{
+    const inputs: RPC.TransactionInput[] = tx.inputs.map((input:kaspacore.Transaction.Input)=>{
       //console.log("prevTxId", input.prevTxId.toString("hex"))
       
       if(debug){
@@ -564,7 +501,7 @@ class Wallet extends EventTargetImpl{
       };
     })
 
-    const outputs: RPC.TransactionOutput[] = tx.outputs.map((output:bitcore.Transaction.Output)=>{
+    const outputs: RPC.TransactionOutput[] = tx.outputs.map((output:kaspacore.Transaction.Output)=>{
       return {
         amount: output.satoshis,
         scriptPublicKey: {
@@ -579,7 +516,7 @@ class Wallet extends EventTargetImpl{
     //const payload = Buffer.from(payloadStr).toString("base64");
     //console.log("payload-hex:", Buffer.from(payloadStr).toString("hex"))
     //@ ts-ignore
-    //const payloadHash = bitcore.crypto.Hash.sha256sha256(Buffer.from(payloadStr));
+    //const payloadHash = kaspacore.crypto.Hash.sha256sha256(Buffer.from(payloadStr));
     const rpcTX: RPC.SubmitTransactionRequest = {
       transaction: {
         version,

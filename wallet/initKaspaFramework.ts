@@ -1,5 +1,5 @@
 // @ts-ignore
-import * as bitcore from 'bitcore-lib-cash';
+import * as kaspacore from 'kaspacore-lib';
 import { Network } from 'custom-types';
 import { Wallet } from './wallet';
 
@@ -7,7 +7,7 @@ export const initKaspaFramework = async () => {
   const networkPrefixes: Network[] = ['kaspa', 'kaspadev', 'kaspareg', 'kaspatest', 'kaspasim'];
 
   networkPrefixes.map((str: Network) => {
-    return bitcore.Networks.add({
+    return kaspacore.Networks.add({
       name: str,
       prefix: str,
       pubkeyhash: 0x00, // publickey hash prefix

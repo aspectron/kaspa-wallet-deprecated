@@ -1,6 +1,6 @@
 import { Api, RPC, UnspentOutputInfo } from 'custom-types';
 // @ts-ignore
-import * as bitcore from 'bitcore-lib-cash';
+import * as kaspacore from 'kaspacore-lib';
 import { logger } from '../utils/logger';
 import * as crypto from 'crypto';
 import * as helper from '../utils/helper';
@@ -8,7 +8,7 @@ import * as helper from '../utils/helper';
 import {Wallet} from './wallet';
 import {EventTargetImpl} from './event-target-impl';
 
-export class UnspentOutput extends bitcore.Transaction.UnspentOutput{
+export class UnspentOutput extends kaspacore.Transaction.UnspentOutput{
   blockBlueScore:number;
   scriptPublicKeyVersion:number;
   constructor(o: UnspentOutputInfo){
