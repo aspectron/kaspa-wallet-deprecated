@@ -1,15 +1,8 @@
-import {
-	Buffer
-} from 'safe-buffer';
+import {Buffer} from 'safe-buffer';
 const Mnemonic = require('bitcore-mnemonic');
 import * as kaspacore from 'kaspacore-lib';
 import * as helper from '../utils/helper';
-import {
-	CreateStorage,
-	StorageType,
-	classes as storageClasses
-} from './storage';
-
+import {CreateStorage, StorageType, classes as storageClasses} from './storage';
 
 import * as passworder1 from 'browser-passworder';
 import * as passworder2 from '@aspectron/flow-key-crypt';
@@ -40,7 +33,59 @@ logger.level = '_';
 class Wallet extends EventTargetImpl {
 
 	static Mnemonic: typeof Mnemonic = Mnemonic;
-	static isReady: Boolean = false;
+
+	// TODO - integrate with Kaspacore-lib
+	static networkTypes: Object = {
+		kaspa: { port: 16110, network: 'kaspa' },
+		kaspatest: { port: 16210, network: 'kaspatest' },
+		kaspasim: {	port: 16510, network: 'kaspasim' },
+		kaspadev: {	port: 16610, network: 'kaspadev' }
+	}
+
+	static networkAliases: Object = {
+		mainnet: 'kaspa',
+		testnet: 'kaspatest',
+		devnet: 'kaspadev',
+		simnet: 'kaspasim'
+	}
+
+	static initRuntime() {
+		return kaspacore.initRuntime();
+	}
+	static debugLevel: number = 0;
+	static setDebugLevel(level: number) {
+		logger.level = (level > 0) ? 'info' : '_';
+		this.debugLevel = level;
+		kaspacore.setDebugLevel(level);
+	}
+
+	/**
+	 * Converts a mnemonic to a new wallet.
+	 * @param seedPhrase The 12 word seed phrase.
+	 * @returns new Wallet
+	 */
+	static fromMnemonic(seedPhrase: string, networkOptions: NetworkOptions, options: WalletOptions = {}): Wallet {
+		if (!networkOptions || !networkOptions.network)
+			throw new Error(`fromMnemonic(seedPhrase,networkOptions): missing network argument`);
+		const privKey = new Mnemonic(seedPhrase.trim()).toHDPrivateKey().toString();
+		const wallet = new this(privKey, seedPhrase, networkOptions, options);
+		return wallet;
+	}
+
+	/**
+	 * Creates a new Wallet from encrypted wallet data.
+	 * @param password the password the user encrypted their seed phrase with
+	 * @param encryptedMnemonic the encrypted seed phrase from local storage
+	 * @throws Will throw "Incorrect password" if password is wrong
+	 */
+	static async import (password: string, encryptedMnemonic: string, networkOptions: NetworkOptions, options: WalletOptions = {}): Promise < Wallet > {
+		const decrypted = await passworder.decrypt(password, encryptedMnemonic);
+		const savedWallet = JSON.parse(decrypted) as WalletSave;
+		const myWallet = new this(savedWallet.privKey, savedWallet.seedPhrase, networkOptions, options);
+		return myWallet;
+	}
+
+
 	//static passworder1:any = passworder1;
 	//static passworder2:any = passworder2;
 
@@ -67,33 +112,6 @@ class Wallet extends EventTargetImpl {
 	// @ts-ignore
 	api: KaspaAPI; //new KaspaAPI();
 
-	// TODO - integrate with Kaspacore-lib
-	static networkTypes: Object = {
-		kaspa: {
-			port: 16110,
-			network: 'kaspa'
-		},
-		kaspatest: {
-			port: 16210,
-			network: 'kaspatest'
-		},
-		kaspasim: {
-			port: 16510,
-			network: 'kaspasim'
-		},
-		kaspadev: {
-			port: 16610,
-			network: 'kaspadev'
-		}
-	}
-
-	static networkAliases: Object = {
-		mainnet: 'kaspa',
-		testnet: 'kaspatest',
-		devnet: 'kaspadev',
-		simnet: 'kaspasim'
-	}
-
 	/** 
 	 * Default fee
 	 */
@@ -119,7 +137,7 @@ class Wallet extends EventTargetImpl {
 	blueScore: number = -1;
 
 	/* eslint-disable */
-	pending: PendingTransactions = {
+	pendingInfo: PendingTransactions = {
 		transactions: {},
 		get amount() {
 			const transactions = Object.values(this.transactions);
@@ -133,7 +151,7 @@ class Wallet extends EventTargetImpl {
 			}
 		) {
 			this.transactions[id] = tx;
-		},
+		}
 	};
 	/**
 	 * Transactions sorted by hash.
@@ -197,11 +215,7 @@ class Wallet extends EventTargetImpl {
 				return
 
 			//console.log("new-address:detail", detail)
-
-			const {
-				address,
-				type
-			} = detail;
+			const {	address, type } = detail;
 			this.utxoSet.syncAddressesUtxos([address]);
 		})
 		this.addressManager.receiveAddress.next();
@@ -214,39 +228,30 @@ class Wallet extends EventTargetImpl {
 	setRPC(rpc: IRPC) {
 		this.api.setRPC(rpc);
 	}
-	static _storage: typeof storageClasses.Storage;
-	static initRuntime() {
-		return kaspacore.initRuntime();
-	}
-	static debugLevel: number = 0;
-	static setDebugLevel(level: number) {
-		logger.level = (level > 0) ? 'info' : '_';
-		this.debugLevel = level;
-		kaspacore.setDebugLevel(level);
-	}
 
 	/*
-  static setStorageType(type:StorageType){
-	storage.setType(type);
-  }
-  static setStorageFolder(folder:string){
-	storage.setFolder(folder);
-  }
-  static setStorageFileName(fileName:string){
-	storage.setFileName(fileName);
-  }
-  */
+	setStorageType(type:StorageType){
+		this.storage.setType(type);
+	}
+	setStorageFolder(folder:string){
+		this.storage.setFolder(folder);
+	}
+	setStorageFileName(fileName:string){
+		this.storage.setFileName(fileName);
+	}
+	*/
+	_storage: typeof storageClasses.Storage|undefined;
 
-	static setStoragePassword(password: string) {
+	setStoragePassword(password: string) {
 		if (!this.storage)
 			throw new Error("Please init storage")
 		this.storage.setPassword(password);
 	}
-	static get storage(): typeof storageClasses.Storage | undefined {
+	get storage(): typeof storageClasses.Storage | undefined {
 		return this._storage;
 	}
 
-	static openFileStorage(fileName: string, password: string, folder: string = '') {
+	openFileStorage(fileName: string, password: string, folder: string = '') {
 		let storage = CreateStorage();
 		if (folder)
 			storage.setFolder(folder);
@@ -254,63 +259,6 @@ class Wallet extends EventTargetImpl {
 		storage.setPassword(password);
 		this._storage = storage;
 	}
-
-
-	/**
-   * Queries API for address[] UTXOs. Adds UTXOs to UTXO set. Updates wallet balance.
-   * @param addresses
-   * /
-  async updateUtxos(addresses: string[]): Promise<void> {
-	logger.log('info', `Getting utxos for ${addresses.length} addresses.`);
-	const utxoResults = await Promise.all(
-	  addresses.map((address) => api.getUtxos(address))
-	);
-	addresses.forEach((address, i) => {
-	  const { utxos } = utxoResults[i];
-	  logger.log('info', `${address}: ${utxos.length} total UTXOs found.`);
-	  this.utxoSet.utxoStorage[address] = utxos;
-	  this.utxoSet.add(utxos, address);
-	});
-  }
-
-  /**
-   * Queries API for address[] transactions. Adds tx to transactions storage. Also sorts the entire transaction set.
-   * @param addresses
-   */
-	/*
-  async updateTransactions(addresses: string[]): Promise<string[]> {
-	logger.log('info', `Getting transactions for ${addresses.length} addresses.`);
-	const addressesWithTx: string[] = [];
-	const txResults = await Promise.all(
-	  addresses.map((address) => api.getTransactions(address))
-	);
-	addresses.forEach((address, i) => {
-	  const { transactions } = txResults[i];
-	  logger.log('info', `${address}: ${transactions.length} transactions found.`);
-	  if (transactions.length !== 0) {
-		const confirmedTx = transactions.filter((tx:Api.Transaction) => tx.confirmations > 0);
-		this.transactionsStorage[address] = confirmedTx;
-		addressesWithTx.push(address);
-	  }
-	});
-	// @ts-ignore
-	this.transactions = txParser(this.transactionsStorage, Object.keys(this.addressManager.all));
-	const pendingTxHashes = Object.keys(this.pending.transactions);
-	if (pendingTxHashes.length > 0) {
-	  pendingTxHashes.forEach((hash) => {
-		if (this.transactions.map((tx) => tx.transactionHash).includes(hash)) {
-		  this.deletePendingTx(hash);
-		}
-	  });
-	}
-	const isActivityOnReceiveAddr =
-	  this.transactionsStorage[this.addressManager.receiveAddress.current.address] !== undefined;
-	if (isActivityOnReceiveAddr) {
-	  this.addressManager.receiveAddress.next();
-	}
-	return addressesWithTx;
-  }
-  */
 
 	/**
 	 * Queries API for address[] UTXOs. Adds tx to transactions storage. Also sorts the entire transaction set.
@@ -373,9 +321,9 @@ class Wallet extends EventTargetImpl {
 	 * Recalculates wallet balance.
 	 */
 	updateBalance(): void {
-		this.balance = this.utxoSet.totalBalance - this.pending.amount;
+		this.balance = this.utxoSet.totalBalance - this.pendingInfo.amount;
 		const available = this.balance;
-		const pending = this.pending.amount;
+		const pending = this.pendingInfo.amount;
 		const balance = available + pending;
 		this.emit("balance-update", {
 			available,
@@ -397,7 +345,7 @@ class Wallet extends EventTargetImpl {
 	demolishWalletState(networkPrefix: Network = this.network): void {
 		this.utxoSet.clear();
 		this.addressManager = new AddressManager(this.HDWallet, networkPrefix);
-		this.pending.transactions = {};
+		this.pendingInfo.transactions = {};
 		this.transactions = [];
 		this.transactionsStorage = {};
 	}
@@ -519,7 +467,7 @@ class Wallet extends EventTargetImpl {
 				.sign(privKeys, kaspacore.crypto.Signature.SIGHASH_ALL, 'schnorr');
 
 			this.utxoSet.inUse.push(...utxoIds);
-			this.pending.add(tx.id, {
+			this.pendingInfo.add(tx.id, {
 				rawTx: tx.toString(),
 				utxoIds,
 				amount,
@@ -557,7 +505,7 @@ class Wallet extends EventTargetImpl {
 		if (debug || Wallet.debugLevel > 0) {
 			console.log("sendTx:utxos", utxos)
 			console.log("::utxos[0].script::", utxos[0].script)
-				//console.log("::utxos[0].address::", utxos[0].address)
+			//console.log("::utxos[0].address::", utxos[0].address)
 		}
 
 		const {nLockTime: lockTime, version } = tx;
@@ -638,10 +586,8 @@ class Wallet extends EventTargetImpl {
 	}
 
 	undoPendingTx(id: string): void {
-		const {
-			utxoIds
-		} = this.pending.transactions[id];
-		delete this.pending.transactions[id];
+		const {	utxoIds	} = this.pendingInfo.transactions[id];
+		delete this.pendingInfo.transactions[id];
 		this.utxoSet.release(utxoIds);
 		this.addressManager.changeAddress.reverse();
 		this.runStateChangeHooks();
@@ -653,10 +599,8 @@ class Wallet extends EventTargetImpl {
 	 */
 	deletePendingTx(id: string): void {
 		// undo + delete old utxos
-		const {
-			utxoIds
-		} = this.pending.transactions[id];
-		delete this.pending.transactions[id];
+		const {	utxoIds } = this.pendingInfo.transactions[id];
+		delete this.pendingInfo.transactions[id];
 		this.utxoSet.remove(utxoIds);
 	}
 
@@ -667,7 +611,7 @@ class Wallet extends EventTargetImpl {
 
 	get cache() {
 		return {
-			pendingTx: this.pending.transactions,
+			pendingTx: this.pendingInfo.transactions,
 			utxos: {
 				utxoStorage: this.utxoSet.utxoStorage,
 				inUse: this.utxoSet.inUse,
@@ -681,7 +625,7 @@ class Wallet extends EventTargetImpl {
 	}
 
 	restoreCache(cache: WalletCache): void {
-		this.pending.transactions = cache.pendingTx;
+		this.pendingInfo.transactions = cache.pendingTx;
 		this.utxoSet.utxoStorage = cache.utxos.utxoStorage;
 		this.utxoSet.inUse = cache.utxos.inUse;
 		Object.entries(this.utxoSet.utxoStorage).forEach(([addr, utxos]: [string, Api.Utxo[]]) => {
@@ -703,9 +647,8 @@ class Wallet extends EventTargetImpl {
 	}
 
 	async syncVirtualSelectedParentBlueScore() {
-		let {
-			blueScore
-		} = await this.getVirtualSelectedParentBlueScore();
+		let {blueScore} = await this.getVirtualSelectedParentBlueScore();
+
 		this.blueScore = blueScore;
 		this.emit("blue-score-changed", {
 			blueScore
@@ -719,32 +662,6 @@ class Wallet extends EventTargetImpl {
 				blueScore: virtualSelectedParentBlueScore
 			})
 		});
-	}
-
-	/**
-	 *  Converts a mnemonic to a new wallet.
-	 * @param seedPhrase The 12 word seed phrase.
-	 * @returns new Wallet
-	 */
-	static fromMnemonic(seedPhrase: string, networkOptions: NetworkOptions, options: WalletOptions = {}): Wallet {
-		if (!networkOptions || !networkOptions.network)
-			throw new Error(`fromMnemonic(seedPhrase,networkOptions): missing network argument`);
-		const privKey = new Mnemonic(seedPhrase.trim()).toHDPrivateKey().toString();
-		const wallet = new this(privKey, seedPhrase, networkOptions, options);
-		return wallet;
-	}
-
-	/**
-	 * Creates a new Wallet from encrypted wallet data.
-	 * @param password the password the user encrypted their seed phrase with
-	 * @param encryptedMnemonic the encrypted seed phrase from local storage
-	 * @throws Will throw "Incorrect password" if password is wrong
-	 */
-	static async import (password: string, encryptedMnemonic: string, networkOptions: NetworkOptions, options: WalletOptions = {}): Promise < Wallet > {
-		const decrypted = await passworder.decrypt(password, encryptedMnemonic);
-		const savedWallet = JSON.parse(decrypted) as WalletSave;
-		const myWallet = new this(savedWallet.privKey, savedWallet.seedPhrase, networkOptions, options);
-		return myWallet;
 	}
 
 	/**
