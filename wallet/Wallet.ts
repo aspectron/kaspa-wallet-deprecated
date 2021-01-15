@@ -73,7 +73,14 @@ class Wallet extends EventTargetImpl{
     kaspadev : { port : 16610, network : 'kaspadev' }
   }
 
-  /**
+  static networkAliases:Object = {
+    mainnet : 'kaspa',
+    testnet : 'kaspatest',
+    devnet : 'kaspadev',
+    simnet : 'kaspasim'
+  }
+
+  /** 
    * Default fee
    */
 
@@ -336,7 +343,10 @@ class Wallet extends EventTargetImpl{
    */
   updateBalance(): void {
     this.balance = this.utxoSet.totalBalance - this.pending.amount;
-    this.emit("balance-update", {balance:this.balance});
+    const available = this.balance;
+    const pending = this.pending.amount;
+    const balance = available+pending;
+    this.emit("balance-update", {available,pending,balance}); // !!! TODO - BigNumber
   }
 
   /**
