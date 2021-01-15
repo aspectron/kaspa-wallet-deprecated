@@ -20,14 +20,14 @@ import {
 	PendingTransactions, WalletCache, IRPC, RPC, WalletOptions,	WalletOpt
 } from '../types/custom-types';
 
-import {logger} from '../utils/logger';
+import {CreateLogger, Logger} from '../utils/logger';
 import {AddressManager} from './AddressManager';
 import {UtxoSet} from './UtxoSet';
 import {KaspaAPI} from './apiHelpers';
 import {DEFAULT_FEE,DEFAULT_NETWORK} from '../config.json';
 import {EventTargetImpl} from './event-target-impl';
 
-logger.level = '_';
+
 
 /** Class representing an HDWallet with derivable child addresses */
 class Wallet extends EventTargetImpl {
@@ -51,12 +51,6 @@ class Wallet extends EventTargetImpl {
 
 	static initRuntime() {
 		return kaspacore.initRuntime();
-	}
-	static debugLevel: number = 0;
-	static setDebugLevel(level: number) {
-		logger.level = (level > 0) ? 'info' : '_';
-		this.debugLevel = level;
-		kaspacore.setDebugLevel(level);
 	}
 
 	/**
@@ -297,7 +291,7 @@ class Wallet extends EventTargetImpl {
 		} > ,
 		addressesWithUTXOs: string[]
 	} > {
-		logger.log('info', `Getting UTXOs for ${addresses.length} addresses.`);
+		this.logger.log('info', `Getting UTXOs for ${addresses.length} addresses.`);
 
 		const utxosMap = await this.api.getUtxosByAddresses(addresses)
 
@@ -323,7 +317,7 @@ class Wallet extends EventTargetImpl {
 
 		utxosMap.forEach((utxos, address) => {
 			// utxos.sort((b, a)=> a.index-b.index)
-			logger.log('info', `${address}: ${utxos.length} utxos found.+=+=+=+=+=+=+++++=======+===+====+====+====+`);
+			this.logger.log('info', `${address}: ${utxos.length} utxos found.+=+=+=+=+=+=+++++=======+===+====+====+====+`);
 			if (utxos.length !== 0) {
 				this.utxoSet.utxoStorage[address] = utxos;
 				this.utxoSet.add(utxos, address);
@@ -406,22 +400,22 @@ class Wallet extends EventTargetImpl {
 			const derivedAddresses = this.addressManager.getAddresses(n, deriveType, offset);
 			const addresses = derivedAddresses.map((obj) => obj.address);
 			addressList = [...addressList, ...addresses];
-			logger.log(
+			this.logger.log(
 				'info',
 				`Fetching ${deriveType} address data for derived indices ${
 					JSON.stringify(
 		  				derivedAddresses.map((obj) => obj.index)
 					)}`
 			);
-			if (Wallet.debugLevel > 0)
-				logger.log('info', "addressDiscovery: findUtxos for addresses::", addresses)
+			if (this.loggerLevel > 0)
+				this.logger.log('info', "addressDiscovery: findUtxos for addresses::", addresses)
 			const {addressesWithUTXOs, txID2Info} = await this.findUtxos(addresses, debug);
 			if (!debugInfo)
 				debugInfo = txID2Info;
 			if (addressesWithUTXOs.length === 0) {
 				// address discovery complete
 				const lastAddressIndexWithTx = offset - (threshold - n) - 1;
-				logger.log(
+				this.logger.log(
 					'info',
 					`${deriveType}Address discovery complete. Last activity on address #${lastAddressIndexWithTx}. No activity from ${deriveType}#${
 						lastAddressIndexWithTx + 1
@@ -440,7 +434,7 @@ class Wallet extends EventTargetImpl {
 		const highestChangeIndex = await doDiscovery(threshold, 'change', 0);
 		this.addressManager.receiveAddress.advance(highestReceiveIndex + 1);
 		this.addressManager.changeAddress.advance(highestChangeIndex + 1);
-		logger.log(
+		this.logger.log(
 			'info',
 			`receive address index: ${highestReceiveIndex}; change address index: ${highestChangeIndex}`
 		);
@@ -478,7 +472,7 @@ class Wallet extends EventTargetImpl {
 	} {
 		// TODO: bn!
 		amount = parseInt(amount as any);
-		if (Wallet.debugLevel > 0) {
+		if (this.loggerLevel > 0) {
 			for (let i = 0; i < 100; i++)
 				console.log('Wallet transaction request for', amount, typeof amount);
 		}
@@ -530,7 +524,7 @@ class Wallet extends EventTargetImpl {
 	async submitTransaction(txParams: TxSend, debug = false): Promise < string > {
 		const {id, tx, utxos, utxoIds, rawTx, amount, toAddr} = this.composeTx(txParams);
 
-		if (debug || Wallet.debugLevel > 0) {
+		if (debug || this.loggerLevel > 0) {
 			console.log("sendTx:utxos", utxos)
 			console.log("::utxos[0].script::", utxos[0].script)
 			//console.log("::utxos[0].address::", utxos[0].address)
@@ -544,14 +538,14 @@ class Wallet extends EventTargetImpl {
 		const fee = minFee + (txParams.fee||0);
 		if (fee < minFee)
 			throw new Error(`Minimum fee required for this transaction is ${minFee}`);
-		if (Wallet.debugLevel > 0)
+		if (this.loggerLevel > 0)
 			console.log("composeTx:tx", "txSize:", txSize)
 
 
 		const inputs: RPC.TransactionInput[] = tx.inputs.map((input: kaspacore.Transaction.Input) => {
 			//console.log("prevTxId", input.prevTxId.toString("hex"))
 
-			if (debug || Wallet.debugLevel > 0) {
+			if (debug || this.loggerLevel > 0) {
 				//@ts-ignore
 				console.log("input.script.inspect", input.script.inspect())
 			}
@@ -599,7 +593,7 @@ class Wallet extends EventTargetImpl {
 				//gas: 0
 			}
 		}
-		if (Wallet.debugLevel > 0) {
+		if (this.loggerLevel > 0) {
 			console.log("rpcTX", JSON.stringify(rpcTX, null, "  "))
 			console.log("rpcTX", JSON.stringify(rpcTX))
 		}
@@ -717,6 +711,25 @@ class Wallet extends EventTargetImpl {
 			seedPhrase: this.mnemonic,
 		};
 		return passworder.encrypt(password, JSON.stringify(savedWallet));
+	}
+
+
+	logger: Logger = CreateLogger();
+	loggerLevel: number = 0;
+	setDebugLevel(level: number|string) {
+		if(typeof level == 'string'){
+			level = ({"info":1, "debug":2} as any)[level]||1;
+		}
+
+		if(level > 1)
+			this.logger.level = 'debug';
+		else if(level>0)
+			this.logger.level = 'info';
+		else
+			this.logger.level = '_';
+
+		this.loggerLevel = level as number;
+		kaspacore.setDebugLevel(level as number);
 	}
 }
 
