@@ -96,13 +96,16 @@ export class UtxoSet extends EventTargetImpl {
 	updateUtxoBalance(): void {
 		const {blueScore} = this.wallet;
 		const utxoIds = Object.keys(this.utxos);
-		const utxoIdsNotInUseAndConfirmed = utxoIds.filter(key =>{
-			return !this.inUse.includes(key) && (blueScore - this.utxos[key].blockBlueScore >= 100)
+		const confirmedAndNotUsed = utxoIds.filter(key =>{
+			return this.isOur(this.utxos[key]) || (
+					!this.inUse.includes(key)
+					&& (blueScore - this.utxos[key].blockBlueScore >= 100)
+				)
 		});
 
 		const {totalBalance, availableBalance} = this;
 		this.totalBalance = utxoIds.reduce((prev, cur) => prev + this.utxos[cur].satoshis, 0);
-		this.availableBalance = utxoIdsNotInUseAndConfirmed.reduce(
+		this.availableBalance = confirmedAndNotUsed.reduce(
 			(prev, cur) => prev + this.utxos[cur].satoshis,
 			0
 		);
@@ -125,7 +128,8 @@ export class UtxoSet extends EventTargetImpl {
 	 * @throws Error message if the UTXOs can't cover the `txAmount`
 	 */
 	selectUtxos(txAmount: number): {
-		utxoIds: string[];utxos: UnspentOutput[]
+		utxoIds: string[];
+		utxos: UnspentOutput[]
 	} {
 		const utxos: UnspentOutput[] = [];
 		const utxoIds: string[] = [];
@@ -257,5 +261,13 @@ export class UtxoSet extends EventTargetImpl {
 
 		this.updateUtxoBalance();
 		this.wallet.emit("utxo-change", {added, removed});
+	}
+
+	isOur(utxo:UnspentOutput): boolean{
+		return (!!this.wallet.transactions[utxo.txId]) || this.isOurChange(utxo)
+	}
+
+	isOurChange(utxo:UnspentOutput):boolean{
+		return this.wallet.addressManager.isOurChange(String(utxo.address))
 	}
 }

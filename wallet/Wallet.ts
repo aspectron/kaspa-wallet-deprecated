@@ -147,6 +147,8 @@ class Wallet extends EventTargetImpl {
 
 	blueScore: number = -1;
 
+	syncVirtualSelectedParentBlueScoreStarted:boolean = false;
+
 	/* eslint-disable */
 	pendingInfo: PendingTransactions = {
 		transactions: {},
@@ -171,7 +173,7 @@ class Wallet extends EventTargetImpl {
 	/**
 	 * Transactions sorted by hash.
 	 */
-	transactions: Api.Transaction[] = [];
+	transactions:Record<string, { rawTx: string; utxoIds: string[]; amount: number; to: string; fee: number; }> = {};
 
 	/**
 	 * Transaction arrays keyed by address.
@@ -221,6 +223,14 @@ class Wallet extends EventTargetImpl {
 
 		this.addressManager = new AddressManager(this.HDWallet, this.network);
 		this.initAddressManager();
+		this.initBlueScoreSync();
+	}
+
+	initBlueScoreSync(){
+		this.syncVirtualSelectedParentBlueScore()
+	    .catch(e=>{
+	        console.log("syncVirtualSelectedParentBlueScore:error", e)
+	    })
 	}
 
 	initAddressManager() {
@@ -370,7 +380,7 @@ class Wallet extends EventTargetImpl {
 		this.utxoSet.clear();
 		this.addressManager = new AddressManager(this.HDWallet, networkPrefix);
 		this.pendingInfo.transactions = {};
-		this.transactions = [];
+		this.transactions = {};
 		this.transactionsStorage = {};
 	}
 
@@ -462,6 +472,8 @@ class Wallet extends EventTargetImpl {
 		rawTx: string;
 		utxoIds: string[];
 		amount: number;
+		toAddr: string;
+		fee: number;
 		utxos: kaspacore.Transaction.UnspentOutput[];
 	} {
 		// TODO: bn!
@@ -490,24 +502,16 @@ class Wallet extends EventTargetImpl {
 				// @ts-ignore
 				.sign(privKeys, kaspacore.crypto.Signature.SIGHASH_ALL, 'schnorr');
 
-			this.utxoSet.inUse.push(...utxoIds);
-			this.pendingInfo.add(tx.id, {
-				rawTx: tx.toString(),
-				utxoIds,
-				amount,
-				to: toAddr,
-				fee
-			});
-
-			this.runStateChangeHooks();
 			//window.txxxx = tx;
 			return {
 				tx: tx,
 				id: tx.id,
 				rawTx: tx.toString(),
 				utxoIds,
-				amount: amount + fee,
-				utxos
+				amount,
+				fee,
+				utxos,
+				toAddr
 			};
 		} catch (e) {
 			this.addressManager.changeAddress.reverse();
@@ -524,7 +528,7 @@ class Wallet extends EventTargetImpl {
 	 * @throws `FetchError` if endpoint is down. API error message if tx error. Error if amount is too large to be represented as a javascript number.
 	 */
 	async submitTransaction(txParams: TxSend, debug = false): Promise < string > {
-		const {id, tx, utxos} = this.composeTx(txParams);
+		const {id, tx, utxos, utxoIds, rawTx, amount, toAddr} = this.composeTx(txParams);
 
 		if (debug || Wallet.debugLevel > 0) {
 			console.log("sendTx:utxos", utxos)
@@ -536,9 +540,10 @@ class Wallet extends EventTargetImpl {
 
 		//each input have script version's 2 bytes, which kaspa dont count;
 		const txSize = tx.toBuffer().length - tx.inputs.length * 2;
-		const fee = Math.max(txSize * this.defaultFee, txParams.fee);
-		if (fee > txParams.fee)
-			throw new Error(`Minimum fee required for this transaction is ${fee}`);
+		const minFee = txSize * this.defaultFee;
+		const fee = minFee + (txParams.fee||0);
+		if (fee < minFee)
+			throw new Error(`Minimum fee required for this transaction is ${minFee}`);
 		if (Wallet.debugLevel > 0)
 			console.log("composeTx:tx", "txSize:", txSize)
 
@@ -602,9 +607,19 @@ class Wallet extends EventTargetImpl {
 		try {
 			let result: string = await this.api.submitTransaction(rpcTX);
 			console.log("submitTransaction:result", result, id)
+			if(!result)
+				return result;
+
+			this.utxoSet.inUse.push(...utxoIds);
+			this.pendingInfo.add(tx.id, {
+				rawTx: tx.toString(),
+				utxoIds,
+				amount,
+				to: toAddr,
+				fee
+			});
 			return result;
 		} catch (e) {
-			this.undoPendingTx(id);
 			throw e;
 		}
 	}
@@ -671,6 +686,9 @@ class Wallet extends EventTargetImpl {
 	}
 
 	async syncVirtualSelectedParentBlueScore() {
+		if(this.syncVirtualSelectedParentBlueScoreStarted)
+			return
+		this.syncVirtualSelectedParentBlueScoreStarted = true;
 		let {blueScore} = await this.getVirtualSelectedParentBlueScore();
 
 		this.blueScore = blueScore;
