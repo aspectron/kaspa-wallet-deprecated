@@ -91,8 +91,19 @@ class Wallet extends EventTargetImpl {
 
 	HDWallet: kaspacore.HDPrivateKey;
 
+
 	/**
 	 * The summed balance across all of Wallet's discovered addresses, minus amount from pending transactions.
+	 */
+	available: number | undefined = undefined;
+
+	/**
+	 * Balance from pending transactions.
+	 */
+	pending: number | undefined = undefined;
+
+	/**
+	 * The total balance: pending + available.
 	 */
 	balance: number | undefined = undefined;
 
@@ -147,7 +158,11 @@ class Wallet extends EventTargetImpl {
 		add(
 			id: string,
 			tx: {
-				to: string;utxoIds: string[];rawTx: string;amount: number;fee: number
+				to: string;
+				utxoIds: string[];
+				rawTx: string;
+				amount: number;
+				fee: number
 			}
 		) {
 			this.transactions[id] = tx;
@@ -321,15 +336,24 @@ class Wallet extends EventTargetImpl {
 	 * Recalculates wallet balance.
 	 */
 	updateBalance(): void {
-		this.balance = this.utxoSet.totalBalance - this.pendingInfo.amount;
-		const available = this.balance;
-		const pending = this.pendingInfo.amount;
-		const balance = available + pending;
-		this.emit("balance-update", {
-			available,
-			pending,
-			balance
-		}); // !!! TODO - BigNumber
+
+		const {balance:_balance, available:_available, pending:_pending} = this;
+		
+		const available = this.utxoSet.availableBalance;
+		const balance = this.utxoSet.totalBalance;
+		const pending = balance - available;
+
+		this.balance = balance;
+		this.available = available;
+		this.pending = pending;
+
+		if(balance != _balance || available!=_available || pending != _pending){
+			this.emit("balance-update", {
+				available,
+				pending,
+				balance
+			}); // !!! TODO - BigNumber
+		}
 	}
 
 	/**
@@ -653,14 +677,14 @@ class Wallet extends EventTargetImpl {
 		this.emit("blue-score-changed", {
 			blueScore
 		})
+		this.utxoSet.updateUtxoBalance();
 		this.api.subscribeVirtualSelectedParentBlueScoreChanged((result) => {
-			let {
-				virtualSelectedParentBlueScore
-			} = result;
+			let {virtualSelectedParentBlueScore} = result;
 			this.blueScore = virtualSelectedParentBlueScore;
 			this.emit("blue-score-changed", {
 				blueScore: virtualSelectedParentBlueScore
 			})
+			this.utxoSet.updateUtxoBalance();
 		});
 	}
 
