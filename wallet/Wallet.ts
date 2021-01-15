@@ -1,698 +1,764 @@
-import { Buffer } from 'safe-buffer';
+import {
+	Buffer
+} from 'safe-buffer';
 const Mnemonic = require('bitcore-mnemonic');
 import * as kaspacore from 'kaspacore-lib';
 import * as helper from '../utils/helper';
-import {CreateStorage, StorageType, classes as storageClasses} from './storage';
-// @ts-ignore
+import {
+	CreateStorage,
+	StorageType,
+	classes as storageClasses
+} from './storage';
+
+
 import * as passworder1 from 'browser-passworder';
 import * as passworder2 from '@aspectron/flow-key-crypt';
-let passworder:typeof passworder1 | typeof passworder2;
+let passworder: typeof passworder1 | typeof passworder2;
+
 // @ts-ignore
-if(typeof window != "undefined" && !window.nw){
-  passworder = passworder1;
-}else{
-  passworder = passworder2;
+if (typeof window != "undefined" && !window.nw) {
+	passworder = passworder1;
+} else {
+	passworder = passworder2;
 }
 
 import {
-  Network,
-  NetworkOptions,
-  SelectedNetwork,
-  WalletSave,
-  Api,
-  TxSend,
-  PendingTransactions,
-  WalletCache, IRPC, RPC, WalletOptions, WalletOpt
+	Network, NetworkOptions, SelectedNetwork, WalletSave, Api, TxSend,
+	PendingTransactions, WalletCache, IRPC, RPC, WalletOptions,	WalletOpt
 } from '../types/custom-types';
 
-import { logger } from '../utils/logger';
-import { AddressManager } from './AddressManager';
-import { UtxoSet } from './UtxoSet';
-import { KaspaAPI } from './apiHelpers';
-//import { txParser } from './txParser';
-import { DEFAULT_FEE, DEFAULT_NETWORK } from '../config.json';
+import {logger} from '../utils/logger';
+import {AddressManager} from './AddressManager';
+import {UtxoSet} from './UtxoSet';
+import {KaspaAPI} from './apiHelpers';
+import {DEFAULT_FEE,DEFAULT_NETWORK} from '../config.json';
 import {EventTargetImpl} from './event-target-impl';
+
 logger.level = '_';
 
 /** Class representing an HDWallet with derivable child addresses */
-class Wallet extends EventTargetImpl{
+class Wallet extends EventTargetImpl {
 
-  static Mnemonic:typeof Mnemonic = Mnemonic;
-  static isReady:Boolean = false;
-  //static passworder1:any = passworder1;
-  //static passworder2:any = passworder2;
+	static Mnemonic: typeof Mnemonic = Mnemonic;
+	static isReady: Boolean = false;
+	//static passworder1:any = passworder1;
+	//static passworder2:any = passworder2;
 
-  HDWallet: kaspacore.HDPrivateKey;
+	HDWallet: kaspacore.HDPrivateKey;
 
-  /**
-   * The summed balance across all of Wallet's discovered addresses, minus amount from pending transactions.
-   */
-  balance: number | undefined = undefined;
+	/**
+	 * The summed balance across all of Wallet's discovered addresses, minus amount from pending transactions.
+	 */
+	balance: number | undefined = undefined;
 
-  /**
-   * Set by addressManager
-   */
-  get receiveAddress() {
-    return this.addressManager.receiveAddress.current.address;
-  }
+	/**
+	 * Set by addressManager
+	 */
+	get receiveAddress() {
+		return this.addressManager.receiveAddress.current.address;
+	}
 
-  /**
-   * Current network.
-   */
-  // @ts-ignore
-  network: Network = 'kaspa' as Network; // DEFAULT_NETWORK.prefix as Network;
+	/**
+	 * Current network.
+	 */
+	// @ts-ignore
+	network: Network = 'kaspa' as Network;
 
-  // @ts-ignore
-  api: KaspaAPI; //new KaspaAPI();
+	// @ts-ignore
+	api: KaspaAPI; //new KaspaAPI();
 
-  // TODO - integrate with Kaspacore-lib
-  static networkTypes:Object = {
-    kaspa : { port : 16110, network : 'kaspa' },
-    kaspatest : { port : 16210, network : 'kaspatest' },
-    kaspasim : { port : 16510, network : 'kaspasim' },
-    kaspadev : { port : 16610, network : 'kaspadev' }
-  }
+	// TODO - integrate with Kaspacore-lib
+	static networkTypes: Object = {
+		kaspa: {
+			port: 16110,
+			network: 'kaspa'
+		},
+		kaspatest: {
+			port: 16210,
+			network: 'kaspatest'
+		},
+		kaspasim: {
+			port: 16510,
+			network: 'kaspasim'
+		},
+		kaspadev: {
+			port: 16610,
+			network: 'kaspadev'
+		}
+	}
 
-  static networkAliases:Object = {
-    mainnet : 'kaspa',
-    testnet : 'kaspatest',
-    devnet : 'kaspadev',
-    simnet : 'kaspasim'
-  }
+	static networkAliases: Object = {
+		mainnet: 'kaspa',
+		testnet: 'kaspatest',
+		devnet: 'kaspadev',
+		simnet: 'kaspasim'
+	}
 
-  /** 
-   * Default fee
-   */
+	/** 
+	 * Default fee
+	 */
 
-  defaultFee: number = 1;//per byte
+	defaultFee: number = 1; //per byte
 
-  subnetworkId:string = "0000000000000000000000000000000000000000";//hex string
+	subnetworkId: string = "0000000000000000000000000000000000000000"; //hex string
 
-  /**
-   * Current API endpoint for selected network
-   */
-  apiEndpoint = 'localhost:16210';// DEFAULT_NETWORK.apiBaseUrl;
+	/**
+	 * Current API endpoint for selected network
+	 */
+	apiEndpoint = 'localhost:16210';
 
-  /**
-   * A 12 word mnemonic.
-   */
-  mnemonic: string;
+	/**
+	 * A 12 word mnemonic.
+	 */
+	mnemonic: string;
 
-  utxoSet:UtxoSet;
+	utxoSet: UtxoSet;
 
-  addressManager: AddressManager;
+	addressManager: AddressManager;
 
-  blueScore:number = -1;
+	blueScore: number = -1;
 
-  /* eslint-disable */
-  pending: PendingTransactions = {
-    transactions: {},
-    get amount() {
-      const transactions = Object.values(this.transactions);
-      if (transactions.length === 0) return 0;
-      return transactions.reduce((prev, cur) => prev + cur.amount + cur.fee, 0);
-    },
-    add(
-      id: string,
-      tx: { to: string; utxoIds: string[]; rawTx: string; amount: number; fee: number }
-    ) {
-      this.transactions[id] = tx;
-    },
-  };
-  /**
-   * Transactions sorted by hash.
-   */
-  transactions: Api.Transaction[] = [];
+	/* eslint-disable */
+	pending: PendingTransactions = {
+		transactions: {},
+		get amount() {
+			const transactions = Object.values(this.transactions);
+			if (transactions.length === 0) return 0;
+			return transactions.reduce((prev, cur) => prev + cur.amount + cur.fee, 0);
+		},
+		add(
+			id: string,
+			tx: {
+				to: string;utxoIds: string[];rawTx: string;amount: number;fee: number
+			}
+		) {
+			this.transactions[id] = tx;
+		},
+	};
+	/**
+	 * Transactions sorted by hash.
+	 */
+	transactions: Api.Transaction[] = [];
 
-  /**
-   * Transaction arrays keyed by address.
-   */
-  transactionsStorage: Record<string, Api.Transaction[]> = {};
-  
+	/**
+	 * Transaction arrays keyed by address.
+	 */
+	transactionsStorage: Record < string, Api.Transaction[] > = {};
 
-  options:WalletOpt;
 
-  /** Create a wallet.
-   * @param walletSave (optional)
-   * @param walletSave.privKey Saved wallet's private key.
-   * @param walletSave.seedPhrase Saved wallet's seed phrase.
-   */
-  constructor(privKey: string, seedPhrase: string, networkOptions: NetworkOptions, options:WalletOptions={}) {
-    super();
+	options: WalletOpt;
 
-    this.api = new KaspaAPI();
+	/** Create a wallet.
+	 * @param walletSave (optional)
+	 * @param walletSave.privKey Saved wallet's private key.
+	 * @param walletSave.seedPhrase Saved wallet's seed phrase.
+	 */
+	constructor(privKey: string, seedPhrase: string, networkOptions: NetworkOptions, options: WalletOptions = {}) {
+		super();
 
-    let defaultOpt = {
-      skipSyncBalance:false,
-      utxoSyncThrottleDelay:100
-    };
+		this.api = new KaspaAPI();
 
-    this.network = networkOptions.network;
-    this.defaultFee = networkOptions.defaultFee || this.defaultFee;
-    if(networkOptions.rpc)
-      this.api.setRPC(networkOptions.rpc);
+		let defaultOpt = {
+			skipSyncBalance: false,
+			utxoSyncThrottleDelay: 100
+		};
 
-    console.log("CREATING WALLET FOR NETWORK",this.network);
-    this.options = {...defaultOpt, ...options};
-    
+		this.network = networkOptions.network;
+		this.defaultFee = networkOptions.defaultFee || this.defaultFee;
+		if (networkOptions.rpc)
+			this.api.setRPC(networkOptions.rpc);
 
-    this.utxoSet = new UtxoSet(this);
-    this.utxoSet.on("balance-update", this.updateBalance.bind(this));
+		console.log("CREATING WALLET FOR NETWORK", this.network);
+		this.options = {...defaultOpt,
+			...options
+		};
 
-    if (privKey && seedPhrase) {
-      this.HDWallet = new kaspacore.HDPrivateKey(privKey);
-      this.mnemonic = seedPhrase;
-    } else {
-      const temp = new Mnemonic(Mnemonic.Words.ENGLISH);
-      this.mnemonic = temp.toString();
-      this.HDWallet = new kaspacore.HDPrivateKey(temp.toHDPrivateKey().toString());
-    }
 
-    this.addressManager = new AddressManager(this.HDWallet, this.network);
-    this.initAddressManager();
-  }
+		this.utxoSet = new UtxoSet(this);
+		this.utxoSet.on("balance-update", this.updateBalance.bind(this));
 
-  initAddressManager(){
-    this.addressManager.on("new-address", detail=>{
-      //console.log("new-address", detail)
-      if(this.options.skipSyncBalance)
-        return
+		if (privKey && seedPhrase) {
+			this.HDWallet = new kaspacore.HDPrivateKey(privKey);
+			this.mnemonic = seedPhrase;
+		} else {
+			const temp = new Mnemonic(Mnemonic.Words.ENGLISH);
+			this.mnemonic = temp.toString();
+			this.HDWallet = new kaspacore.HDPrivateKey(temp.toHDPrivateKey().toString());
+		}
 
-      //console.log("new-address:detail", detail)
+		this.addressManager = new AddressManager(this.HDWallet, this.network);
+		this.initAddressManager();
+	}
 
-      const {address, type} = detail;
-      this.utxoSet.syncAddressesUtxos([address]);
-    })
-    this.addressManager.receiveAddress.next();
-  }
+	initAddressManager() {
+		this.addressManager.on("new-address", detail => {
+			//console.log("new-address", detail)
+			if (this.options.skipSyncBalance)
+				return
 
-  /**
-   * Set rpc provider
-   * @param rpc
-   */
-  setRPC(rpc:IRPC){
-    this.api.setRPC(rpc);
-  }
-  static _storage:typeof storageClasses.Storage;
-  static initRuntime() {
-    return kaspacore.initRuntime();
-  }
-  static debugLevel:number = 0;
-  static setDebugLevel(level:number){
-    logger.level = (level>0)?'info':'_';
-    this.debugLevel = level;
-    kaspacore.setDebugLevel(level);
-  }
+			//console.log("new-address:detail", detail)
 
-  /*
+			const {
+				address,
+				type
+			} = detail;
+			this.utxoSet.syncAddressesUtxos([address]);
+		})
+		this.addressManager.receiveAddress.next();
+	}
+
+	/**
+	 * Set rpc provider
+	 * @param rpc
+	 */
+	setRPC(rpc: IRPC) {
+		this.api.setRPC(rpc);
+	}
+	static _storage: typeof storageClasses.Storage;
+	static initRuntime() {
+		return kaspacore.initRuntime();
+	}
+	static debugLevel: number = 0;
+	static setDebugLevel(level: number) {
+		logger.level = (level > 0) ? 'info' : '_';
+		this.debugLevel = level;
+		kaspacore.setDebugLevel(level);
+	}
+
+	/*
   static setStorageType(type:StorageType){
-    storage.setType(type);
+	storage.setType(type);
   }
   static setStorageFolder(folder:string){
-    storage.setFolder(folder);
+	storage.setFolder(folder);
   }
   static setStorageFileName(fileName:string){
-    storage.setFileName(fileName);
+	storage.setFileName(fileName);
   }
   */
 
-  static setStoragePassword(password:string){
-    if(!this.storage)
-      throw new Error("Please init storage")
-    this.storage.setPassword(password); 
-  }
-  static get storage():typeof storageClasses.Storage|undefined{
-    return this._storage;
-  }
+	static setStoragePassword(password: string) {
+		if (!this.storage)
+			throw new Error("Please init storage")
+		this.storage.setPassword(password);
+	}
+	static get storage(): typeof storageClasses.Storage | undefined {
+		return this._storage;
+	}
 
-  static openFileStorage(fileName:string, password:string, folder:string=''){
-    let storage = CreateStorage();
-    if(folder)
-      storage.setFolder(folder);
-    storage.setFileName(fileName);
-    storage.setPassword(password);
-    this._storage = storage;
-  }
+	static openFileStorage(fileName: string, password: string, folder: string = '') {
+		let storage = CreateStorage();
+		if (folder)
+			storage.setFolder(folder);
+		storage.setFileName(fileName);
+		storage.setPassword(password);
+		this._storage = storage;
+	}
 
 
-  /**
+	/**
    * Queries API for address[] UTXOs. Adds UTXOs to UTXO set. Updates wallet balance.
    * @param addresses
    * /
   async updateUtxos(addresses: string[]): Promise<void> {
-    logger.log('info', `Getting utxos for ${addresses.length} addresses.`);
-    const utxoResults = await Promise.all(
-      addresses.map((address) => api.getUtxos(address))
-    );
-    addresses.forEach((address, i) => {
-      const { utxos } = utxoResults[i];
-      logger.log('info', `${address}: ${utxos.length} total UTXOs found.`);
-      this.utxoSet.utxoStorage[address] = utxos;
-      this.utxoSet.add(utxos, address);
-    });
+	logger.log('info', `Getting utxos for ${addresses.length} addresses.`);
+	const utxoResults = await Promise.all(
+	  addresses.map((address) => api.getUtxos(address))
+	);
+	addresses.forEach((address, i) => {
+	  const { utxos } = utxoResults[i];
+	  logger.log('info', `${address}: ${utxos.length} total UTXOs found.`);
+	  this.utxoSet.utxoStorage[address] = utxos;
+	  this.utxoSet.add(utxos, address);
+	});
   }
 
   /**
    * Queries API for address[] transactions. Adds tx to transactions storage. Also sorts the entire transaction set.
    * @param addresses
    */
-   /*
+	/*
   async updateTransactions(addresses: string[]): Promise<string[]> {
-    logger.log('info', `Getting transactions for ${addresses.length} addresses.`);
-    const addressesWithTx: string[] = [];
-    const txResults = await Promise.all(
-      addresses.map((address) => api.getTransactions(address))
-    );
-    addresses.forEach((address, i) => {
-      const { transactions } = txResults[i];
-      logger.log('info', `${address}: ${transactions.length} transactions found.`);
-      if (transactions.length !== 0) {
-        const confirmedTx = transactions.filter((tx:Api.Transaction) => tx.confirmations > 0);
-        this.transactionsStorage[address] = confirmedTx;
-        addressesWithTx.push(address);
-      }
-    });
-    // @ts-ignore
-    this.transactions = txParser(this.transactionsStorage, Object.keys(this.addressManager.all));
-    const pendingTxHashes = Object.keys(this.pending.transactions);
-    if (pendingTxHashes.length > 0) {
-      pendingTxHashes.forEach((hash) => {
-        if (this.transactions.map((tx) => tx.transactionHash).includes(hash)) {
-          this.deletePendingTx(hash);
-        }
-      });
-    }
-    const isActivityOnReceiveAddr =
-      this.transactionsStorage[this.addressManager.receiveAddress.current.address] !== undefined;
-    if (isActivityOnReceiveAddr) {
-      this.addressManager.receiveAddress.next();
-    }
-    return addressesWithTx;
+	logger.log('info', `Getting transactions for ${addresses.length} addresses.`);
+	const addressesWithTx: string[] = [];
+	const txResults = await Promise.all(
+	  addresses.map((address) => api.getTransactions(address))
+	);
+	addresses.forEach((address, i) => {
+	  const { transactions } = txResults[i];
+	  logger.log('info', `${address}: ${transactions.length} transactions found.`);
+	  if (transactions.length !== 0) {
+		const confirmedTx = transactions.filter((tx:Api.Transaction) => tx.confirmations > 0);
+		this.transactionsStorage[address] = confirmedTx;
+		addressesWithTx.push(address);
+	  }
+	});
+	// @ts-ignore
+	this.transactions = txParser(this.transactionsStorage, Object.keys(this.addressManager.all));
+	const pendingTxHashes = Object.keys(this.pending.transactions);
+	if (pendingTxHashes.length > 0) {
+	  pendingTxHashes.forEach((hash) => {
+		if (this.transactions.map((tx) => tx.transactionHash).includes(hash)) {
+		  this.deletePendingTx(hash);
+		}
+	  });
+	}
+	const isActivityOnReceiveAddr =
+	  this.transactionsStorage[this.addressManager.receiveAddress.current.address] !== undefined;
+	if (isActivityOnReceiveAddr) {
+	  this.addressManager.receiveAddress.next();
+	}
+	return addressesWithTx;
   }
   */
 
-  /**
-   * Queries API for address[] UTXOs. Adds tx to transactions storage. Also sorts the entire transaction set.
-   * @param addresses
-   */
-  async findUtxos(addresses: string[], debug=false): Promise<{
-    txID2Info:Map<string, {utxos: Api.Utxo[], address:string}>,
-    addressesWithUTXOs:string[]
-  }> {
-    logger.log('info', `Getting UTXOs for ${addresses.length} addresses.`);
-    
-    const utxosMap = await this.api.getUtxosByAddresses(addresses)
+	/**
+	 * Queries API for address[] UTXOs. Adds tx to transactions storage. Also sorts the entire transaction set.
+	 * @param addresses
+	 */
+	async findUtxos(addresses: string[], debug = false): Promise < {
+		txID2Info: Map < string,
+		{
+			utxos: Api.Utxo[],
+			address: string
+		} > ,
+		addressesWithUTXOs: string[]
+	} > {
+		logger.log('info', `Getting UTXOs for ${addresses.length} addresses.`);
 
-    const addressesWithUTXOs: string[] = [];
-    const txID2Info = new Map();
+		const utxosMap = await this.api.getUtxosByAddresses(addresses)
 
-    if(debug){
-      utxosMap.forEach((utxos, address)=>{
-       // utxos.sort((b, a)=> a.index-b.index)
-        utxos.map(t=>{
-          let info = txID2Info.get(t.transactionId);
-          if(!info){
-            info = {utxos:[], address};
-            txID2Info.set(t.transactionId, info);
-          }
-          info.utxos.push(t);
-        })
-      })
-    }
+		const addressesWithUTXOs: string[] = [];
+		const txID2Info = new Map();
 
-    utxosMap.forEach((utxos, address)=>{
-     // utxos.sort((b, a)=> a.index-b.index)
-      logger.log('info', `${address}: ${utxos.length} utxos found.+=+=+=+=+=+=+++++=======+===+====+====+====+`);
-      if (utxos.length !== 0) {
-        this.utxoSet.utxoStorage[address] = utxos;
-        this.utxoSet.add(utxos, address);
-        addressesWithUTXOs.push(address);
-      }
-    })
+		if (debug) {
+			utxosMap.forEach((utxos, address) => {
+				// utxos.sort((b, a)=> a.index-b.index)
+				utxos.map(t => {
+					let info = txID2Info.get(t.transactionId);
+					if (!info) {
+						info = {
+							utxos: [],
+							address
+						};
+						txID2Info.set(t.transactionId, info);
+					}
+					info.utxos.push(t);
+				})
+			})
+		}
 
-    const isActivityOnReceiveAddr =
-      this.utxoSet.utxoStorage[this.receiveAddress] !== undefined;
-    if (isActivityOnReceiveAddr) {
-      this.addressManager.receiveAddress.next();
-    }
-    return {addressesWithUTXOs, txID2Info};
-  }
+		utxosMap.forEach((utxos, address) => {
+			// utxos.sort((b, a)=> a.index-b.index)
+			logger.log('info', `${address}: ${utxos.length} utxos found.+=+=+=+=+=+=+++++=======+===+====+====+====+`);
+			if (utxos.length !== 0) {
+				this.utxoSet.utxoStorage[address] = utxos;
+				this.utxoSet.add(utxos, address);
+				addressesWithUTXOs.push(address);
+			}
+		})
 
-  /**
-   * Recalculates wallet balance.
-   */
-  updateBalance(): void {
-    this.balance = this.utxoSet.totalBalance - this.pending.amount;
-    const available = this.balance;
-    const pending = this.pending.amount;
-    const balance = available+pending;
-    this.emit("balance-update", {available,pending,balance}); // !!! TODO - BigNumber
-  }
+		const isActivityOnReceiveAddr =
+			this.utxoSet.utxoStorage[this.receiveAddress] !== undefined;
+		if (isActivityOnReceiveAddr) {
+			this.addressManager.receiveAddress.next();
+		}
+		return {
+			addressesWithUTXOs,
+			txID2Info
+		};
+	}
 
-  /**
-   * Updates the selected network
-   * @param network name of the network
-   */
-  async updateNetwork(network: SelectedNetwork): Promise<void> {
-    this.demolishWalletState(network.prefix);
-    this.network = network.prefix;
-    this.apiEndpoint = network.apiBaseUrl;
-  }
+	/**
+	 * Recalculates wallet balance.
+	 */
+	updateBalance(): void {
+		this.balance = this.utxoSet.totalBalance - this.pending.amount;
+		const available = this.balance;
+		const pending = this.pending.amount;
+		const balance = available + pending;
+		this.emit("balance-update", {
+			available,
+			pending,
+			balance
+		}); // !!! TODO - BigNumber
+	}
 
-  demolishWalletState(networkPrefix: Network = this.network): void {
-    this.utxoSet.clear();
-    this.addressManager = new AddressManager(this.HDWallet, networkPrefix);
-    this.pending.transactions = {};
-    this.transactions = [];
-    this.transactionsStorage = {};
-  }
+	/**
+	 * Updates the selected network
+	 * @param network name of the network
+	 */
+	async updateNetwork(network: SelectedNetwork): Promise < void > {
+		this.demolishWalletState(network.prefix);
+		this.network = network.prefix;
+		this.apiEndpoint = network.apiBaseUrl;
+	}
 
-  /**
-   * Derives receiveAddresses and changeAddresses and checks their transactions and UTXOs.
-   * @param threshold stop discovering after `threshold` addresses with no activity
-   */
-  async addressDiscovery(threshold = 20, debug = false): Promise<Map<string, {utxos: Api.Utxo[], address:string}>|null> {
-    let addressList:string[] = [];
-    let lastIndex = -1;
-    let debugInfo:Map<string, {utxos: Api.Utxo[], address:string}>|null = null;
-    const doDiscovery = async (
-      n: number,
-      deriveType: 'receive' | 'change',
-      offset: number
-    ): Promise<number> => {
-      const derivedAddresses = this.addressManager.getAddresses(n, deriveType, offset);
-      const addresses = derivedAddresses.map((obj) => obj.address);
-      addressList = [...addressList, ...addresses];
-      logger.log(
-        'info',
-        `Fetching ${deriveType} address data for derived indices ${JSON.stringify(
-          derivedAddresses.map((obj) => obj.index)
-        )}`
-      );
-      if(Wallet.debugLevel > 0)
-        logger.log('info', "addressDiscovery: findUtxos for addresses::", addresses)
-      const {addressesWithUTXOs, txID2Info} = await this.findUtxos(addresses, debug);
-      if(!debugInfo)
-        debugInfo = txID2Info;
-      if (addressesWithUTXOs.length === 0) {
-        // address discovery complete
-        const lastAddressIndexWithTx = offset - (threshold - n) - 1;
-        logger.log(
-          'info',
-          `${deriveType}Address discovery complete. Last activity on address #${lastAddressIndexWithTx}. No activity from ${deriveType}#${
-            lastAddressIndexWithTx + 1
-          }~${lastAddressIndexWithTx + threshold}.`
-        );
-        return lastAddressIndexWithTx;
-      }
-      // else keep doing discovery
-      const nAddressesLeft =
-        derivedAddresses
-          .filter((obj) => addressesWithUTXOs.includes(obj.address))
-          .reduce((prev, cur) => Math.max(prev, cur.index), 0) + 1;
-      return doDiscovery(nAddressesLeft, deriveType, offset + n);
-    };
-    const highestReceiveIndex = await doDiscovery(threshold, 'receive', 0);
-    const highestChangeIndex = await doDiscovery(threshold, 'change', 0);
-    this.addressManager.receiveAddress.advance(highestReceiveIndex + 1);
-    this.addressManager.changeAddress.advance(highestChangeIndex + 1);
-    logger.log(
-      'info',
-      `receive address index: ${highestReceiveIndex}; change address index: ${highestChangeIndex}`
-    );
-    this.runStateChangeHooks();
-    return debugInfo;
-  }
+	demolishWalletState(networkPrefix: Network = this.network): void {
+		this.utxoSet.clear();
+		this.addressManager = new AddressManager(this.HDWallet, networkPrefix);
+		this.pending.transactions = {};
+		this.transactions = [];
+		this.transactionsStorage = {};
+	}
 
-  // TODO: convert amount to sompis aka satoshis
-  // TODO: bn
-  /**
-   * Compose a serialized, signed transaction
-   * @param obj
-   * @param obj.toAddr To address in cashaddr format (e.g. kaspatest:qq0d6h0prjm5mpdld5pncst3adu0yam6xch4tr69k2)
-   * @param obj.amount Amount to send in sompis (100000000 (1e8) sompis in 1 KSP)
-   * @param obj.fee Fee for miners in sompis
-   * @param obj.changeAddrOverride Use this to override automatic change address derivation
-   * @throws if amount is above `Number.MAX_SAFE_INTEGER`
-   */
-  composeTx({
-    toAddr,
-    amount,
-    fee = DEFAULT_FEE,
-    changeAddrOverride,
-  }: TxSend & { changeAddrOverride?: string }): {
-    tx: kaspacore.Transaction;
-    id: string;
-    rawTx: string;
-    utxoIds: string[];
-    amount: number;
-    utxos: kaspacore.Transaction.UnspentOutput[];
-  } {
-    // TODO: bn!
-    amount = parseInt(amount as any);
-    if(Wallet.debugLevel > 0){
-      for(let i = 0; i < 100; i++)
-        console.log('Wallet transaction request for', amount, typeof amount);
-    }
-    //if (!Number.isSafeInteger(amount)) throw new Error(`Amount ${amount} is too large`);
-    const { utxos, utxoIds } = this.utxoSet.selectUtxos(amount + fee);
-    // @ts-ignore
-    const privKeys = utxos.reduce((prev: string[], cur) => {
-      return [this.addressManager.all[String(cur.address)], ...prev];
-    }, []);
+	/**
+	 * Derives receiveAddresses and changeAddresses and checks their transactions and UTXOs.
+	 * @param threshold stop discovering after `threshold` addresses with no activity
+	 */
+	async addressDiscovery(threshold = 20, debug = false): Promise < Map < string, {
+		utxos: Api.Utxo[],
+		address: string
+	} > | null > {
+		let addressList: string[] = [];
+		let lastIndex = -1;
+		let debugInfo: Map < string, {
+			utxos: Api.Utxo[],
+			address: string
+		} > | null = null;
+		const doDiscovery = async(
+			n: number,
+			deriveType: 'receive' | 'change',
+			offset: number
+		): Promise < number > => {
+			const derivedAddresses = this.addressManager.getAddresses(n, deriveType, offset);
+			const addresses = derivedAddresses.map((obj) => obj.address);
+			addressList = [...addressList, ...addresses];
+			logger.log(
+				'info',
+				`Fetching ${deriveType} address data for derived indices ${
+					JSON.stringify(
+		  				derivedAddresses.map((obj) => obj.index)
+					)}`
+			);
+			if (Wallet.debugLevel > 0)
+				logger.log('info', "addressDiscovery: findUtxos for addresses::", addresses)
+			const {addressesWithUTXOs, txID2Info} = await this.findUtxos(addresses, debug);
+			if (!debugInfo)
+				debugInfo = txID2Info;
+			if (addressesWithUTXOs.length === 0) {
+				// address discovery complete
+				const lastAddressIndexWithTx = offset - (threshold - n) - 1;
+				logger.log(
+					'info',
+					`${deriveType}Address discovery complete. Last activity on address #${lastAddressIndexWithTx}. No activity from ${deriveType}#${
+						lastAddressIndexWithTx + 1
+					  }~${lastAddressIndexWithTx + threshold}.`
+				);
+				return lastAddressIndexWithTx;
+			}
+			// else keep doing discovery
+			const nAddressesLeft =
+				derivedAddresses
+				.filter((obj) => addressesWithUTXOs.includes(obj.address))
+				.reduce((prev, cur) => Math.max(prev, cur.index), 0) + 1;
+			return doDiscovery(nAddressesLeft, deriveType, offset + n);
+		};
+		const highestReceiveIndex = await doDiscovery(threshold, 'receive', 0);
+		const highestChangeIndex = await doDiscovery(threshold, 'change', 0);
+		this.addressManager.receiveAddress.advance(highestReceiveIndex + 1);
+		this.addressManager.changeAddress.advance(highestChangeIndex + 1);
+		logger.log(
+			'info',
+			`receive address index: ${highestReceiveIndex}; change address index: ${highestChangeIndex}`
+		);
+		this.runStateChangeHooks();
+		return debugInfo;
+	}
 
-    //console.log("privKeys::::", privKeys)
+	// TODO: convert amount to sompis aka satoshis
+	// TODO: bn
+	/**
+	 * Compose a serialized, signed transaction
+	 * @param obj
+	 * @param obj.toAddr To address in cashaddr format (e.g. kaspatest:qq0d6h0prjm5mpdld5pncst3adu0yam6xch4tr69k2)
+	 * @param obj.amount Amount to send in sompis (100000000 (1e8) sompis in 1 KSP)
+	 * @param obj.fee Fee for miners in sompis
+	 * @param obj.changeAddrOverride Use this to override automatic change address derivation
+	 * @throws if amount is above `Number.MAX_SAFE_INTEGER`
+	 */
+	composeTx({
+		toAddr,
+		amount,
+		fee = DEFAULT_FEE,
+		changeAddrOverride,
+	}: TxSend & {
+		changeAddrOverride ? : string
+	}): {
+		tx: kaspacore.Transaction;
+		id: string;
+		rawTx: string;
+		utxoIds: string[];
+		amount: number;
+		utxos: kaspacore.Transaction.UnspentOutput[];
+	} {
+		// TODO: bn!
+		amount = parseInt(amount as any);
+		if (Wallet.debugLevel > 0) {
+			for (let i = 0; i < 100; i++)
+				console.log('Wallet transaction request for', amount, typeof amount);
+		}
+		//if (!Number.isSafeInteger(amount)) throw new Error(`Amount ${amount} is too large`);
+		const {	utxos, utxoIds } = this.utxoSet.selectUtxos(amount + fee);
+		// @ts-ignore
+		const privKeys = utxos.reduce((prev: string[], cur) => {
+			return [this.addressManager.all[String(cur.address)], ...prev];
+		}, []);
 
-    const changeAddr = changeAddrOverride || this.addressManager.changeAddress.next();
-    try {
-      const tx: kaspacore.Transaction = new kaspacore.Transaction()
-        .from(utxos)
-        .to(toAddr, amount)
-        .setVersion(0)
-        .fee(fee)
-        .change(changeAddr)
-        // @ts-ignore
-        .sign(privKeys, kaspacore.crypto.Signature.SIGHASH_ALL, 'schnorr');
-      this.utxoSet.inUse.push(...utxoIds);
-      this.pending.add(tx.id, { rawTx: tx.toString(), utxoIds, amount, to: toAddr, fee });
-      this.runStateChangeHooks();
-      //window.txxxx = tx;
-      return { tx: tx, id: tx.id, rawTx: tx.toString(), utxoIds, amount: amount + fee, utxos };
-    } catch (e) {
-      this.addressManager.changeAddress.reverse();
-      throw e;
-    }
-  }
+		//console.log("privKeys::::", privKeys)
 
-  /**
-   * Send a transaction. Returns transaction id.
-   * @param txParams
-   * @param txParams.toAddr To address in cashaddr format (e.g. kaspatest:qq0d6h0prjm5mpdld5pncst3adu0yam6xch4tr69k2)
-   * @param txParams.amount Amount to send in sompis (100000000 (1e8) sompis in 1 KSP)
-   * @param txParams.fee Fee for miners in sompis
-   * @throws `FetchError` if endpoint is down. API error message if tx error. Error if amount is too large to be represented as a javascript number.
-   */
-  async submitTransaction(txParams: TxSend, debug=false): Promise<string> {
-    const { id, tx, utxos } = this.composeTx(txParams);
-    if(debug || Wallet.debugLevel > 0){
-      console.log("sendTx:utxos", utxos)
-      console.log("::utxos[0].script::", utxos[0].script)
-      //console.log("::utxos[0].address::", utxos[0].address)
-    }
+		const changeAddr = changeAddrOverride || this.addressManager.changeAddress.next();
+		try {
+			const tx: kaspacore.Transaction = new kaspacore.Transaction()
+				.from(utxos)
+				.to(toAddr, amount)
+				.setVersion(0)
+				.fee(fee)
+				.change(changeAddr)
+				// @ts-ignore
+				.sign(privKeys, kaspacore.crypto.Signature.SIGHASH_ALL, 'schnorr');
 
-    const {nLockTime:lockTime, version} = tx;
-    //each input have script version's 2 bytes, which kaspa dont count;
-    const txSize = tx.toBuffer().length-tx.inputs.length*2;
-    const fee = Math.max(txSize*this.defaultFee, txParams.fee);
-    if(fee > txParams.fee)
-      throw new Error(`Minimum fee required for this transaction is ${fee}`);
-    if(Wallet.debugLevel > 0)
-      console.log("composeTx:tx", "txSize:", txSize)
+			this.utxoSet.inUse.push(...utxoIds);
+			this.pending.add(tx.id, {
+				rawTx: tx.toString(),
+				utxoIds,
+				amount,
+				to: toAddr,
+				fee
+			});
 
+			this.runStateChangeHooks();
+			//window.txxxx = tx;
+			return {
+				tx: tx,
+				id: tx.id,
+				rawTx: tx.toString(),
+				utxoIds,
+				amount: amount + fee,
+				utxos
+			};
+		} catch (e) {
+			this.addressManager.changeAddress.reverse();
+			throw e;
+		}
+	}
 
-    const inputs: RPC.TransactionInput[] = tx.inputs.map((input:kaspacore.Transaction.Input)=>{
-      //console.log("prevTxId", input.prevTxId.toString("hex"))
-      
-      if(debug || Wallet.debugLevel > 0){
-        //@ts-ignore
-        console.log("input.script.inspect", input.script.inspect())
-      }
-      return {
-        previousOutpoint:{
-          transactionId: input.prevTxId.toString("hex"),
-          index: input.outputIndex
-        },
-        //@ts-ignore
-        signatureScript: input.script.toBuffer().toString("hex"),
-        sequence: input.sequenceNumber
-      };
-    })
+	/**
+	 * Send a transaction. Returns transaction id.
+	 * @param txParams
+	 * @param txParams.toAddr To address in cashaddr format (e.g. kaspatest:qq0d6h0prjm5mpdld5pncst3adu0yam6xch4tr69k2)
+	 * @param txParams.amount Amount to send in sompis (100000000 (1e8) sompis in 1 KSP)
+	 * @param txParams.fee Fee for miners in sompis
+	 * @throws `FetchError` if endpoint is down. API error message if tx error. Error if amount is too large to be represented as a javascript number.
+	 */
+	async submitTransaction(txParams: TxSend, debug = false): Promise < string > {
+		const {id, tx, utxos} = this.composeTx(txParams);
 
-    const outputs: RPC.TransactionOutput[] = tx.outputs.map((output:kaspacore.Transaction.Output)=>{
-      return {
-        amount: output.satoshis,
-        scriptPublicKey: {
-          //@ts-ignore
-          scriptPublicKey: output.script.toBuffer().toString("hex"),
-          version: 0
-        }
-      }
-    })
-    
-    //const payloadStr = "0000000000000000000000000000000";
-    //const payload = Buffer.from(payloadStr).toString("base64");
-    //console.log("payload-hex:", Buffer.from(payloadStr).toString("hex"))
-    //@ ts-ignore
-    //const payloadHash = kaspacore.crypto.Hash.sha256sha256(Buffer.from(payloadStr));
-    const rpcTX: RPC.SubmitTransactionRequest = {
-      transaction: {
-        version,
-        inputs,
-        outputs,
-        lockTime,
-        //
-        //payload:'f00f00000000000000001976a914784bf4c2562f38fe0c49d1e0538cee4410d37e0988ac',
-        payloadHash:'0000000000000000000000000000000000000000000000000000000000000000',
-        //payloadHash:'afe7fc6fe3288e79f9a0c05c22c1ead2aae29b6da0199d7b43628c2588e296f9',
-        //
-        subnetworkId: this.subnetworkId,//Buffer.from(this.subnetworkId, "hex").toString("base64"),
-        fee,
-        //gas: 0
-      }
-    }
-    if(Wallet.debugLevel > 0){
-      console.log("rpcTX", JSON.stringify(rpcTX, null, "  "))
-      console.log("rpcTX", JSON.stringify(rpcTX))
-    }
+		if (debug || Wallet.debugLevel > 0) {
+			console.log("sendTx:utxos", utxos)
+			console.log("::utxos[0].script::", utxos[0].script)
+				//console.log("::utxos[0].address::", utxos[0].address)
+		}
 
-    try {
-      let result:string = await this.api.submitTransaction(rpcTX);
-      console.log("submitTransaction:result", result, id)
-      return result;
-    } catch (e) {
-      this.undoPendingTx(id);
-      throw e;
-    }
-  }
+		const {nLockTime: lockTime, version } = tx;
 
-  /*
-  async updateState(): Promise<void> {
-    const activeAddrs = await this.updateTransactions(this.addressManager.shouldFetch);
-    await this.updateUtxos(activeAddrs);
-    this.runStateChangeHooks();
-  }
-  */
-
-  undoPendingTx(id: string): void {
-    const { utxoIds } = this.pending.transactions[id];
-    delete this.pending.transactions[id];
-    this.utxoSet.release(utxoIds);
-    this.addressManager.changeAddress.reverse();
-    this.runStateChangeHooks();
-  }
-
-  /**
-   * After we see the transaction in the API results, delete it from our pending list.
-   * @param id The tx hash
-   */
-  deletePendingTx(id: string): void {
-    // undo + delete old utxos
-    const { utxoIds } = this.pending.transactions[id];
-    delete this.pending.transactions[id];
-    this.utxoSet.remove(utxoIds);
-  }
-
-  runStateChangeHooks(): void {
-    this.utxoSet.updateUtxoBalance();
-    this.updateBalance();
-  }
-
-  get cache() {
-    return {
-      pendingTx: this.pending.transactions,
-      utxos: {
-        utxoStorage: this.utxoSet.utxoStorage,
-        inUse: this.utxoSet.inUse,
-      },
-      transactionsStorage: this.transactionsStorage,
-      addresses: {
-        receiveCounter: this.addressManager.receiveAddress.counter,
-        changeCounter: this.addressManager.changeAddress.counter,
-      },
-    };
-  }
-
-  restoreCache(cache: WalletCache): void {
-    this.pending.transactions = cache.pendingTx;
-    this.utxoSet.utxoStorage = cache.utxos.utxoStorage;
-    this.utxoSet.inUse = cache.utxos.inUse;
-    Object.entries(this.utxoSet.utxoStorage).forEach(([addr, utxos]: [string, Api.Utxo[]]) => {
-      this.utxoSet.add(utxos, addr);
-    });
-    this.transactionsStorage = cache.transactionsStorage;
-    this.addressManager.getAddresses(cache.addresses.receiveCounter + 1, 'receive');
-    this.addressManager.getAddresses(cache.addresses.changeCounter + 1, 'change');
-    this.addressManager.receiveAddress.advance(cache.addresses.receiveCounter - 1);
-    this.addressManager.changeAddress.advance(cache.addresses.changeCounter);
-    // @ts-ignore
-    this.transactions = txParser(this.transactionsStorage, Object.keys(this.addressManager.all));
-    this.runStateChangeHooks();
-  }
+		//each input have script version's 2 bytes, which kaspa dont count;
+		const txSize = tx.toBuffer().length - tx.inputs.length * 2;
+		const fee = Math.max(txSize * this.defaultFee, txParams.fee);
+		if (fee > txParams.fee)
+			throw new Error(`Minimum fee required for this transaction is ${fee}`);
+		if (Wallet.debugLevel > 0)
+			console.log("composeTx:tx", "txSize:", txSize)
 
 
-  getVirtualSelectedParentBlueScore(){
-    return this.api.getVirtualSelectedParentBlueScore();
-  }
+		const inputs: RPC.TransactionInput[] = tx.inputs.map((input: kaspacore.Transaction.Input) => {
+			//console.log("prevTxId", input.prevTxId.toString("hex"))
 
-  async syncVirtualSelectedParentBlueScore(){
-    let {blueScore} = await this.getVirtualSelectedParentBlueScore();
-    this.blueScore = blueScore;
-    this.emit("blue-score-changed", {blueScore})
-    this.api.subscribeVirtualSelectedParentBlueScoreChanged((result)=>{
-      let {virtualSelectedParentBlueScore} = result;
-      this.blueScore = virtualSelectedParentBlueScore;
-      this.emit("blue-score-changed", {blueScore:virtualSelectedParentBlueScore})
-    });
-  }
+			if (debug || Wallet.debugLevel > 0) {
+				//@ts-ignore
+				console.log("input.script.inspect", input.script.inspect())
+			}
 
-  /**
-   *  Converts a mnemonic to a new wallet.
-   * @param seedPhrase The 12 word seed phrase.
-   * @returns new Wallet
-   */
-  static fromMnemonic(seedPhrase: string, networkOptions: NetworkOptions, options:WalletOptions={}): Wallet {
-    if(!networkOptions || !networkOptions.network)
-      throw new Error(`fromMnemonic(seedPhrase,networkOptions): missing network argument`);
-    const privKey = new Mnemonic(seedPhrase.trim()).toHDPrivateKey().toString();
-    const wallet = new this(privKey, seedPhrase, networkOptions, options);
-    return wallet;
-  }
+			return {
+				previousOutpoint: {
+					transactionId: input.prevTxId.toString("hex"),
+					index: input.outputIndex
+				},
+				//@ts-ignore
+				signatureScript: input.script.toBuffer().toString("hex"),
+				sequence: input.sequenceNumber
+			};
+		})
 
-  /**
-   * Creates a new Wallet from encrypted wallet data.
-   * @param password the password the user encrypted their seed phrase with
-   * @param encryptedMnemonic the encrypted seed phrase from local storage
-   * @throws Will throw "Incorrect password" if password is wrong
-   */
-  static async import(password: string, encryptedMnemonic: string, networkOptions: NetworkOptions, options:WalletOptions={}): Promise<Wallet> {
-    const decrypted = await passworder.decrypt(password, encryptedMnemonic);
-    const savedWallet = JSON.parse(decrypted) as WalletSave;
-    const myWallet = new this(savedWallet.privKey, savedWallet.seedPhrase, networkOptions, options);
-    return myWallet;
-  }
+		const outputs: RPC.TransactionOutput[] = tx.outputs.map((output: kaspacore.Transaction.Output) => {
+			return {
+				amount: output.satoshis,
+				scriptPublicKey: {
+					//@ts-ignore
+					scriptPublicKey: output.script.toBuffer().toString("hex"),
+					version: 0
+				}
+			}
+		})
 
-  /**
-   * Generates encrypted wallet data.
-   * @param password user's chosen password
-   * @returns Promise that resolves to object-like string. Suggested to store as string for .import().
-   */
-  async export(password: string): Promise<string> {
-    const savedWallet: WalletSave = {
-      privKey: this.HDWallet.toString(),
-      seedPhrase: this.mnemonic,
-    };
-    return passworder.encrypt(password, JSON.stringify(savedWallet));
-  }
+		//const payloadStr = "0000000000000000000000000000000";
+		//const payload = Buffer.from(payloadStr).toString("base64");
+		//console.log("payload-hex:", Buffer.from(payloadStr).toString("hex"))
+		//@ ts-ignore
+		//const payloadHash = kaspacore.crypto.Hash.sha256sha256(Buffer.from(payloadStr));
+		const rpcTX: RPC.SubmitTransactionRequest = {
+			transaction: {
+				version,
+				inputs,
+				outputs,
+				lockTime,
+				//
+				//payload:'f00f00000000000000001976a914784bf4c2562f38fe0c49d1e0538cee4410d37e0988ac',
+				payloadHash: '0000000000000000000000000000000000000000000000000000000000000000',
+				//payloadHash:'afe7fc6fe3288e79f9a0c05c22c1ead2aae29b6da0199d7b43628c2588e296f9',
+				//
+				subnetworkId: this.subnetworkId, //Buffer.from(this.subnetworkId, "hex").toString("base64"),
+				fee,
+				//gas: 0
+			}
+		}
+		if (Wallet.debugLevel > 0) {
+			console.log("rpcTX", JSON.stringify(rpcTX, null, "  "))
+			console.log("rpcTX", JSON.stringify(rpcTX))
+		}
+
+		try {
+			let result: string = await this.api.submitTransaction(rpcTX);
+			console.log("submitTransaction:result", result, id)
+			return result;
+		} catch (e) {
+			this.undoPendingTx(id);
+			throw e;
+		}
+	}
+
+	undoPendingTx(id: string): void {
+		const {
+			utxoIds
+		} = this.pending.transactions[id];
+		delete this.pending.transactions[id];
+		this.utxoSet.release(utxoIds);
+		this.addressManager.changeAddress.reverse();
+		this.runStateChangeHooks();
+	}
+
+	/**
+	 * After we see the transaction in the API results, delete it from our pending list.
+	 * @param id The tx hash
+	 */
+	deletePendingTx(id: string): void {
+		// undo + delete old utxos
+		const {
+			utxoIds
+		} = this.pending.transactions[id];
+		delete this.pending.transactions[id];
+		this.utxoSet.remove(utxoIds);
+	}
+
+	runStateChangeHooks(): void {
+		this.utxoSet.updateUtxoBalance();
+		this.updateBalance();
+	}
+
+	get cache() {
+		return {
+			pendingTx: this.pending.transactions,
+			utxos: {
+				utxoStorage: this.utxoSet.utxoStorage,
+				inUse: this.utxoSet.inUse,
+			},
+			transactionsStorage: this.transactionsStorage,
+			addresses: {
+				receiveCounter: this.addressManager.receiveAddress.counter,
+				changeCounter: this.addressManager.changeAddress.counter,
+			},
+		};
+	}
+
+	restoreCache(cache: WalletCache): void {
+		this.pending.transactions = cache.pendingTx;
+		this.utxoSet.utxoStorage = cache.utxos.utxoStorage;
+		this.utxoSet.inUse = cache.utxos.inUse;
+		Object.entries(this.utxoSet.utxoStorage).forEach(([addr, utxos]: [string, Api.Utxo[]]) => {
+			this.utxoSet.add(utxos, addr);
+		});
+		this.transactionsStorage = cache.transactionsStorage;
+		this.addressManager.getAddresses(cache.addresses.receiveCounter + 1, 'receive');
+		this.addressManager.getAddresses(cache.addresses.changeCounter + 1, 'change');
+		this.addressManager.receiveAddress.advance(cache.addresses.receiveCounter - 1);
+		this.addressManager.changeAddress.advance(cache.addresses.changeCounter);
+		// @ts-ignore
+		this.transactions = txParser(this.transactionsStorage, Object.keys(this.addressManager.all));
+		this.runStateChangeHooks();
+	}
+
+
+	getVirtualSelectedParentBlueScore() {
+		return this.api.getVirtualSelectedParentBlueScore();
+	}
+
+	async syncVirtualSelectedParentBlueScore() {
+		let {
+			blueScore
+		} = await this.getVirtualSelectedParentBlueScore();
+		this.blueScore = blueScore;
+		this.emit("blue-score-changed", {
+			blueScore
+		})
+		this.api.subscribeVirtualSelectedParentBlueScoreChanged((result) => {
+			let {
+				virtualSelectedParentBlueScore
+			} = result;
+			this.blueScore = virtualSelectedParentBlueScore;
+			this.emit("blue-score-changed", {
+				blueScore: virtualSelectedParentBlueScore
+			})
+		});
+	}
+
+	/**
+	 *  Converts a mnemonic to a new wallet.
+	 * @param seedPhrase The 12 word seed phrase.
+	 * @returns new Wallet
+	 */
+	static fromMnemonic(seedPhrase: string, networkOptions: NetworkOptions, options: WalletOptions = {}): Wallet {
+		if (!networkOptions || !networkOptions.network)
+			throw new Error(`fromMnemonic(seedPhrase,networkOptions): missing network argument`);
+		const privKey = new Mnemonic(seedPhrase.trim()).toHDPrivateKey().toString();
+		const wallet = new this(privKey, seedPhrase, networkOptions, options);
+		return wallet;
+	}
+
+	/**
+	 * Creates a new Wallet from encrypted wallet data.
+	 * @param password the password the user encrypted their seed phrase with
+	 * @param encryptedMnemonic the encrypted seed phrase from local storage
+	 * @throws Will throw "Incorrect password" if password is wrong
+	 */
+	static async import (password: string, encryptedMnemonic: string, networkOptions: NetworkOptions, options: WalletOptions = {}): Promise < Wallet > {
+		const decrypted = await passworder.decrypt(password, encryptedMnemonic);
+		const savedWallet = JSON.parse(decrypted) as WalletSave;
+		const myWallet = new this(savedWallet.privKey, savedWallet.seedPhrase, networkOptions, options);
+		return myWallet;
+	}
+
+	/**
+	 * Generates encrypted wallet data.
+	 * @param password user's chosen password
+	 * @returns Promise that resolves to object-like string. Suggested to store as string for .import().
+	 */
+	async export (password: string): Promise < string > {
+		const savedWallet: WalletSave = {
+			privKey: this.HDWallet.toString(),
+			seedPhrase: this.mnemonic,
+		};
+		return passworder.encrypt(password, JSON.stringify(savedWallet));
+	}
 }
 
 export {Wallet}
