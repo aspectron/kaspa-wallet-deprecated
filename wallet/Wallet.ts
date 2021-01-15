@@ -32,6 +32,7 @@ import { KaspaAPI } from './apiHelpers';
 //import { txParser } from './txParser';
 import { DEFAULT_FEE, DEFAULT_NETWORK } from '../config.json';
 import {EventTargetImpl} from './event-target-impl';
+logger.level = '_';
 
 /** Class representing an HDWallet with derivable child addresses */
 class Wallet extends EventTargetImpl{
@@ -187,6 +188,12 @@ class Wallet extends EventTargetImpl{
   static _storage:typeof storageClasses.Storage;
   static initRuntime() {
     return kaspacore.initRuntime();
+  }
+  static debugLevel:number = 0;
+  static setDebugLevel(level:number){
+    logger.level = (level>0)?'info':'_';
+    this.debugLevel = level;
+    kaspacore.setDebugLevel(level);
   }
 
   /*
@@ -371,7 +378,8 @@ class Wallet extends EventTargetImpl{
           derivedAddresses.map((obj) => obj.index)
         )}`
       );
-      console.log("addressDiscovery: findUtxos for addresses::", addresses)
+      if(Wallet.debugLevel > 0)
+        logger.log('info', "addressDiscovery: findUtxos for addresses::", addresses)
       const {addressesWithUTXOs, txID2Info} = await this.findUtxos(addresses, debug);
       if(!debugInfo)
         debugInfo = txID2Info;
@@ -431,9 +439,11 @@ class Wallet extends EventTargetImpl{
   } {
     // TODO: bn!
     amount = parseInt(amount as any);
-    for(let i = 0; i < 100; i++)
-      console.log('Wallet transaction request for', amount, typeof amount);
-//    if (!Number.isSafeInteger(amount)) throw new Error(`Amount ${amount} is too large`);
+    if(Wallet.debugLevel > 0){
+      for(let i = 0; i < 100; i++)
+        console.log('Wallet transaction request for', amount, typeof amount);
+    }
+    //if (!Number.isSafeInteger(amount)) throw new Error(`Amount ${amount} is too large`);
     const { utxos, utxoIds } = this.utxoSet.selectUtxos(amount + fee);
     // @ts-ignore
     const privKeys = utxos.reduce((prev: string[], cur) => {
@@ -473,7 +483,7 @@ class Wallet extends EventTargetImpl{
    */
   async submitTransaction(txParams: TxSend, debug=false): Promise<string> {
     const { id, tx, utxos } = this.composeTx(txParams);
-    if(debug){
+    if(debug || Wallet.debugLevel > 0){
       console.log("sendTx:utxos", utxos)
       console.log("::utxos[0].script::", utxos[0].script)
       //console.log("::utxos[0].address::", utxos[0].address)
@@ -486,7 +496,7 @@ class Wallet extends EventTargetImpl{
     const inputs: RPC.TransactionInput[] = tx.inputs.map((input:kaspacore.Transaction.Input)=>{
       //console.log("prevTxId", input.prevTxId.toString("hex"))
       
-      if(debug){
+      if(debug || Wallet.debugLevel > 0){
         //@ts-ignore
         console.log("input.script.inspect", input.script.inspect())
       }
@@ -507,7 +517,7 @@ class Wallet extends EventTargetImpl{
         scriptPublicKey: {
           //@ts-ignore
           scriptPublicKey: output.script.toBuffer().toString("hex"),
-          version: 1
+          version: 0
         }
       }
     })
@@ -524,16 +534,20 @@ class Wallet extends EventTargetImpl{
         outputs,
         lockTime,
         //
-        //payload,
-        payloadHash:'0000000000000000000000000000000000000000000000000000000000000000',//Buffer.from('000', "hex").toString("hex"),
+        //payload:'f00f00000000000000001976a914784bf4c2562f38fe0c49d1e0538cee4410d37e0988ac',
+        payloadHash:'0000000000000000000000000000000000000000000000000000000000000000',
+        //payloadHash:'afe7fc6fe3288e79f9a0c05c22c1ead2aae29b6da0199d7b43628c2588e296f9',
         //
         subnetworkId: this.subnetworkId,//Buffer.from(this.subnetworkId, "hex").toString("base64"),
-        fee: txParams.fee
+        fee: txParams.fee,
+        //gas: 0
       }
     }
-    console.log("rpcTX", JSON.stringify(rpcTX, null, "  "))
-    console.log("rpcTX", JSON.stringify(rpcTX))
-    //console.log("rpcTX.transaction.inputs[0]", rpcTX.transaction.inputs[0])
+    if(Wallet.debugLevel > 0){
+      console.log("rpcTX", JSON.stringify(rpcTX, null, "  "))
+      console.log("rpcTX", JSON.stringify(rpcTX))
+    }
+
     try {
       let result:string = await this.api.submitTransaction(rpcTX);
       console.log("submitTransaction:result", result, id)
