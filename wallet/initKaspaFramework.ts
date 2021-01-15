@@ -19,8 +19,8 @@ export const initKaspaFramework = async () => {
     });
   });
 
-  console.log("STARTING INIT");
+  // console.log("Kaspa - framework: init");
   await Wallet.initRuntime();
-  console.log("FINISHING INIT");
+  // console.log("Kaspa - framework: ready");
 };
 
