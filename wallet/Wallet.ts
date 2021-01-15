@@ -65,10 +65,11 @@ class Wallet extends EventTargetImpl{
   // @ts-ignore
   api: KaspaAPI; //new KaspaAPI();
 
+  // TODO - integrate with Kaspacore-lib
   static networkTypes:Object = {
-    //kaspa : { port : 16110, network : 'kaspa' },
-    //kaspatest : { port : 16210, network : 'kaspatest' },
-    //kaspasim : { port : 16510, network : 'kaspasim' },
+    kaspa : { port : 16110, network : 'kaspa' },
+    kaspatest : { port : 16210, network : 'kaspatest' },
+    kaspasim : { port : 16510, network : 'kaspasim' },
     kaspadev : { port : 16610, network : 'kaspadev' }
   }
 
