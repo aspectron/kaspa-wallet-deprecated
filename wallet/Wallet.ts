@@ -76,7 +76,7 @@ class Wallet extends EventTargetImpl{
    * Default fee
    */
 
-  defaultFee: number = 1000;
+  defaultFee: number = 1;//per byte
 
   subnetworkId:string = "0000000000000000000000000000000000000000";//hex string
 
@@ -490,7 +490,13 @@ class Wallet extends EventTargetImpl{
     }
 
     const {nLockTime:lockTime, version} = tx;
-    //console.log("composeTx:tx", tx.inputs, tx.outputs)
+    //each input have script version's 2 bytes, which kaspa dont count;
+    const txSize = tx.toBuffer().length-tx.inputs.length*2;
+    const fee = Math.max(txSize*this.defaultFee, txParams.fee);
+    if(fee > txParams.fee)
+      throw new Error(`Minimum fee required for this transaction is ${fee}`);
+    if(Wallet.debugLevel > 0)
+      console.log("composeTx:tx", "txSize:", txSize)
 
 
     const inputs: RPC.TransactionInput[] = tx.inputs.map((input:kaspacore.Transaction.Input)=>{
@@ -539,7 +545,7 @@ class Wallet extends EventTargetImpl{
         //payloadHash:'afe7fc6fe3288e79f9a0c05c22c1ead2aae29b6da0199d7b43628c2588e296f9',
         //
         subnetworkId: this.subnetworkId,//Buffer.from(this.subnetworkId, "hex").toString("base64"),
-        fee: txParams.fee,
+        fee,
         //gas: 0
       }
     }

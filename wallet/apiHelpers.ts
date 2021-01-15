@@ -121,15 +121,15 @@ class KaspaAPI {
 			return missingRPCProviderError();
 
 		const cb:RPC.callback<RPC.UtxosChangedNotification> = (res)=>{
-			//console.log("UtxosChangedNotification:", res)
+			console.log("UtxosChangedNotification:", res)
 			const added = this.buildUtxoMap(res.added);
 			const removed = this.buildOutpointMap(res.removed);
 			callback(added, removed);
 		}
 		
 		let p = this.rpc.subscribeUtxosChanged(addresses, cb)
-		if(this._utxosChangedSubUid)
-			this.rpc.unSubscribeUtxosChanged(this._utxosChangedSubUid);
+		
+		let {_utxosChangedSubUid} = this;
 
 		let {uid} = p;
 		this._utxosChangedSubUid = uid;
@@ -137,6 +137,9 @@ class KaspaAPI {
 		const response = await p.catch((e) => {
 			throw new ApiError(`API connection error. ${e}`);
 		})
+
+		if(_utxosChangedSubUid)
+			this.rpc.unSubscribeUtxosChanged(_utxosChangedSubUid);
 		
 		
 		if (response.error)
