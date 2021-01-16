@@ -14,6 +14,7 @@ export interface WalletOpt{
   utxoSyncThrottleDelay:number;
   syncOnce:boolean;
   addressDiscoveryCount:number;
+  logLevel:string;
 }
 
 export interface WalletOptions{
@@ -21,6 +22,7 @@ export interface WalletOptions{
   utxoSyncThrottleDelay?:number;
   addressDiscoveryCount?:number;
   syncOnce?:boolean;
+  logLevel?:string;
 }
 
 export interface NetworkOptions{

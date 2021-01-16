@@ -190,12 +190,13 @@ export class UtxoSet extends EventTargetImpl {
 			return address;
 		}).filter(address => address) as string[];
 
-		if (!newAddresses.length)
+		//in sync process addressDiscovery calls findUtxos
+		if (!newAddresses.length || this.wallet.syncInProggress)
 			return
 
 		await this.wallet.findUtxos(newAddresses);
 
-		if(!this.wallet.syncOnce && !this.wallet.syncInProggress)
+		if(!this.wallet.syncOnce)
 			await this.utxoSubscribe();
 	}
 

@@ -1,6 +1,5 @@
 import { Api, IRPC, RPC } from 'custom-types';
-//let RPC:IRPC;
-
+import {EventTargetImpl, EventListener} from './event-target-impl';
 class ApiError extends Error {
 	// eslint-disable-next-line @typescript-eslint/no-explicit-any
 	constructor(...args: any[]) {
@@ -15,17 +14,10 @@ const missingRPCProviderError = ()=>{
 		Wallet.setRPC(rpc_provider).`);
 }
 
-// export const setRPC = (rpc:IRPC)=>{
-// 	RPC = rpc;
-// }
-
-// export const getRPC = ():IRPC=>{
-// 	return RPC;
-// }
-
-class KaspaAPI {
+class KaspaAPI extends EventTargetImpl{
 
 	rpc?:IRPC;
+	isConnected:boolean = false;
 	_utxosChangedSubUid:string|undefined;
 
 	// constructor(rpc:IRPC) {
@@ -34,6 +26,12 @@ class KaspaAPI {
 
 	setRPC(rpc:IRPC) {
 		this.rpc = rpc;
+		rpc.onConnect(()=>{
+			this._setConnected(true);
+		})
+		rpc.onDisconnect(()=>{
+			this._setConnected(false);
+		})
 	}
 	
 	getRPC():IRPC {
@@ -41,6 +39,19 @@ class KaspaAPI {
 		return this.rpc;
 	}
 	
+	on(type:string, callback:EventListener){
+		super.on(type, callback);
+		if(type == 'connect' && this.isConnected){
+			//console.log("api.on->connect", this.isConnected, callback)
+			callback({}, {type, detail:{}, defaultPrevented:false});
+		}
+
+	}
+	_setConnected(isConnected:boolean){
+		//console.log("api._setConnected", isConnected)
+		this.isConnected = isConnected;
+		this.emit(isConnected?"connect":'disconnect');
+	}
 
 	buildUtxoMap(entries:RPC.UTXOsByAddressesEntry[]):Map<string, Api.Utxo[]> {
 		let result:Map<string, Api.Utxo[]> = new Map();

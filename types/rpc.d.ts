@@ -238,4 +238,7 @@ export interface IRPC {
 	unSubscribeUtxosChanged(uid:string='');
 
 	request?(method:string, data:any);
+
+	onConnect(cb:Function):void;
+	onDisconnect(cb:Function):void;
 }

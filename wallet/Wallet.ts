@@ -182,24 +182,24 @@ class Wallet extends EventTargetImpl {
 	 */
 	constructor(privKey: string, seedPhrase: string, networkOptions: NetworkOptions, options: WalletOptions = {}) {
 		super();
-
+		this.logger = CreateLogger();
 		this.api = new KaspaAPI();
 
 		let defaultOpt = {
 			skipSyncBalance: false,
 			utxoSyncThrottleDelay: 100,
 			syncOnce: false,
-			addressDiscoveryCount: 128
+			addressDiscoveryCount: 128,
+			logLevel:'none'
 		};
+		// console.log("CREATING WALLET FOR NETWORK", this.network);
+		this.options = {...defaultOpt,	...options};
+		this.setLogLevel(this.options.logLevel); 
 
 		this.network = networkOptions.network;
 		this.defaultFee = networkOptions.defaultFee || this.defaultFee;
 		if (networkOptions.rpc)
 			this.api.setRPC(networkOptions.rpc);
-
-		// console.log("CREATING WALLET FOR NETWORK", this.network);
-		this.options = {...defaultOpt,	...options};
-
 
 		this.utxoSet = new UtxoSet(this);
 		//this.utxoSet.on("balance-update", this.updateBalance.bind(this));
@@ -216,6 +216,26 @@ class Wallet extends EventTargetImpl {
 		this.addressManager = new AddressManager(this.HDWallet, this.network);
 		//this.initAddressManager();
 		//this.sync(this.options.syncOnce);
+		this.api.on("connect", ()=>{
+			this.onApiConnect()
+		})
+		this.api.on("disconnect", ()=>{
+			this.onApiDisconnect();
+		})
+	}
+
+	async onApiConnect(){
+		this.logger.info("api-connect")
+		this.emit("api-connect")
+		if(this.syncSignal){//if sync was called
+			this.logger.info("re-sync started .......................")
+			await this.sync(this.syncOnce)
+		}
+	}
+
+	onApiDisconnect(){
+		this.logger.info("api-disconnect")
+		this.emit("api-disconnect")
 	}
 
 	async update(syncOnce:boolean=true){
@@ -236,7 +256,7 @@ class Wallet extends EventTargetImpl {
 		syncOnce = !!syncOnce;
 
 		this.syncInProggress = true;
-		this.logger.info(`sync ............ started, syncOnce:%{syncOnce}`)
+		this.logger.info(`sync ............ started, syncOnce:${syncOnce}`)
 
 		//if last time syncOnce was OFF we have subscriptions to utxo-change
 		if(this.syncOnce === false && syncOnce){
@@ -772,7 +792,7 @@ class Wallet extends EventTargetImpl {
 	}
 
 
-	logger: Logger = CreateLogger();
+	logger: Logger;
 	loggerLevel: number = 0;
 	setLogLevel(level: number|string) {
 		this.logger.level = level;
