@@ -223,7 +223,14 @@ class Wallet extends EventTargetImpl {
 	}
 
 	syncOnce:boolean|undefined;
+	syncSignal: helper.DeferedPromise|undefined;
+	waitOrSync(){
+		if(this.syncSignal)
+			return this.syncSignal;
+		return this.sync();
+	}
 	async sync(syncOnce:boolean|undefined=undefined){
+		this.syncSignal = helper.Defered();
 		if(syncOnce === undefined)
 			syncOnce = this.options.syncOnce;
 		syncOnce = !!syncOnce;
@@ -255,6 +262,7 @@ class Wallet extends EventTargetImpl {
 	    this.emitBalance();
 
 	    this.logger.info(`sync ............ finished`)
+	    this.syncSignal.resolve();
 	}
 
 	getVirtualSelectedParentBlueScore() {
@@ -596,6 +604,7 @@ class Wallet extends EventTargetImpl {
 	 * @throws `FetchError` if endpoint is down. API error message if tx error. Error if amount is too large to be represented as a javascript number.
 	 */
 	async submitTransaction(txParams: TxSend, debug = false): Promise < string > {
+		await this.waitOrSync();
 		const {id, tx, utxos, utxoIds, rawTx, amount, toAddr} = this.composeTx(txParams);
 
 		if (debug || this.loggerLevel > 0) {
