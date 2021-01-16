@@ -83,7 +83,11 @@ export class UtxoSet extends EventTargetImpl {
 			}
 		});
 		if (utxoIds.length) {
-			this.logger.log('info', `Added ${utxoIds.length} UTXOs to UtxoSet.`);
+      if(this.logger.level == 'debug') {
+          console.log(`adding ${utxoIds.length} UTXO entries:\n`,utxoIds);
+      }
+      else
+        this.logger.verbose(`adding ${utxoIds.length} UTXO entries.`);
 			// this.updateUtxoBalance();
 		}
 		return utxoIds;
@@ -247,7 +251,7 @@ export class UtxoSet extends EventTargetImpl {
 	}
 
 	onUtxosChanged(added: Map < string, Api.Utxo[] > , removed: Map < string, RPC.Outpoint[] > ) {
-		console.log("onUtxosChanged:res", added, removed)
+		// console.log("onUtxosChanged:res", added, removed)
 
 		added.forEach((utxos, address) => {
 
