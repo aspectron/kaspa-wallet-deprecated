@@ -203,7 +203,7 @@ class Wallet extends EventTargetImpl {
 		if (networkOptions.rpc)
 			this.api.setRPC(networkOptions.rpc);
 
-		console.log("CREATING WALLET FOR NETWORK", this.network);
+		// console.log("CREATING WALLET FOR NETWORK", this.network);
 		this.options = {...defaultOpt,
 			...options
 		};
