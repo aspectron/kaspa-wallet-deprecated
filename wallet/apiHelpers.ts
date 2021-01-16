@@ -121,7 +121,7 @@ class KaspaAPI {
 			return missingRPCProviderError();
 
 		const cb:RPC.callback<RPC.UtxosChangedNotification> = (res)=>{
-			console.log("UtxosChangedNotification:", res)
+			// console.log("UtxosChangedNotification:", res)
 			const added = this.buildUtxoMap(res.added);
 			const removed = this.buildOutpointMap(res.removed);
 			callback(added, removed);
