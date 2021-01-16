@@ -322,7 +322,7 @@ class Wallet extends EventTargetImpl {
         addressesWithUTXOs.push(address);
         this.disableBalanceNotifications = false;
         this.emitBalance();
-			}
+      }
 		})
 
 		const isActivityOnReceiveAddr =
@@ -361,7 +361,7 @@ class Wallet extends EventTargetImpl {
 	 */
 	emitBalance(): void {
 		const {available, pending, total} = this.balance;
-		this.logger.verbose(`balance change - available: ${available} pending: ${pending}`);
+		this.logger.verbose(`balance available: ${available} pending: ${pending}`);
 		this.emit("balance-update", {
 			available,
 			pending,

@@ -87,7 +87,7 @@ export class UtxoSet extends EventTargetImpl {
           console.log(`adding ${utxoIds.length} UTXO entries:\n`,utxoIds);
       }
       else
-        this.logger.verbose(`adding ${utxoIds.length} UTXO entries.`);
+        this.logger.verbose(`incoming ${utxoIds.length} UTXO entries`);
 			// this.updateUtxoBalance();
 		}
 		return utxoIds;
