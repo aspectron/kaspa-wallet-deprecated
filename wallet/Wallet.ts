@@ -88,7 +88,7 @@ class Wallet extends EventTargetImpl {
 
 	HDWallet: kaspacore.HDPrivateKey;
 
-  disableBalanceNotifications: boolean = false;
+	disableBalanceNotifications: boolean = false;
 
 	get balance(): {available: number, pending:number, total:number} {
 		return {
@@ -139,6 +139,7 @@ class Wallet extends EventTargetImpl {
 	blueScore: number = -1;
 
 	syncVirtualSelectedParentBlueScoreStarted:boolean = false;
+	syncInProggress:boolean = false;
 
 	/* eslint-disable */
 	pendingInfo: PendingTransactions = {
@@ -186,7 +187,9 @@ class Wallet extends EventTargetImpl {
 
 		let defaultOpt = {
 			skipSyncBalance: false,
-			utxoSyncThrottleDelay: 100
+			utxoSyncThrottleDelay: 100,
+			syncOnce: false,
+			addressDiscoveryCount: 128
 		};
 
 		this.network = networkOptions.network;
@@ -195,9 +198,7 @@ class Wallet extends EventTargetImpl {
 			this.api.setRPC(networkOptions.rpc);
 
 		// console.log("CREATING WALLET FOR NETWORK", this.network);
-		this.options = {...defaultOpt,
-			...options
-		};
+		this.options = {...defaultOpt,	...options};
 
 
 		this.utxoSet = new UtxoSet(this);
@@ -213,18 +214,83 @@ class Wallet extends EventTargetImpl {
 		}
 
 		this.addressManager = new AddressManager(this.HDWallet, this.network);
+		//this.initAddressManager();
+		//this.sync(this.options.syncOnce);
+	}
+
+	async update(syncOnce:boolean=true){
+		await this.sync(syncOnce);
+	}
+
+	syncOnce:boolean|undefined;
+	async sync(syncOnce:boolean|undefined=undefined){
+		if(syncOnce === undefined)
+			syncOnce = this.options.syncOnce;
+		syncOnce = !!syncOnce;
+
+		this.syncInProggress = true;
+		this.logger.info(`sync ............ started, syncOnce:%{syncOnce}`)
+
+		//if last time syncOnce was OFF we have subscriptions to utxo-change
+		if(this.syncOnce === false && syncOnce){
+			throw new Error("Wallet sync process already running.")
+		}
+
+		this.syncOnce = syncOnce;
 		this.initAddressManager();
-		this.initBlueScoreSync();
-	}
 
-	initBlueScoreSync(){
-		this.sync()
+		await this.initBlueScoreSync(syncOnce)
 	    .catch(e=>{
-	        console.log("syncVirtualSelectedParentBlueScore:error", e)
+	        this.logger.info("syncVirtualSelectedParentBlueScore:error", e)
 	    })
+
+	    await this.addressDiscovery(this.options.addressDiscoveryCount)
+	    .catch(e=>{
+	        this.logger.info("addressDiscovery:error", e)
+	    })
+
+	    this.syncInProggress = false;
+	    if(!syncOnce)
+			await this.utxoSet.utxoSubscribe();
+	    this.emitBalance();
+
+	    this.logger.info(`sync ............ finished`)
 	}
 
+	getVirtualSelectedParentBlueScore() {
+		return this.api.getVirtualSelectedParentBlueScore();
+	}
+
+	async initBlueScoreSync(once:boolean = false) {
+		if(this.syncVirtualSelectedParentBlueScoreStarted)
+			return;
+		this.syncVirtualSelectedParentBlueScoreStarted = true;
+		let {blueScore} = await this.getVirtualSelectedParentBlueScore();
+
+		this.blueScore = blueScore;
+		this.emit("blue-score-changed", {blueScore})
+		this.utxoSet.updateUtxoBalance();
+
+		if(once) {
+			this.syncVirtualSelectedParentBlueScoreStarted = false;
+			return;
+		}
+		this.api.subscribeVirtualSelectedParentBlueScoreChanged((result) => {
+			let {virtualSelectedParentBlueScore} = result;
+			this.blueScore = virtualSelectedParentBlueScore;
+			this.emit("blue-score-changed", {
+				blueScore: virtualSelectedParentBlueScore
+			})
+			this.utxoSet.updateUtxoBalance();
+		});
+	}
+
+	addressManagerInitialized:boolean|undefined;
 	initAddressManager() {
+		if(this.addressManagerInitialized)
+			return
+		this.addressManagerInitialized = true;
+
 		this.addressManager.on("new-address", detail => {
 			//console.log("new-address", detail)
 			if (this.options.skipSyncBalance)
@@ -316,13 +382,13 @@ class Wallet extends EventTargetImpl {
 			// utxos.sort((b, a)=> a.index-b.index)
 			this.logger.verbose(`${address}: ${utxos.length} utxos found.`);
 			if (utxos.length !== 0) {
-        this.disableBalanceNotifications = true;
+        		this.disableBalanceNotifications = true;
 				this.utxoSet.utxoStorage[address] = utxos;
 				this.utxoSet.add(utxos, address);
-        addressesWithUTXOs.push(address);
-        this.disableBalanceNotifications = false;
-        this.emitBalance();
-      }
+				addressesWithUTXOs.push(address);
+				this.disableBalanceNotifications = false;
+				this.emitBalance();
+      		}
 		})
 
 		const isActivityOnReceiveAddr =
@@ -352,15 +418,20 @@ class Wallet extends EventTargetImpl {
 		if(notify===false)
 			return
 		const {available:_available, pending:_pending} = this.balance;
-		if(!this.disableBalanceNotifications && (available!=_available || pending!=_pending))
+		if(!this.syncInProggress && !this.disableBalanceNotifications && (available!=_available || pending!=_pending))
 			this.emitBalance();
 	}
 
 	/**
 	 * Emit wallet balance.
 	 */
+	lastBalanceNotification:{available:number, pending:number} = {available:0, pending:0}
 	emitBalance(): void {
 		const {available, pending, total} = this.balance;
+		const {available:_available, pending:_pending} = this.lastBalanceNotification;
+		if(available==_available && pending==_pending)
+			return
+		this.lastBalanceNotification = {available, pending};
 		this.logger.verbose(`balance available: ${available} pending: ${pending}`);
 		this.emit("balance-update", {
 			available,
@@ -391,41 +462,32 @@ class Wallet extends EventTargetImpl {
 	 * Derives receiveAddresses and changeAddresses and checks their transactions and UTXOs.
 	 * @param threshold stop discovering after `threshold` addresses with no activity
 	 */
-	async addressDiscovery(threshold = 20, debug = false): Promise < Map < string, {
-		utxos: Api.Utxo[],
-		address: string
-	} > | null > {
+	async addressDiscovery(threshold = 20, debug = false): Promise <Map <string, {utxos: Api.Utxo[], address: string}>|null> {
 		let addressList: string[] = [];
 		let lastIndex = -1;
-		let debugInfo: Map < string, {
-			utxos: Api.Utxo[],
-			address: string
-		} > | null = null;
+		let debugInfo: Map < string, {utxos: Api.Utxo[], address: string} > | null = null;
+
 		const doDiscovery = async(
-			n: number,
-			deriveType: 'receive' | 'change',
-			offset: number
-		): Promise < number > => {
+			n:number, deriveType:'receive'|'change', offset:number
+		): Promise <number> => {
 			const derivedAddresses = this.addressManager.getAddresses(n, deriveType, offset);
 			const addresses = derivedAddresses.map((obj) => obj.address);
 			addressList = [...addressList, ...addresses];
-			this.logger.log(
-				'info',
+			this.logger.info(
 				`Fetching ${deriveType} address data for derived indices ${
 					JSON.stringify(
 		  				derivedAddresses.map((obj) => obj.index)
 					)}`
 			);
 			if (this.loggerLevel > 0)
-				this.logger.log('info', "addressDiscovery: findUtxos for addresses::", addresses)
+				this.logger.info("addressDiscovery: findUtxos for addresses::", addresses)
 			const {addressesWithUTXOs, txID2Info} = await this.findUtxos(addresses, debug);
 			if (!debugInfo)
 				debugInfo = txID2Info;
 			if (addressesWithUTXOs.length === 0) {
 				// address discovery complete
 				const lastAddressIndexWithTx = offset - (threshold - n) - 1;
-				this.logger.log(
-					'info',
+				this.logger.info(
 					`${deriveType}Address discovery complete. Last activity on address #${lastAddressIndexWithTx}. No activity from ${deriveType}#${
 						lastAddressIndexWithTx + 1
 					  }~${lastAddressIndexWithTx + threshold}.`
@@ -443,10 +505,13 @@ class Wallet extends EventTargetImpl {
 		const highestChangeIndex = await doDiscovery(threshold, 'change', 0);
 		this.addressManager.receiveAddress.advance(highestReceiveIndex + 1);
 		this.addressManager.changeAddress.advance(highestChangeIndex + 1);
-		this.logger.log(
-			'info',
+		this.logger.info(
 			`receive address index: ${highestReceiveIndex}; change address index: ${highestChangeIndex}`
 		);
+
+		if(!this.syncOnce && !this.syncInProggress)
+			await this.utxoSet.utxoSubscribe();
+
 		this.runStateChangeHooks();
 		return debugInfo;
 	}
@@ -534,8 +599,8 @@ class Wallet extends EventTargetImpl {
 		const {id, tx, utxos, utxoIds, rawTx, amount, toAddr} = this.composeTx(txParams);
 
 		if (debug || this.loggerLevel > 0) {
-			console.log("sendTx:utxos", utxos)
-			console.log("::utxos[0].script::", utxos[0].script)
+			this.logger.debug("sendTx:utxos", utxos)
+			this.logger.debug("::utxos[0].script::", utxos[0].script)
 			//console.log("::utxos[0].address::", utxos[0].address)
 		}
 
@@ -548,7 +613,7 @@ class Wallet extends EventTargetImpl {
 		if (fee < minFee)
 			throw new Error(`Minimum fee required for this transaction is ${minFee}`);
 		if (this.loggerLevel > 0)
-			console.log("composeTx:tx", "txSize:", txSize)
+			this.logger.debug("composeTx:tx", "txSize:", txSize)
 
 
 		const inputs: RPC.TransactionInput[] = tx.inputs.map((input: kaspacore.Transaction.Input) => {
@@ -556,7 +621,7 @@ class Wallet extends EventTargetImpl {
 
 			if (debug || this.loggerLevel > 0) {
 				//@ts-ignore
-				console.log("input.script.inspect", input.script.inspect())
+				this.logger.debug("input.script.inspect", input.script.inspect())
 			}
 
 			return {
@@ -603,8 +668,8 @@ class Wallet extends EventTargetImpl {
 			}
 		}
 		if (this.loggerLevel > 0) {
-			console.log("rpcTX", JSON.stringify(rpcTX, null, "  "))
-			console.log("rpcTX", JSON.stringify(rpcTX))
+			this.logger.debug("rpcTX", JSON.stringify(rpcTX, null, "  "))
+			this.logger.debug("rpcTX", JSON.stringify(rpcTX))
 		}
 
 		try {
@@ -684,35 +749,6 @@ class Wallet extends EventTargetImpl {
 	}
 
 
-	getVirtualSelectedParentBlueScore() {
-		return this.api.getVirtualSelectedParentBlueScore();
-	}
-
-	async sync(once:boolean = false) {
-		if(this.syncVirtualSelectedParentBlueScoreStarted)
-			return;
-		this.syncVirtualSelectedParentBlueScoreStarted = true;
-		let {blueScore} = await this.getVirtualSelectedParentBlueScore();
-
-		this.blueScore = blueScore;
-		this.emit("blue-score-changed", {
-			blueScore
-		})
-    this.utxoSet.updateUtxoBalance();
-    if(once) {
-      this.syncVirtualSelectedParentBlueScoreStarted = false;
-      return;
-    }
-		this.api.subscribeVirtualSelectedParentBlueScoreChanged((result) => {
-			let {virtualSelectedParentBlueScore} = result;
-			this.blueScore = virtualSelectedParentBlueScore;
-			this.emit("blue-score-changed", {
-				blueScore: virtualSelectedParentBlueScore
-			})
-			this.utxoSet.updateUtxoBalance();
-		});
-	}
-
 	/**
 	 * Generates encrypted wallet data.
 	 * @param password user's chosen password
@@ -730,23 +766,8 @@ class Wallet extends EventTargetImpl {
 	logger: Logger = CreateLogger();
 	loggerLevel: number = 0;
 	setLogLevel(level: number|string) {
-// 		if(typeof level == 'string'){
-// 			level = ({"info":1, "debug":2} as any)[level]||1;
-// //			level = ({error:0,warn:1,notice:2,info:3, debug:4} as any)[level]||1;
-// //			level = ({error:0,warn:1,notice:2,info:3, debug:4} as any)[level]||1;
-// 		}
-
-// 		if(level > 1)
-// 			this.logger.level = 'debug';
-// 		else if(level>0)
-// 			this.logger.level = 'info';
-// 		else
-// 			this.logger.level = '_';
-
-    this.logger.level = level;
-this.loggerLevel = this.logger.levels[level];
-//		this.loggerLevel = level as number;
-		//console.log("wallet.loggerLevel", this.loggerLevel)
+		this.logger.level = level;
+		this.loggerLevel = this.logger.levels[level];
 		kaspacore.setDebugLevel(this.logger.levels[level]);
 	}
 }

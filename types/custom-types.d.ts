@@ -12,11 +12,15 @@ import { KaspaAPI } from './apiHelpers';
 export interface WalletOpt{
   skipSyncBalance:boolean;
   utxoSyncThrottleDelay:number;
+  syncOnce:boolean;
+  addressDiscoveryCount:number;
 }
 
 export interface WalletOptions{
   skipSyncBalance?:boolean;
   utxoSyncThrottleDelay?:number;
+  addressDiscoveryCount?:number;
+  syncOnce?:boolean;
 }
 
 export interface NetworkOptions{
