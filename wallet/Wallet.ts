@@ -716,7 +716,7 @@ class Wallet extends EventTargetImpl {
 
 	logger: Logger = CreateLogger();
 	loggerLevel: number = 0;
-	setDebugLevel(level: number|string) {
+	setLogLevel(level: number|string) {
 		if(typeof level == 'string'){
 			level = ({"info":1, "debug":2} as any)[level]||1;
 		}
@@ -729,6 +729,7 @@ class Wallet extends EventTargetImpl {
 			this.logger.level = '_';
 
 		this.loggerLevel = level as number;
+		//console.log("wallet.loggerLevel", this.loggerLevel)
 		kaspacore.setDebugLevel(level as number);
 	}
 }
