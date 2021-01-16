@@ -88,6 +88,7 @@ class Wallet extends EventTargetImpl {
 
 	HDWallet: kaspacore.HDPrivateKey;
 
+  disableBalanceNotifications: boolean = false;
 
 	get balance(): {available: number, pending:number, total:number} {
 		return {
@@ -287,7 +288,7 @@ class Wallet extends EventTargetImpl {
 		} > ,
 		addressesWithUTXOs: string[]
 	} > {
-		this.logger.log('info', `Getting UTXOs for ${addresses.length} addresses.`);
+		this.logger.verbose(`Getting UTXOs for ${addresses.length} addresses.`);
 
 		const utxosMap = await this.api.getUtxosByAddresses(addresses)
 
@@ -313,11 +314,14 @@ class Wallet extends EventTargetImpl {
 
 		utxosMap.forEach((utxos, address) => {
 			// utxos.sort((b, a)=> a.index-b.index)
-			this.logger.log('info', `${address}: ${utxos.length} utxos found.+=+=+=+=+=+=+++++=======+===+====+====+====+`);
+			this.logger.verbose(`${address}: ${utxos.length} utxos found.`);
 			if (utxos.length !== 0) {
+        this.disableBalanceNotifications = true;
 				this.utxoSet.utxoStorage[address] = utxos;
 				this.utxoSet.add(utxos, address);
-				addressesWithUTXOs.push(address);
+        addressesWithUTXOs.push(address);
+        this.disableBalanceNotifications = false;
+        this.emitBalance();
 			}
 		})
 
@@ -348,7 +352,7 @@ class Wallet extends EventTargetImpl {
 		if(notify===false)
 			return
 		const {available:_available, pending:_pending} = this.balance;
-		if(available!=_available || pending!=_pending)
+		if(!this.disableBalanceNotifications && (available!=_available || pending!=_pending))
 			this.emitBalance();
 	}
 
@@ -357,7 +361,7 @@ class Wallet extends EventTargetImpl {
 	 */
 	emitBalance(): void {
 		const {available, pending, total} = this.balance;
-		this.logger.info("balance-update", {available, pending})
+		this.logger.verbose(`balance change - available: ${available} pending: ${pending}`);
 		this.emit("balance-update", {
 			available,
 			pending,
@@ -477,10 +481,10 @@ class Wallet extends EventTargetImpl {
 	} {
 		// TODO: bn!
 		amount = parseInt(amount as any);
-		if (this.loggerLevel > 0) {
-			for (let i = 0; i < 100; i++)
-				console.log('Wallet transaction request for', amount, typeof amount);
-		}
+		// if (this.loggerLevel > 0) {
+		// 	for (let i = 0; i < 100; i++)
+		// 		console.log('Wallet transaction request for', amount, typeof amount);
+		// }
 		//if (!Number.isSafeInteger(amount)) throw new Error(`Amount ${amount} is too large`);
 		const {	utxos, utxoIds } = this.utxoSet.selectUtxos(amount + fee);
 		// @ts-ignore
@@ -722,20 +726,24 @@ class Wallet extends EventTargetImpl {
 	logger: Logger = CreateLogger();
 	loggerLevel: number = 0;
 	setLogLevel(level: number|string) {
-		if(typeof level == 'string'){
-			level = ({"info":1, "debug":2} as any)[level]||1;
-		}
+// 		if(typeof level == 'string'){
+// 			level = ({"info":1, "debug":2} as any)[level]||1;
+// //			level = ({error:0,warn:1,notice:2,info:3, debug:4} as any)[level]||1;
+// //			level = ({error:0,warn:1,notice:2,info:3, debug:4} as any)[level]||1;
+// 		}
 
-		if(level > 1)
-			this.logger.level = 'debug';
-		else if(level>0)
-			this.logger.level = 'info';
-		else
-			this.logger.level = '_';
+// 		if(level > 1)
+// 			this.logger.level = 'debug';
+// 		else if(level>0)
+// 			this.logger.level = 'info';
+// 		else
+// 			this.logger.level = '_';
 
-		this.loggerLevel = level as number;
+    this.logger.level = level;
+this.loggerLevel = this.logger.levels[level];
+//		this.loggerLevel = level as number;
 		//console.log("wallet.loggerLevel", this.loggerLevel)
-		kaspacore.setDebugLevel(level as number);
+		kaspacore.setDebugLevel(this.logger.levels[level]);
 	}
 }
 
