@@ -28,6 +28,9 @@ import {DEFAULT_FEE,DEFAULT_NETWORK} from '../config.json';
 import {EventTargetImpl} from './event-target-impl';
 
 
+const BALANCE_CONFIRMED = Symbol();
+const BALANCE_PENDING = Symbol();
+const BALANCE_TOTAL = Symbol();
 
 /** Class representing an HDWallet with derivable child addresses */
 class Wallet extends EventTargetImpl {
@@ -86,20 +89,13 @@ class Wallet extends EventTargetImpl {
 	HDWallet: kaspacore.HDPrivateKey;
 
 
-	/**
-	 * The summed balance across all of Wallet's discovered addresses, minus amount from pending transactions.
-	 */
-	available: number | undefined = undefined;
-
-	/**
-	 * Balance from pending transactions.
-	 */
-	pending: number | undefined = undefined;
-
-	/**
-	 * The total balance: pending + available.
-	 */
-	balance: number | undefined = undefined;
+	get balance(): {available: number, pending:number, total:number} {
+		return {
+			available: this[BALANCE_CONFIRMED],
+			pending: this[BALANCE_PENDING],
+			total: this[BALANCE_CONFIRMED] + this[BALANCE_PENDING]
+		}
+	}
 
 	/**
 	 * Set by addressManager
@@ -204,7 +200,7 @@ class Wallet extends EventTargetImpl {
 
 
 		this.utxoSet = new UtxoSet(this);
-		this.utxoSet.on("balance-update", this.updateBalance.bind(this));
+		//this.utxoSet.on("balance-update", this.updateBalance.bind(this));
 
 		if (privKey && seedPhrase) {
 			this.HDWallet = new kaspacore.HDPrivateKey(privKey);
@@ -336,28 +332,34 @@ class Wallet extends EventTargetImpl {
 		};
 	}
 
-	/**
-	 * Recalculates wallet balance.
-	 */
-	updateBalance(): void {
-
-		const {balance:_balance, available:_available, pending:_pending} = this;
-		
-		const available = this.utxoSet.availableBalance;
-		const balance = this.utxoSet.totalBalance;
-		const pending = balance - available;
-
-		this.balance = balance;
-		this.available = available;
-		this.pending = pending;
-
-		if(balance != _balance || available!=_available || pending != _pending){
-			this.emit("balance-update", {
-				available,
-				pending,
-				balance
-			}); // !!! TODO - BigNumber
+	[BALANCE_CONFIRMED]:number = 0;
+	[BALANCE_PENDING]:number = 0;
+	[BALANCE_TOTAL]:number = 0;
+	adjustBalance(isConfirmed:boolean, amount:number){
+		const {available, pending} = this.balance;
+		if(isConfirmed){
+			this[BALANCE_CONFIRMED] += amount;
+		}else{
+			this[BALANCE_PENDING] += amount;
 		}
+
+		this[BALANCE_TOTAL] = this[BALANCE_CONFIRMED] + this[BALANCE_PENDING];
+
+		const {available:_available, pending:_pending} = this.balance;
+		if(available!=_available || pending!=_pending)
+			this.emitBalance();
+	}
+
+	/**
+	 * Emit wallet balance.
+	 */
+	emitBalance(): void {
+		const {available, pending, total} = this.balance;
+		this.emit("balance-update", {
+			available,
+			pending,
+			total
+		});
 	}
 
 	/**
@@ -600,7 +602,7 @@ class Wallet extends EventTargetImpl {
 
 		try {
 			let result: string = await this.api.submitTransaction(rpcTX);
-			console.log("submitTransaction:result", result, id)
+			this.logger.debug("submitTransaction:result", result, id)
 			if(!result)
 				return result;
 
@@ -638,8 +640,8 @@ class Wallet extends EventTargetImpl {
 	}
 
 	runStateChangeHooks(): void {
-		this.utxoSet.updateUtxoBalance();
-		this.updateBalance();
+		//this.utxoSet.updateUtxoBalance();
+		//this.updateBalance();
 	}
 
 	get cache() {
