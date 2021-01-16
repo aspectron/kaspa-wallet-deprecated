@@ -1,7 +1,6 @@
 import {Api,RPC,UnspentOutputInfo} from 'custom-types';
 // @ts-ignore
 import * as kaspacore from 'kaspacore-lib';
-import {logger} from '../utils/logger';
 import * as crypto from 'crypto';
 import * as helper from '../utils/helper';
 // import * as api from './apiHelpers';
@@ -76,10 +75,14 @@ export class UtxoSet extends EventTargetImpl {
 			}
 		});
 		if (utxoIds.length) {
-			logger.log('info', `Added ${utxoIds.length} UTXOs to UtxoSet.`);
+			this.logger.log('info', `Added ${utxoIds.length} UTXOs to UtxoSet.`);
 			// this.updateUtxoBalance();
 		}
 		return utxoIds;
+	}
+
+	get logger(){
+		return this.wallet.logger
 	}
 
 	remove(utxoIds: string[]): void {
@@ -119,7 +122,7 @@ export class UtxoSet extends EventTargetImpl {
 		this.inUse = [];
 		this.availableBalance = 0;
 		this.utxoStorage = {};
-		logger.log('info', 'UTXO set cleared.');
+		this.logger.log('info', 'UTXO set cleared.');
 	}
 
 	/**
@@ -216,7 +219,7 @@ export class UtxoSet extends EventTargetImpl {
 		added.forEach((utxos, address) => {
 
 			// utxos.sort((b, a)=> a.index-b.index)
-			//logger.log('info', `${address}: ${utxos.length} utxos found.+=+=+=+=+=+=+++++=======+===+====+====+====+`);
+			//this.logger.log('info', `${address}: ${utxos.length} utxos found.+=+=+=+=+=+=+++++=======+===+====+====+====+`);
 			if (!utxos.length)
 				return
 
