@@ -335,7 +335,7 @@ class Wallet extends EventTargetImpl {
 	[BALANCE_CONFIRMED]:number = 0;
 	[BALANCE_PENDING]:number = 0;
 	[BALANCE_TOTAL]:number = 0;
-	adjustBalance(isConfirmed:boolean, amount:number){
+	adjustBalance(isConfirmed:boolean, amount:number, notify:boolean=true){
 		const {available, pending} = this.balance;
 		if(isConfirmed){
 			this[BALANCE_CONFIRMED] += amount;
@@ -345,6 +345,8 @@ class Wallet extends EventTargetImpl {
 
 		this[BALANCE_TOTAL] = this[BALANCE_CONFIRMED] + this[BALANCE_PENDING];
 
+		if(notify===false)
+			return
 		const {available:_available, pending:_pending} = this.balance;
 		if(available!=_available || pending!=_pending)
 			this.emitBalance();
@@ -355,6 +357,7 @@ class Wallet extends EventTargetImpl {
 	 */
 	emitBalance(): void {
 		const {available, pending, total} = this.balance;
+		this.logger.info("balance-update", {available, pending})
 		this.emit("balance-update", {
 			available,
 			pending,

@@ -100,13 +100,13 @@ export class UtxoSet extends EventTargetImpl {
 			utxo = this.utxos.confirmed.get(id);
 			if(utxo){
 				this.utxos.confirmed.delete(id);
-				this.wallet.adjustBalance(true, utxo.satoshis);
+				this.wallet.adjustBalance(true, -utxo.satoshis);
 			}
 
 			utxo = this.utxos.pending.get(id);
 			if(utxo){
 				this.utxos.pending.delete(id);
-				this.wallet.adjustBalance(false, utxo.satoshis);
+				this.wallet.adjustBalance(false, -utxo.satoshis);
 			}
 		});
 	}
@@ -118,6 +118,16 @@ export class UtxoSet extends EventTargetImpl {
 	}
 
 	updateUtxoBalance(): void {
+		const {blueScore} = this.wallet;
+		[...this.utxos.pending.values()].forEach(utxo=>{
+			if(blueScore-utxo.blockBlueScore < 100)
+				return
+			this.utxos.pending.delete(utxo.txId+utxo.outputIndex);
+			this.wallet.adjustBalance(false, -utxo.satoshis, false);
+			this.utxos.confirmed.set(utxo.txId+utxo.outputIndex, utxo);
+			this.wallet.adjustBalance(true, utxo.satoshis);
+		})
+
 		/*
 		const {blueScore} = this.wallet;
 		const utxoIds = Object.keys(this.utxos);
