@@ -218,7 +218,7 @@ class Wallet extends EventTargetImpl {
 	}
 
 	initBlueScoreSync(){
-		this.syncVirtualSelectedParentBlueScore()
+		this.sync()
 	    .catch(e=>{
 	        console.log("syncVirtualSelectedParentBlueScore:error", e)
 	    })
@@ -688,9 +688,9 @@ class Wallet extends EventTargetImpl {
 		return this.api.getVirtualSelectedParentBlueScore();
 	}
 
-	async syncVirtualSelectedParentBlueScore() {
+	async sync(once:boolean) {
 		if(this.syncVirtualSelectedParentBlueScoreStarted)
-			return
+			return;
 		this.syncVirtualSelectedParentBlueScoreStarted = true;
 		let {blueScore} = await this.getVirtualSelectedParentBlueScore();
 
@@ -698,7 +698,11 @@ class Wallet extends EventTargetImpl {
 		this.emit("blue-score-changed", {
 			blueScore
 		})
-		this.utxoSet.updateUtxoBalance();
+    this.utxoSet.updateUtxoBalance();
+    if(once) {
+      this.syncVirtualSelectedParentBlueScoreStarted = false;
+      return;
+    }
 		this.api.subscribeVirtualSelectedParentBlueScoreChanged((result) => {
 			let {virtualSelectedParentBlueScore} = result;
 			this.blueScore = virtualSelectedParentBlueScore;
