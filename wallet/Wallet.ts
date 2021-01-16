@@ -688,7 +688,7 @@ class Wallet extends EventTargetImpl {
 		return this.api.getVirtualSelectedParentBlueScore();
 	}
 
-	async sync(once:boolean) {
+	async sync(once:boolean = false) {
 		if(this.syncVirtualSelectedParentBlueScoreStarted)
 			return;
 		this.syncVirtualSelectedParentBlueScoreStarted = true;
