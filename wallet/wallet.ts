@@ -638,8 +638,6 @@ class Wallet extends EventTargetImpl {
 	 */
 	async submitTransaction(txParams: TxSend, debug = false): Promise < string > {
 		await this.waitOrSync();
-		if(this.options.disableAddressDerivation)
-			txParams.changeAddrOverride = this.receiveAddress
 		const {id, tx, utxos, utxoIds, rawTx, amount, toAddr} = this.composeTx(txParams);
 
 		if (debug || this.loggerLevel > 0) {
@@ -712,13 +710,13 @@ class Wallet extends EventTargetImpl {
 			}
 		}
 		if (this.loggerLevel > 0) {
-			this.logger.debug("rpcTX", JSON.stringify(rpcTX, null, "  "))
-			this.logger.debug("rpcTX", JSON.stringify(rpcTX))
+			this.logger.debug(`rpcTX ${JSON.stringify(rpcTX, null, "  ")}`)
+			this.logger.debug(`rpcTX ${JSON.stringify(rpcTX)}`)
 		}
 
 		try {
 			let result: string = await this.api.submitTransaction(rpcTX);
-			this.logger.debug("submitTransaction:result", result, id)
+			this.logger.debug(`submitTransaction:result ${result}, ${id}`)
 			if(!result)
 				return result;
 

@@ -60,7 +60,7 @@ export class UtxoSet extends EventTargetImpl {
 		utxos.forEach((utxo) => {
 			const utxoId = utxo.transactionId + utxo.index.toString();
 			const utxoInUse = this.inUse.includes(utxoId);
-			const alreadyHaveIt = this.utxos.confirmed.has(utxoId) || this.utxos.pending.has(utxoId);
+			const alreadyHaveIt = !!(this.utxos.confirmed.has(utxoId) || this.utxos.pending.has(utxoId));
 			//console.log("utxo.scriptPubKey", utxo)
 			//console.log("utxoInUse", {utxoInUse, alreadyHaveIt})
 			if (!utxoInUse && !alreadyHaveIt /*&& utxo.isSpendable*/ ) {
@@ -191,7 +191,7 @@ export class UtxoSet extends EventTargetImpl {
 		}).filter(address => address) as string[];
 
 		//in sync process addressDiscovery calls findUtxos
-		if (!newAddresses.length || this.wallet.syncInProggress)
+		if (!newAddresses.length || (this.wallet.syncInProggress && !this.wallet.options.disableAddressDerivation))
 			return
 
 		await this.wallet.findUtxos(newAddresses);
