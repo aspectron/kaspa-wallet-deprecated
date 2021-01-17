@@ -21,9 +21,9 @@ import {
 } from '../types/custom-types';
 
 import {CreateLogger, Logger} from '../utils/logger';
-import {AddressManager} from './AddressManager';
-import {UtxoSet} from './UtxoSet';
-import {KaspaAPI} from './apiHelpers';
+import {AddressManager} from './address-manager';
+import {UtxoSet} from './utxo';
+import {KaspaAPI} from './api';
 import {DEFAULT_FEE,DEFAULT_NETWORK} from '../config.json';
 import {EventTargetImpl} from './event-target-impl';
 
@@ -496,7 +496,7 @@ class Wallet extends EventTargetImpl {
 	 * Derives receiveAddresses and changeAddresses and checks their transactions and UTXOs.
 	 * @param threshold stop discovering after `threshold` addresses with no activity
 	 */
-	async addressDiscovery(threshold = 20, debug = false): Promise <Map <string, {utxos: Api.Utxo[], address: string}>|null> {
+	async addressDiscovery(threshold = 128, debug = false): Promise <Map <string, {utxos: Api.Utxo[], address: string}>|null> {
 		let addressList: string[] = [];
 		let lastIndex = -1;
 		let debugInfo: Map < string, {utxos: Api.Utxo[], address: string} > | null = null;
