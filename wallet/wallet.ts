@@ -298,7 +298,9 @@ class Wallet extends EventTargetImpl {
 
 		const ts1 = Date.now();
 		const delta = ((ts1-ts0)/1000).toFixed(1);
-	    this.logger.info(`sync ... ${'xxx'} UTXO entries found)`);
+	    this.logger.info(`sync ... ${this.utxoSet.count} UTXO entries found`);
+		this.logger.info(`sync ... receive address index: ${this.addressManager.receiveAddress.counter}`);
+	    this.logger.info(`sync ... change address index: ${this.addressManager.changeAddress.counter}`);
 	    this.logger.info(`sync ... finished (sync done in ${delta} seconds)`);
 	    this.syncSignal.resolve();
 	}
