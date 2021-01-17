@@ -191,7 +191,7 @@ class Wallet extends EventTargetImpl {
 			utxoSyncThrottleDelay: 100,
 			syncOnce: false,
 			addressDiscoveryCount: 128,
-			logLevel:'none',
+			logLevel:'info',
 			disableAddressDerivation:false
 		};
 		// console.log("CREATING WALLET FOR NETWORK", this.network);
