@@ -174,7 +174,7 @@ class Wallet extends EventTargetImpl {
 
 
 	options: WalletOpt;
-	connectSignal:helper.DeferedPromise;
+	connectSignal:helper.DeferredPromise;
 
 	/** Create a wallet.
 	 * @param walletSave (optional)
@@ -217,7 +217,7 @@ class Wallet extends EventTargetImpl {
 		this.addressManager = new AddressManager(this.HDWallet, this.network);
 		//this.initAddressManager();
 		//this.sync(this.options.syncOnce);
-		this.connectSignal = helper.Defered();
+		this.connectSignal = helper.Deferred();
 		this.api.on("connect", ()=>{
 			this.onApiConnect()
 		})
@@ -248,14 +248,14 @@ class Wallet extends EventTargetImpl {
 	}
 
 	syncOnce:boolean|undefined;
-	syncSignal: helper.DeferedPromise|undefined;
+	syncSignal: helper.DeferredPromise|undefined;
 	waitOrSync(){
 		if(this.syncSignal)
 			return this.syncSignal;
 		return this.sync();
 	}
 	async sync(syncOnce:boolean|undefined=undefined){
-		this.syncSignal = helper.Defered();
+		this.syncSignal = helper.Deferred();
 		await this.connectSignal;
 		if(syncOnce === undefined)
 			syncOnce = this.options.syncOnce;

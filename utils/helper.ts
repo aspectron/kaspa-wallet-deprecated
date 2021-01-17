@@ -10,17 +10,17 @@ export const dpc = (delay: number | Function, fn ? : Function | number) => {
     }
     return setTimeout(fn as Function, delay || 0);
 }
-export interface DeferedPromise extends Promise<any> {
+export interface DeferredPromise extends Promise<any> {
     resolve(data?:any):void;
     reject(error?:any):void;
 }
-export const Defered = (): DeferedPromise=>{
+export const Deferred = (): DeferredPromise=>{
     let methods = {};
     let promise = new Promise((resolve, reject)=>{
         methods = {resolve, reject};
     })
     Object.assign(promise, methods);
-    return promise as DeferedPromise;
+    return promise as DeferredPromise;
 }
 
 // Returns a function, that, when invoked, will only be triggered at most once

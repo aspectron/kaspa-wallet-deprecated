@@ -33,12 +33,12 @@ class KaspaAPI extends EventTargetImpl{
 			this._setConnected(false);
 		})
 	}
-	
+
 	getRPC():IRPC {
 		// @ts-ignore
 		return this.rpc;
 	}
-	
+
 	on(type:string, callback:EventListener){
 		super.on(type, callback);
 		if(type == 'connect' && this.isConnected){
