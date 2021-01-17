@@ -15,6 +15,7 @@ export interface WalletOpt{
   syncOnce:boolean;
   addressDiscoveryCount:number;
   logLevel:string;
+  disableAddressDerivation:boolean;
 }
 
 export interface WalletOptions{
@@ -23,6 +24,7 @@ export interface WalletOptions{
   addressDiscoveryCount?:number;
   syncOnce?:boolean;
   logLevel?:string;
+  disableAddressDerivation?:boolean;
 }
 
 export interface NetworkOptions{
@@ -59,6 +61,7 @@ export interface TxSend {
   amount: number;
   fee: number;
   tx: bitcore.Transaction;
+  changeAddrOverride? : string
 }
 
 /*

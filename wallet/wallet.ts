@@ -191,7 +191,8 @@ class Wallet extends EventTargetImpl {
 			utxoSyncThrottleDelay: 100,
 			syncOnce: false,
 			addressDiscoveryCount: 128,
-			logLevel:'none'
+			logLevel:'none',
+			disableAddressDerivation:false
 		};
 		// console.log("CREATING WALLET FOR NETWORK", this.network);
 		this.options = {...defaultOpt,	...options};
@@ -215,6 +216,8 @@ class Wallet extends EventTargetImpl {
 		}
 
 		this.addressManager = new AddressManager(this.HDWallet, this.network);
+		if(this.options.disableAddressDerivation)
+			this.addressManager.receiveAddress.next();
 		//this.initAddressManager();
 		//this.sync(this.options.syncOnce);
 		this.connectSignal = helper.Deferred();
@@ -276,11 +279,15 @@ class Wallet extends EventTargetImpl {
 	    .catch(e=>{
 	        this.logger.info("syncVirtualSelectedParentBlueScore:error", e)
 	    })
-
-	    await this.addressDiscovery(this.options.addressDiscoveryCount)
-	    .catch(e=>{
-	        this.logger.info("addressDiscovery:error", e)
-	    })
+		
+		if(this.options.disableAddressDerivation){
+			this.utxoSet.syncAddressesUtxos([this.receiveAddress]);
+		}else{
+		    await this.addressDiscovery(this.options.addressDiscoveryCount)
+		    .catch(e=>{
+		        this.logger.info("addressDiscovery:error", e)
+		    })
+	    }
 
 	    this.syncInProggress = false;
 	    if(!syncOnce)
@@ -334,7 +341,9 @@ class Wallet extends EventTargetImpl {
 			const {	address, type } = detail;
 			this.utxoSet.syncAddressesUtxos([address]);
 		})
-		this.addressManager.receiveAddress.next();
+		if(!this.receiveAddress){
+			this.addressManager.receiveAddress.next();
+		}
 	}
 
 	/**
@@ -566,9 +575,7 @@ class Wallet extends EventTargetImpl {
 		amount,
 		fee = DEFAULT_FEE,
 		changeAddrOverride,
-	}: TxSend & {
-		changeAddrOverride ? : string
-	}): {
+	}: TxSend): {
 		tx: kaspacore.Transaction;
 		id: string;
 		rawTx: string;
@@ -631,6 +638,8 @@ class Wallet extends EventTargetImpl {
 	 */
 	async submitTransaction(txParams: TxSend, debug = false): Promise < string > {
 		await this.waitOrSync();
+		if(this.options.disableAddressDerivation)
+			txParams.changeAddrOverride = this.receiveAddress
 		const {id, tx, utxos, utxoIds, rawTx, amount, toAddr} = this.composeTx(txParams);
 
 		if (debug || this.loggerLevel > 0) {
