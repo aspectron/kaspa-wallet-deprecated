@@ -265,7 +265,9 @@ class Wallet extends EventTargetImpl {
 		syncOnce = !!syncOnce;
 
 		this.syncInProggress = true;
-		this.logger.info(`sync ............ started, syncOnce:${syncOnce}`)
+		const ts0 = Date.now();
+		this.logger.info(`sync ... starting ${syncOnce?'(mointoring disabled)':''}`);
+		//this.logger.info(`sync ............ started, syncOnce:${syncOnce}`)
 
 		//if last time syncOnce was OFF we have subscriptions to utxo-change
 		if(this.syncOnce === false && syncOnce){
@@ -294,7 +296,10 @@ class Wallet extends EventTargetImpl {
 			await this.utxoSet.utxoSubscribe();
 	    this.emitBalance();
 
-	    this.logger.info(`sync ............ finished`)
+		const ts1 = Date.now();
+		const delta = ((ts1-ts0)/1000).toFixed(1);
+	    this.logger.info(`sync ... ${'xxx'} UTXO entries found)`);
+	    this.logger.info(`sync ... finished (sync done in ${delta} seconds)`);
 	    this.syncSignal.resolve();
 	}
 
