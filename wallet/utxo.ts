@@ -288,4 +288,7 @@ export class UtxoSet extends EventTargetImpl {
 	isOurChange(utxo:UnspentOutput):boolean{
 		return this.wallet.addressManager.isOurChange(String(utxo.address))
 	}
+	get count():number{
+		return this.utxos.confirmed.size + this.utxos.pending.size;
+	}
 }
