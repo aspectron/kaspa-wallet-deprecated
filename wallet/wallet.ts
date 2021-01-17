@@ -188,7 +188,6 @@ class Wallet extends EventTargetImpl {
 
 		let defaultOpt = {
 			skipSyncBalance: false,
-			utxoSyncThrottleDelay: 100,
 			syncOnce: false,
 			addressDiscoveryCount: 128,
 			logLevel:'info',
