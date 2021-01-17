@@ -39,7 +39,7 @@ export const log = logger;
 
 export const CreateLogger = () : Logger=>{
 	let logger = winston.createLogger({
-		level: 'none',
+		level: 'info',
 		levels,
 		format: winston.format.json()
 	});
