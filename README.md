@@ -1,7 +1,7 @@
-Kaspa Wallet
-============
+Kaspa Wallet Framework
+======================
 
-Kaspa Wallet library implements Wallet functionality for the [Kaspa Network](https://github.com/kaspanet/kaspad)
+Kaspa Wallet implements Wallet functionality for the [Kaspa Network](https://github.com/kaspanet/kaspad)
 
 Kaspa Wallet is implemented in TypeScript and can be used server-side (NodeJs) and client-side (browser)
 
@@ -12,11 +12,18 @@ Components
 
 Kaspa Wallet uses the following modules:
 
-  * `kaspa-grpc` - provides GRPC bindings for `kaspad`
-  * `kaspa-grpc-node` - GRPC transport for server-side (NodeJs)
-  * `kaspa-grpw-web` - GRPC transport for client-side (browsers)
-  * `kaspacore-lib` - Kaspa UTXO and transaction data structures
+  * [kaspa-grpc](https://github.com/aspectron/kaspa-grpc) - provides GRPC bindings for `kaspad`
+  * [kaspa-grpc-node](https://github.com/aspectron/kaspa-grph-node) - GRPC transport for server-side (NodeJs)
+  * [kaspa-grpc-web](https://github.com/aspectron/kaspa-grpc-web) - GRPC transport for client-side (browsers)
+  * [kaspacore-lib](https://github.com/aspectron/kaspacore-lib) - Kaspa UTXO and transaction data structures
 
+Applications built on top of Kaspa Wallet Framework:
+
+  * [kaspa-faucet](https://github.com/aspectron/kaspa-faucet) - Kaspa faucet website
+  * [kaspa-wallet-cli](https://github.com/aspectron/kaspa-wallet-cli) - command-line wallet
+  * [KDX](https://github.com/aspectron/kdx) - Kaspa desktop wallet
+
+**PLEASE NOTE:** all Kaspa applications are under heavy development
 
 Kaspa Wallet Framework
 ----------------------
