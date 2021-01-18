@@ -39,10 +39,10 @@ class Wallet extends EventTargetImpl {
 
 	// TODO - integrate with Kaspacore-lib
 	static networkTypes: Object = {
-		kaspa: { port: 16110, network: 'kaspa' },
-		kaspatest: { port: 16210, network: 'kaspatest' },
-		kaspasim: {	port: 16510, network: 'kaspasim' },
-		kaspadev: {	port: 16610, network: 'kaspadev' }
+		kaspa: { port: 16110, network: 'kaspa', name : 'mainnet' },
+		kaspatest: { port: 16210, network: 'kaspatest', name : 'testnet' },
+		kaspasim: {	port: 16510, network: 'kaspasim', name : 'simnet' },
+		kaspadev: {	port: 16610, network: 'kaspadev', name : 'devnet' }
 	}
 
 	static networkAliases: Object = {
@@ -55,6 +55,14 @@ class Wallet extends EventTargetImpl {
 	static initRuntime() {
 		return kaspacore.initRuntime();
 	}
+
+	
+    // static format(v, pad = 0) {
+	// 	let [int,frac] = Decimal(v||0).mul(1e-8).toFixed(8).split('.');
+    //     int = int.replace(/\B(?=(\d{3})+(?!\d))/g, ",").padStart(pad,' ');
+    //     frac = frac.replace(/0+$/,'');
+	//     return frac ? `${int}.${frac}` : int;
+	// }
 
 	/**
 	 * Converts a mnemonic to a new wallet.
@@ -230,19 +238,19 @@ class Wallet extends EventTargetImpl {
 
 	async onApiConnect(){
 		this.connectSignal.resolve();
-		this.logger.info("api-connect")
-		this.emit("api-connect")
-		if(this.syncSignal && this.isReConnect){//if sync was called
-			this.logger.info("re-sync started .......................")
-			await this.sync(this.syncOnce)
+		this.logger.verbose("gRPC connected");
+		this.emit("api-connect");
+		if(this.syncSignal && this.isReConnect) {//if sync was called
+			this.logger.info("starting wallet re-sync ...");
+			await this.sync(this.syncOnce);
 		}
 	}
 
 	isReConnect:boolean|undefined;
-	onApiDisconnect(){
+	onApiDisconnect() {
 		this.isReConnect = true;
-		this.logger.info("api-disconnect")
-		this.emit("api-disconnect")
+		this.logger.verbose("gRPC disconnected");
+		this.emit("api-disconnect");
 	}
 
 	async update(syncOnce:boolean=true){
@@ -264,8 +272,9 @@ class Wallet extends EventTargetImpl {
 		syncOnce = !!syncOnce;
 
 		this.syncInProggress = true;
+		this.emit("sync-start");
 		const ts0 = Date.now();
-		this.logger.info(`sync ... starting ${syncOnce?'(mointoring disabled)':''}`);
+		this.logger.info(`sync ... starting ${syncOnce?'(monitoring disabled)':''}`);
 		//this.logger.info(`sync ............ started, syncOnce:${syncOnce}`)
 
 		//if last time syncOnce was OFF we have subscriptions to utxo-change
@@ -282,6 +291,7 @@ class Wallet extends EventTargetImpl {
 	    })
 		
 		if(this.options.disableAddressDerivation){
+			this.logger.warn('sync ... running with address discovery disabled');
 			this.utxoSet.syncAddressesUtxos([this.receiveAddress]);
 		}else{
 		    await this.addressDiscovery(this.options.addressDiscoveryCount)
@@ -298,9 +308,9 @@ class Wallet extends EventTargetImpl {
 		const ts1 = Date.now();
 		const delta = ((ts1-ts0)/1000).toFixed(1);
 	    this.logger.info(`sync ... ${this.utxoSet.count} UTXO entries found`);
-		this.logger.info(`sync ... receive address index: ${this.addressManager.receiveAddress.counter}`);
-	    this.logger.info(`sync ... change address index: ${this.addressManager.changeAddress.counter}`);
+		this.logger.info(`sync ... indexed ${this.addressManager.receiveAddress.counter} receive and ${this.addressManager.changeAddress.counter} change addresses`);
 	    this.logger.info(`sync ... finished (sync done in ${delta} seconds)`);
+		this.emit("sync-finish");
 	    this.syncSignal.resolve();
 	}
 
@@ -403,7 +413,7 @@ class Wallet extends EventTargetImpl {
 		} > ,
 		addressesWithUTXOs: string[]
 	} > {
-		this.logger.verbose(`Getting UTXOs for ${addresses.length} addresses.`);
+		this.logger.verbose(`scanning UTXO entries for ${addresses.length} addresses`);
 
 		const utxosMap = await this.api.getUtxosByAddresses(addresses)
 
@@ -429,7 +439,7 @@ class Wallet extends EventTargetImpl {
 
 		utxosMap.forEach((utxos, address) => {
 			// utxos.sort((b, a)=> a.index-b.index)
-			this.logger.verbose(`${address}: ${utxos.length} utxos found.`);
+			this.logger.verbose(`${address} - ${utxos.length} UTXO entries found`);
 			if (utxos.length !== 0) {
         		this.disableBalanceNotifications = true;
 				this.utxoSet.utxoStorage[address] = utxos;
@@ -516,31 +526,30 @@ class Wallet extends EventTargetImpl {
 		let lastIndex = -1;
 		let debugInfo: Map < string, {utxos: Api.Utxo[], address: string} > | null = null;
 
+		this.logger.info(`sync ... running address discovery`);
+
 		const doDiscovery = async(
 			n:number, deriveType:'receive'|'change', offset:number
 		): Promise <number> => {
+
+			// this.logger.info(`sync ... scanning addresses`);
 			const derivedAddresses = this.addressManager.getAddresses(n, deriveType, offset);
 			const addresses = derivedAddresses.map((obj) => obj.address);
 			addressList = [...addressList, ...addresses];
-			this.logger.info(
-				`Fetching ${deriveType} address data for derived indices ${
-					JSON.stringify(
-		  				derivedAddresses.map((obj) => obj.index)
-					)}`
+			this.logger.verbose(
+				`${deriveType}: address data for derived indices ${derivedAddresses[0].index}..${derivedAddresses[derivedAddresses.length-1].index}`
 			);
-			if (this.loggerLevel > 0)
-				this.logger.info("addressDiscovery: findUtxos for addresses::", addresses)
+			// if (this.loggerLevel > 0)
+			// 	this.logger.verbose("addressDiscovery: findUtxos for addresses::", addresses)
 			const {addressesWithUTXOs, txID2Info} = await this.findUtxos(addresses, debug);
 			if (!debugInfo)
 				debugInfo = txID2Info;
 			if (addressesWithUTXOs.length === 0) {
 				// address discovery complete
 				const lastAddressIndexWithTx = offset - (threshold - n) - 1;
-				this.logger.info(
-					`${deriveType}Address discovery complete. Last activity on address #${lastAddressIndexWithTx}. No activity from ${deriveType}#${
-						lastAddressIndexWithTx + 1
-					  }~${lastAddressIndexWithTx + threshold}.`
-				);
+				this.logger.verbose(`${deriveType}: address discovery complete`);
+				this.logger.verbose(`${deriveType}: last activity on address #${lastAddressIndexWithTx}`);
+				this.logger.verbose(`${deriveType}: no activity from ${lastAddressIndexWithTx + 1}..${lastAddressIndexWithTx + threshold}`);
 				return lastAddressIndexWithTx;
 			}
 			// else keep doing discovery
@@ -554,7 +563,7 @@ class Wallet extends EventTargetImpl {
 		const highestChangeIndex = await doDiscovery(threshold, 'change', 0);
 		this.addressManager.receiveAddress.advance(highestReceiveIndex + 1);
 		this.addressManager.changeAddress.advance(highestChangeIndex + 1);
-		this.logger.info(
+		this.logger.verbose(
 			`receive address index: ${highestReceiveIndex}; change address index: ${highestChangeIndex}`
 		);
 

@@ -89,13 +89,21 @@ On failure, rejects with:
 // TODO - sample code that demonstrates how to appropriately handle errors
 
 
-Obtaining balances
-------------------
+Wallet balance
+--------------
 
 Wallet retains 2 types of balances:
 - *available* balance contains KSP ready to spend, comprised of UTXO records with maturity blue score over 100
 - *pending* balance contains newly received transactions with UTXO maturity less than 100.  Upon each UTXO maturity balance is relocated from pending to available
 
+`Wallet::balance` is an object containing the following properties that are updated during wallet operation:
+```js
+wallet.balance = {
+  available: 5150000000000,
+  pending: 247500000000,
+  total: 5397500000000
+}
+```
 
 Wallet events
 -------------
