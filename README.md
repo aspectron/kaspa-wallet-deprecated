@@ -146,7 +146,7 @@ On success, `sumbitTransaction()` resolves:
 
 On failure, rejects with:
 
-** TODO - review and provide sample code that demonstrates how to appropriately handle errors **
+**TODO - review and provide sample code that demonstrates how to appropriately handle errors**
 
 - `FetchError` if gRPC API endpoint is down 
 - API error message (string) if `kaspad` yields gRPC API error
