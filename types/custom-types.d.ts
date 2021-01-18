@@ -12,14 +12,14 @@ import { KaspaAPI } from './apiHelpers';
 export interface WalletOpt{
   skipSyncBalance:boolean;
   syncOnce:boolean;
-  addressDiscoveryCount:number;
+  addressDiscoveryExtent:number;
   logLevel:string;
   disableAddressDerivation:boolean;
 }
 
 export interface WalletOptions{
   skipSyncBalance?:boolean;
-  addressDiscoveryCount?:number;
+  addressDiscoveryExtent?:number;
   syncOnce?:boolean;
   logLevel?:string;
   disableAddressDerivation?:boolean;

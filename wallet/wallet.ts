@@ -197,7 +197,7 @@ class Wallet extends EventTargetImpl {
 		let defaultOpt = {
 			skipSyncBalance: false,
 			syncOnce: false,
-			addressDiscoveryCount: 128,
+			addressDiscoveryExtentt: 128,
 			logLevel:'info',
 			disableAddressDerivation:false
 		};
@@ -294,7 +294,7 @@ class Wallet extends EventTargetImpl {
 			this.logger.warn('sync ... running with address discovery disabled');
 			this.utxoSet.syncAddressesUtxos([this.receiveAddress]);
 		}else{
-		    await this.addressDiscovery(this.options.addressDiscoveryCount)
+		    await this.addressDiscovery(this.options.addressDiscoveryExtentt)
 		    .catch(e=>{
 		        this.logger.info("addressDiscovery:error", e)
 		    })
@@ -303,7 +303,6 @@ class Wallet extends EventTargetImpl {
 	    this.syncInProggress = false;
 	    if(!syncOnce)
 			await this.utxoSet.utxoSubscribe();
-	    this.emitBalance();
 
 		const ts1 = Date.now();
 		const delta = ((ts1-ts0)/1000).toFixed(1);
@@ -311,6 +310,9 @@ class Wallet extends EventTargetImpl {
 		this.logger.info(`sync ... indexed ${this.addressManager.receiveAddress.counter} receive and ${this.addressManager.changeAddress.counter} change addresses`);
 	    this.logger.info(`sync ... finished (sync done in ${delta} seconds)`);
 		this.emit("sync-finish");
+		const {available, pending, total} = this.balance;
+		this.emit("ready", {available,pending,total});
+	    this.emitBalance();
 	    this.syncSignal.resolve();
 	}
 
