@@ -156,8 +156,8 @@ Wallet balance
 --------------
 
 Wallet retains 2 types of balances:
-- *available* balance contains KSP ready to be spent, comprised of UTXO records with block maturity blue score over 100.
-- *pending* balance contains newly received transactions with UTXO block maturity less than 100.  Upon each UTXO maturity balance is relocated from pending to available.
+- *available* - balance contains KSP ready to be spent, comprised of UTXO records with block maturity blue score over 100.
+- *pending* - balance contains newly received transactions with UTXO block maturity less than 100.  Upon each UTXO maturity balance is relocated from pending to available.
 
 `Wallet::balance` is an object containing the following properties that are updated during wallet operation:
 ```js
@@ -186,9 +186,9 @@ Following events are emitted by the Wallet class:
 - `api-online` - gPRC API is online
 - `api-offline` - gRPC API is offline
 - `sync-start` - wallet sync started (occurs each time gRPC API connects or re-connects)
-- `sync-finis` - wallet sync finished
-- `ready` - wallet is ready for use (sent after sync-finish, event data contains balance)
-- `blue-score-changed` - indicates Kaspa blue score change
+- `sync-finish` - wallet sync finished
+- `ready` - wallet is ready for use (sent after sync-finish, event data contains the balance object)
+- `blue-score-changed` - indicates Kaspa blue score change (new block generation)
 - `utxo-change` - signaled when UTXO is added or removed from the wallet UTXO set
-- `balance-update` - indicates wallet balance change (event data contains balance)
+- `balance-update` - indicates wallet balance change (event data contains the balance object)
 
