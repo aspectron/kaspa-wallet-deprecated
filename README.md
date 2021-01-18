@@ -12,9 +12,9 @@ Components
 
 Kaspa Wallet uses the following modules:
 
-  * [kaspa-grpc](https://github.com/aspectron/kaspa-grpc) - provides GRPC bindings for `kaspad`
-  * [kaspa-grpc-node](https://github.com/aspectron/kaspa-grph-node) - GRPC transport for server-side (NodeJs)
-  * [kaspa-grpc-web](https://github.com/aspectron/kaspa-grpc-web) - GRPC transport for client-side (browsers)
+  * [kaspa-grpc](https://github.com/aspectron/kaspa-grpc) - provides gRPC bindings for `kaspad`
+  * [kaspa-grpc-node](https://github.com/aspectron/kaspa-grph-node) - gRPC transport for server-side (NodeJs)
+  * [kaspa-grpc-web](https://github.com/aspectron/kaspa-grpc-web) - gRPC transport for client-side (browsers)
   * [kaspacore-lib](https://github.com/aspectron/kaspacore-lib) - Kaspa UTXO and transaction data structures
 
 Applications built on top of Kaspa Wallet Framework:
