@@ -23,7 +23,7 @@ Applications built on top of Kaspa Wallet Framework:
   * [kaspa-wallet-cli](https://github.com/aspectron/kaspa-wallet-cli) - command-line wallet
   * [KDX](https://github.com/aspectron/kdx) - Kaspa desktop wallet
 
-**PLEASE NOTE:** all Kaspa applications are under heavy development
+**PLEASE NOTE:** all Kaspa applications and libraries are under heavy development
 
 Kaspa Wallet Framework
 ----------------------
