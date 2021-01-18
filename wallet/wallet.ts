@@ -197,7 +197,7 @@ class Wallet extends EventTargetImpl {
 		let defaultOpt = {
 			skipSyncBalance: false,
 			syncOnce: false,
-			addressDiscoveryExtentt: 128,
+			addressDiscoveryExtent: 128,
 			logLevel:'info',
 			disableAddressDerivation:false
 		};
@@ -294,7 +294,7 @@ class Wallet extends EventTargetImpl {
 			this.logger.warn('sync ... running with address discovery disabled');
 			this.utxoSet.syncAddressesUtxos([this.receiveAddress]);
 		}else{
-		    await this.addressDiscovery(this.options.addressDiscoveryExtentt)
+		    await this.addressDiscovery(this.options.addressDiscoveryExtent)
 		    .catch(e=>{
 		        this.logger.info("addressDiscovery:error", e)
 		    })

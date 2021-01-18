@@ -24,7 +24,7 @@ export interface WalletOptions{
   logLevel?:string;
   disableAddressDerivation?:boolean;
 }
-
+ 
 export interface NetworkOptions{
   network:Network;
   defaultFee?:number;
