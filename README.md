@@ -5,6 +5,8 @@ Kaspa Wallet library implements Wallet functionality for the [Kaspa Network](htt
 
 Kaspa Wallet is implemented in TypeScript and can be used server-side (NodeJs) and client-side (browser)
 
+**Please note: this project is under heavy development**
+
 Components
 ----------
 
