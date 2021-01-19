@@ -12,19 +12,19 @@ import { KaspaAPI } from './apiHelpers';
 export interface WalletOpt{
   skipSyncBalance:boolean;
   syncOnce:boolean;
-  addressDiscoveryCount:number;
+  addressDiscoveryExtent:number;
   logLevel:string;
   disableAddressDerivation:boolean;
 }
 
 export interface WalletOptions{
   skipSyncBalance?:boolean;
-  addressDiscoveryCount?:number;
+  addressDiscoveryExtent?:number;
   syncOnce?:boolean;
   logLevel?:string;
   disableAddressDerivation?:boolean;
 }
-
+ 
 export interface NetworkOptions{
   network:Network;
   defaultFee?:number;
@@ -59,7 +59,13 @@ export interface TxSend {
   amount: number;
   fee: number;
   tx: bitcore.Transaction;
-  changeAddrOverride? : string
+  changeAddrOverride? : string;
+  networkFeeMax?:number;
+}
+
+export interface TxResp {
+  txid: string;
+  rpctx?: string;
 }
 
 /*
