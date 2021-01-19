@@ -39,10 +39,10 @@ class Wallet extends EventTargetImpl {
 
 	// TODO - integrate with Kaspacore-lib
 	static networkTypes: Object = {
-		kaspa: { port: 16110, network: 'kaspa' },
-		kaspatest: { port: 16210, network: 'kaspatest' },
-		kaspasim: {	port: 16510, network: 'kaspasim' },
-		kaspadev: {	port: 16610, network: 'kaspadev' }
+		kaspa: { port: 16110, network: 'kaspa', name:'mainnet' },
+		kaspatest: { port: 16210, network: 'kaspatest', name:'testnet' },
+		kaspasim: {	port: 16510, network: 'kaspasim', name:'devnet' },
+		kaspadev: {	port: 16610, network: 'kaspadev', name:'simnet' }
 	}
 
 	static networkAliases: Object = {
