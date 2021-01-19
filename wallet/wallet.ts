@@ -693,7 +693,7 @@ class Wallet extends EventTargetImpl {
 		}
 		else if(networkFeeMax && amountAvailable >= dataFee+amountRequested) {
 			txParams.fee += dataFee;
-			this.logger.verbose(`tx ... incrementing user fee: ${KSP(txParamsArg.fee)} by data fee: ${KSP(dataFee)} total: ${KSP(txParams.fee)}`);
+			this.logger.verbose(`tx ... incrementing user fee ${KSP(txParamsArg.fee)} by data fee ${KSP(dataFee)} total ${KSP(txParams.fee)}`);
 			data = this.composeTx(txParams);
 		}
 //		else
