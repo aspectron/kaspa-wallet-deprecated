@@ -140,24 +140,56 @@ update wallet UTXO entries as well as balances.
 Sending transactions
 --------------------
 
+`submitTransaction()` function can be used to create transactions on the Kaspa network:
 ```js
-let response = await this.wallet.submitTransaction({
-    address, // destination address
-    amount,  // amount in base units
-    fee,     // user fees
-});
+async submitTransaction(txParamsArg: TxSend): Promise < TxResp | null > {
+  // ...
+}
+```
+This function accepts `TxSend` object on input and returns a `Promise<TxResp>` object:
+
+```ts
+export interface TxSend {
+  toAddr: string;
+  amount: number;
+  fee: number;
+  changeAddrOverride? : string;
+  networkFeeMax?:number;
+}
+```
+- `toAddr` - Destination address
+- `amount` - Amount of KSP in base units
+- `fee` - Transaction priority fee
+- `changeAddrOverride` - (optional) Allows you to supply your own address for the change transaction
+- `networkFeeMax` - (optional) Allows you to set an upper bound for automatic network (data storage) fee calculation.  Kaspa Wallet will automatically calculate appropriate fees and add them to the transaction based on the transaction size. This feature is disabled if the property is omitted or set to zero.
+
+
+```ts
+export interface TxResp {
+  txid: string;
+  rpctx?: string; // reserved
+}
+```
+- `txid` - Generated transaction id
+
+```js
+try {
+  let response = await this.wallet.submitTransaction({
+      address, // destination address
+      amount,  // amount in base units
+      fee,     // user fees
+  });
+  if(!response)
+    console.log('general error');  // if kaspad returns null (should never occur)
+  else
+    console.log('success:', txid);
+} catch(ex) {
+  console.log('error:',ex.toString());
+}
+
 ```
 
-On success, `sumbitTransaction()` resolves:
-- *Transaction id* (string) if successful
-
-On failure, rejects with:
-
-**TODO - review and provide sample code that demonstrates how to appropriately handle errors**
-
-- `FetchError` if gRPC API endpoint is down 
-- API error message (string) if `kaspad` yields gRPC API error
-- `Error` if amount is too large
+On failure, `submitTransaction()` rejects with and error indicating the reason for failure.
 
 Wallet balance
 --------------
