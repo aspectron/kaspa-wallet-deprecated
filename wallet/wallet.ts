@@ -15,14 +15,16 @@ if (typeof window != "undefined" && !window.nw) {
 	passworder = passworder2;
 }
 
+import { Decimal } from 'decimal.js';
+
 import {
-	Network, NetworkOptions, SelectedNetwork, WalletSave, Api, TxSend,
+	Network, NetworkOptions, SelectedNetwork, WalletSave, Api, TxSend, TxResp,
 	PendingTransactions, WalletCache, IRPC, RPC, WalletOptions,	WalletOpt
 } from '../types/custom-types';
 
 import {CreateLogger, Logger} from '../utils/logger';
 import {AddressManager} from './address-manager';
-import {UtxoSet} from './utxo';
+import {UnspentOutput, UtxoSet} from './utxo';
 import {KaspaAPI} from './api';
 import {DEFAULT_FEE,DEFAULT_NETWORK} from '../config.json';
 import {EventTargetImpl} from './event-target-impl';
@@ -52,11 +54,17 @@ class Wallet extends EventTargetImpl {
 		simnet: 'kaspasim'
 	}
 
+
+	static KSP(v:number): string {
+		return KSP(v);
+	}
+
+
 	static initRuntime() {
 		return kaspacore.initRuntime();
 	}
 
-	
+
     // static format(v, pad = 0) {
 	// 	let [int,frac] = Decimal(v||0).mul(1e-8).toFixed(8).split('.');
     //     int = int.replace(/\B(?=(\d{3})+(?!\d))/g, ",").padStart(pad,' ');
@@ -130,6 +138,7 @@ class Wallet extends EventTargetImpl {
 
 	subnetworkId: string = "0000000000000000000000000000000000000000"; //hex string
 
+	last_tx_:string = '';
 	/**
 	 * Current API endpoint for selected network
 	 */
@@ -493,7 +502,7 @@ class Wallet extends EventTargetImpl {
 		if(available==_available && pending==_pending)
 			return
 		this.lastBalanceNotification = {available, pending};
-		this.logger.verbose(`balance available: ${available} pending: ${pending}`);
+		this.logger.debug(`balance available: ${available} pending: ${pending}`);
 		this.emit("balance-update", {
 			available,
 			pending,
@@ -576,14 +585,14 @@ class Wallet extends EventTargetImpl {
 		return debugInfo;
 	}
 
-	// TODO: convert amount to sompis aka satoshis
+	// TODO: convert amount to yonis aka satoshis
 	// TODO: bn
 	/**
 	 * Compose a serialized, signed transaction
 	 * @param obj
 	 * @param obj.toAddr To address in cashaddr format (e.g. kaspatest:qq0d6h0prjm5mpdld5pncst3adu0yam6xch4tr69k2)
-	 * @param obj.amount Amount to send in sompis (100000000 (1e8) sompis in 1 KSP)
-	 * @param obj.fee Fee for miners in sompis
+	 * @param obj.amount Amount to send in yonis (100000000 (1e8) yonis in 1 KSP)
+	 * @param obj.fee Fee for miners in yonis
 	 * @param obj.changeAddrOverride Use this to override automatic change address derivation
 	 * @throws if amount is above `Number.MAX_SAFE_INTEGER`
 	 */
@@ -640,6 +649,7 @@ class Wallet extends EventTargetImpl {
 				toAddr
 			};
 		} catch (e) {
+			// !!! FIXME 
 			this.addressManager.changeAddress.reverse();
 			throw e;
 		}
@@ -649,13 +659,78 @@ class Wallet extends EventTargetImpl {
 	 * Send a transaction. Returns transaction id.
 	 * @param txParams
 	 * @param txParams.toAddr To address in cashaddr format (e.g. kaspatest:qq0d6h0prjm5mpdld5pncst3adu0yam6xch4tr69k2)
-	 * @param txParams.amount Amount to send in sompis (100000000 (1e8) sompis in 1 KSP)
-	 * @param txParams.fee Fee for miners in sompis
+	 * @param txParams.amount Amount to send in yonis (100000000 (1e8) yonis in 1 KSP)
+	 * @param txParams.fee Fee for miners in yonis
 	 * @throws `FetchError` if endpoint is down. API error message if tx error. Error if amount is too large to be represented as a javascript number.
 	 */
-	async submitTransaction(txParams: TxSend, debug = false): Promise < string > {
+	async submitTransaction(txParamsArg: TxSend, debug = false): Promise < TxResp | null > {
 		await this.waitOrSync();
-		const {id, tx, utxos, utxoIds, rawTx, amount, toAddr} = this.composeTx(txParams);
+
+		const ts0 = Date.now();
+//		let fee = 0;
+		this.logger.info(`tx ... sending to ${txParamsArg.toAddr}`)
+		this.logger.info(`tx ... amount: ${KSP(txParamsArg.amount)} user fee: ${KSP(txParamsArg.fee)} max data fee: ${KSP(txParamsArg.networkFeeMax||0)}`)
+
+		//let sizeFee = Number.MAX_SAFE_INTEGER;
+		let txParams : TxSend = { ...txParamsArg } as TxSend;
+		//Object.assign(txParams, txParams_);
+		const networkFeeMax = txParams.networkFeeMax || 0;
+
+		let dataFeeLast = 0;
+		let data = this.composeTx(txParams);
+		let txSize = data.tx.toBuffer().length - data.tx.inputs.length * 2;
+		let dataFee = txSize * this.defaultFee;
+		let amountRequested = txParamsArg.amount+txParamsArg.fee;
+
+		// !!! TODO - use reduce on UnspentOutput directly (TS)
+		// let amountAvailable = data.utxos.reduce((utxo:UnspentOutput,v)=>satoshis+v, 0);
+		let amountAvailable = data.utxos.map(utxo=>utxo.satoshis).reduce((a,b)=>a+b,0);
+		this.logger.verbose(`tx ... need data fee: ${KSP(dataFee)} total needed: ${KSP(amountRequested+dataFee)}`)
+		this.logger.verbose(`tx ... available: ${KSP(amountAvailable)} in ${data.utxos.length} UTXOs`)
+		// console.log('amountAvailable ->', amountAvailable);
+		if(!networkFeeMax && txParamsArg.fee < dataFee) {
+			throw new Error(`Fee supplied is ${txParamsArg.fee} but the minimum fee required for this transaction is ${dataFee}`);
+		}
+		else if(networkFeeMax && amountAvailable >= dataFee+amountRequested) {
+			txParams.fee += dataFee;
+			this.logger.verbose(`tx ... incrementing user fee: ${KSP(txParamsArg.fee)} by data fee: ${KSP(dataFee)} total: ${KSP(txParams.fee)}`);
+			data = this.composeTx(txParams);
+		}
+//		else
+		// if(networkFeeMax && amountAvailable < dataFee+amountRequested)
+		// 	throw new Error(`Minimum fee required for this transaction is ${dataFee}`);
+		else if(networkFeeMax) {
+			do {
+				//console.log(`insufficient data fees... incrementing by ${dataFee}`);
+				txParams.fee = txParamsArg.fee+dataFee;
+				this.logger.verbose(`tx ... insufficient data fee for transaction size of ${txSize} bytes`);
+				this.logger.verbose(`tx ... need data fee: ${KSP(dataFee)} for ${data.utxos.length} UTXOs`);
+				this.logger.verbose(`tx ... rebuilding transaction with additional inputs`);
+				let utxoLen = data.utxos.length;
+				//console.log(`final fee ${txParams.fee}`);
+				data = this.composeTx(txParams);
+				txSize = data.tx.toBuffer().length - data.tx.inputs.length * 2;
+				dataFee = txSize * this.defaultFee;
+				if(data.utxos.length != utxoLen)
+					this.logger.verbose(`tx ... aggregating: ${data.utxos.length} UTXOs`);
+
+			} while(txParams.fee <= networkFeeMax && txParams.fee < dataFee+txParamsArg.fee);
+
+			if(txParams.fee > networkFeeMax)
+				throw new Error(`Maximum network fee exceeded; need: ${dataFee} maximum is: ${networkFeeMax}`);
+
+			// console.log(txParams);
+		}
+
+		const { id, tx, utxos, utxoIds, rawTx, amount, toAddr } = data;
+		const { fee } = txParams;
+
+		this.logger.info(`tx ... required data fee: ${KSP(dataFee)} (${utxos.length} UTXOs)`);// (${KSP(txParamsArg.fee)}+${KSP(dataFee)})`);
+		//this.logger.verbose(`tx ... final fee: ${KSP(dataFee+txParamsArg.fee)} (${KSP(txParamsArg.fee)}+${KSP(dataFee)})`);
+		this.logger.info(`tx ... resulting total: ${KSP(txParams.fee+txParams.amount)}`);
+
+
+//		console.log(utxos);
 
 		if (debug || this.loggerLevel > 0) {
 			this.logger.debug("sendTx:utxos", utxos)
@@ -666,11 +741,14 @@ class Wallet extends EventTargetImpl {
 		const {nLockTime: lockTime, version } = tx;
 
 		//each input have script version's 2 bytes, which kaspa dont count;
-		const txSize = tx.toBuffer().length - tx.inputs.length * 2;
-		const minFee = txSize * this.defaultFee;
-		const fee = minFee + (txParams.fee||0);
-		if (fee < minFee)
-			throw new Error(`Minimum fee required for this transaction is ${minFee}`);
+		// const fee = dataFee + (txParams.fee||0);
+		// if (fee < dataFee)
+		// 	throw new Error(`Minimum fee required for this transaction is ${dataFee}`);
+
+		//let fee = dataFee+txParamsArg.fee;
+		// else if(txParams.includeNetworkFees && fee < dataFee)
+		// 	throw new Error(`Fee supplied is ${txParamsArg.fee} but the minimum fee required for this transaction is ${dataFee}`);
+
 		if (this.loggerLevel > 0)
 			this.logger.debug("composeTx:tx", "txSize:", txSize)
 
@@ -726,16 +804,25 @@ class Wallet extends EventTargetImpl {
 				//gas: 0
 			}
 		}
+
+		//const rpctx = JSON.stringify(rpcTX, null, "  ");
+
+		const ts1 = Date.now();
+		this.logger.info(`tx ... generation time ${((ts1-ts0)/1000).toFixed(2)} sec`)
+
 		if (this.loggerLevel > 0) {
 			this.logger.debug(`rpcTX ${JSON.stringify(rpcTX, null, "  ")}`)
 			this.logger.debug(`rpcTX ${JSON.stringify(rpcTX)}`)
 		}
 
 		try {
-			let result: string = await this.api.submitTransaction(rpcTX);
-			this.logger.debug(`submitTransaction:result ${result}, ${id}`)
-			if(!result)
-				return result;
+			const ts2 = Date.now();
+			let txid: string = await this.api.submitTransaction(rpcTX);
+			const ts3 = Date.now();
+			this.logger.info(`tx ... submission time ${((ts3-ts2)/1000).toFixed(2)} sec`);
+			this.logger.info(`txid: ${txid}`); // , ${id}`)
+			if(!txid)
+				return null;// as TxResp;
 
 			this.utxoSet.inUse.push(...utxoIds);
 			this.pendingInfo.add(tx.id, {
@@ -745,7 +832,11 @@ class Wallet extends EventTargetImpl {
 				to: toAddr,
 				fee
 			});
-			return result;
+			const resp: TxResp = {
+				txid,
+				//rpctx
+			}
+			return resp;
 		} catch (e) {
 			throw e;
 		}
@@ -830,5 +921,14 @@ class Wallet extends EventTargetImpl {
 		kaspacore.setDebugLevel(this.logger.levels[level]);
 	}
 }
+
+function KSP(v:number): string {
+	var [int,frac] = (new Decimal(v)).mul(1e-8).toFixed(8).split('.');
+	int = int.replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+	frac = frac.replace(/0+$/,'');
+	return frac ? `${int}.${frac}` : int;
+}
+
+
 
 export {Wallet}
