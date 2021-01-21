@@ -236,6 +236,7 @@ export interface IRPC {
 	subscribeVirtualSelectedParentBlueScoreChanged(callback:RPC.callback<Rpc.VirtualSelectedParentBlueScoreChangedNotification>): RPC.SubPromise<RPC.NotifyVirtualSelectedParentBlueScoreChangedResponse>;
 	subscribeUtxosChanged(addresses:string[], callback:Rpc.callback<Rpc.UtxosChangedNotification>): RPC.SubPromise<RPC.NotifyUtxosChangedResponse>;
 	unSubscribeUtxosChanged(uid:string='');
+	unSubscribe(eventName:string, uid:string='');
 
 	request?(method:string, data:any);
 
