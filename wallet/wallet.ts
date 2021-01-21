@@ -247,17 +247,20 @@ class Wallet extends EventTargetImpl {
 
 	async onApiConnect(){
 		this.connectSignal.resolve();
-		this.logger.verbose("gRPC connected");
+		let {connected} = this;
+		this.connected = true;
+		this.logger.info("gRPC connected");
 		this.emit("api-connect");
-		if(this.syncSignal && this.isReConnect) {//if sync was called
+		if(this.syncSignal && connected!==undefined) {//if sync was called
 			this.logger.info("starting wallet re-sync ...");
 			await this.sync(this.syncOnce);
 		}
+		
 	}
 
-	isReConnect:boolean|undefined;
+	connected:boolean|undefined;
 	onApiDisconnect() {
-		this.isReConnect = true;
+		this.connected = false;
 		this.logger.verbose("gRPC disconnected");
 		this.emit("api-disconnect");
 	}
@@ -665,9 +668,11 @@ class Wallet extends EventTargetImpl {
 	 */
 	async submitTransaction(txParamsArg: TxSend, debug = false): Promise < TxResp | null > {
 		await this.waitOrSync();
+		if(!txParamsArg.fee)
+			txParamsArg.fee = 0;
 
 		const ts0 = Date.now();
-//		let fee = 0;
+		//let fee = 0;
 		this.logger.info(`tx ... sending to ${txParamsArg.toAddr}`)
 		this.logger.info(`tx ... amount: ${KSP(txParamsArg.amount)} user fee: ${KSP(txParamsArg.fee)} max data fee: ${KSP(txParamsArg.networkFeeMax||0)}`)
 
@@ -915,7 +920,7 @@ class Wallet extends EventTargetImpl {
 
 	logger: Logger;
 	loggerLevel: number = 0;
-	setLogLevel(level: number|string) {
+	setLogLevel(level: string) {
 		this.logger.level = level;
 		this.loggerLevel = this.logger.levels[level];
 		kaspacore.setDebugLevel(this.logger.levels[level]);
@@ -925,7 +930,7 @@ class Wallet extends EventTargetImpl {
 function KSP(v:number): string {
 	var [int,frac] = (new Decimal(v)).mul(1e-8).toFixed(8).split('.');
 	int = int.replace(/\B(?=(\d{3})+(?!\d))/g, ",");
-	frac = frac.replace(/0+$/,'');
+	frac = frac?.replace(/0+$/,'');
 	return frac ? `${int}.${frac}` : int;
 }
 
