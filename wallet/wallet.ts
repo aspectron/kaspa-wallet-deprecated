@@ -6,6 +6,8 @@ import {CreateStorage, StorageType, classes as storageClasses} from './storage';
 
 import * as passworder1 from 'browser-passworder';
 import * as passworder2 from '@aspectron/flow-key-crypt';
+
+
 let passworder: typeof passworder1 | typeof passworder2;
 
 // @ts-ignore
@@ -921,9 +923,8 @@ class Wallet extends EventTargetImpl {
 	logger: Logger;
 	loggerLevel: number = 0;
 	setLogLevel(level: string) {
-		this.logger.level = level;
-		this.loggerLevel = this.logger.levels[level];
-		kaspacore.setDebugLevel(this.logger.levels[level]);
+		this.logger.setLevel(level);
+		kaspacore.setDebugLevel(level?1:0);
 	}
 }
 

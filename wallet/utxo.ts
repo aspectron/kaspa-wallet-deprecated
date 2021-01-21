@@ -81,12 +81,8 @@ export class UtxoSet extends EventTargetImpl {
 			}
 		});
 		if (utxoIds.length) {
-			if(this.logger.level == 'debug') {
-				console.log(`adding ${utxoIds.length} UTXO entries:\n`, utxoIds);
-			}
-			else
-				this.logger.debug(`incoming ${utxoIds.length} UTXO entries`);
-				// this.updateUtxoBalance();
+			this.logger.utxodebug(`adding ${utxoIds.length} UTXO entries:\n`, utxoIds);
+			this.logger.utxo(`incoming ${utxoIds.length} UTXO entries`);
 		}
 		return utxoIds;
 	}
@@ -137,7 +133,7 @@ export class UtxoSet extends EventTargetImpl {
 		this.inUse = [];
 		this.availableBalance = 0;
 		this.utxoStorage = {};
-		this.logger.log('info', 'UTXO set cleared.');
+		this.logger.info('UTXO set cleared.');
 	}
 
 	/**

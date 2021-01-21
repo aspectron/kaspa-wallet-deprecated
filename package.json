@@ -12,13 +12,13 @@
   },
   "dependencies": {
     "@aspectron/flow-key-crypt": "aspectron/flow-key-crypt",
+    "@aspectron/flow-logger": "aspectron/flow-logger",
     "@types/node": "^14.14.9",
     "bitcore-mnemonic": "^8.23.1",
     "browser-passworder": "^2.0.3",
     "decimal.js": "^10.2.1",
     "kaspacore-lib": "aspectron/kaspacore-lib",
     "ts-node": "^9.0.0",
-    "typescript": "*",
-    "winston": "^3.3.3"
+    "typescript": "*"
   }
 }

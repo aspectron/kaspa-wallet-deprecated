@@ -1,72 +1,29 @@
-const winston = require('winston');
-
-
-const levels = {
-	error: 0,
-	warn: 1,
-	info : 2,
-	verbose: 3,
-	debug: 4,
+import {FlowLogger} from '@aspectron/flow-logger';
+//import '../types/flow-logger';
+declare module '@aspectron/flow-logger' {
+	interface FlowLogger{
+		utxodebug(...args: any[]):void;
+		utxo(...args: any[]):void;
+	}
 }
 
-const colors = {
-	error: 'red',
-	warn: 'magenta',
-	info: 'cyan',
-	verbose: 'yellow',
-	debug: 'green',
-}
-
-winston.addColors(colors);
-
-const logger = winston.createLogger({
-  level: 'info',
-  levels,
-  format: winston.format.json(),
+let custom = ['utxo:cyan', 'utxodebug:cyan', 'tx:green', 'txdebug:green']
+const logger = new FlowLogger('FlowHttp', { 
+	display : ['name', 'level', 'time'], 
+	custom, 
+	color: ['level']
 });
 
-logger.add(
-	new winston.transports.Console({
-		format: winston.format.combine(
-			winston.format.colorize(),
-			winston.format.simple()
-		)
-	})
-);
+logger.levels.enable('all');
 
 export type Logger = typeof logger; //TODO find how to export type from module
 export const log = logger;
 
 export const CreateLogger = () : Logger=>{
-	let logger = winston.createLogger({
-		level: 'info',
-		levels,
-		format: winston.format.json()
+	let logger = new FlowLogger('FlowHttp', { 
+		display : ['name', 'level', 'time'], 
+		custom, 
+		color: ['level']
 	});
-
-	//if (process.env.NODE_ENV !== 'production') {
-		logger.add(
-			new winston.transports.Console({
-				format: winston.format.combine(
-					winston.format.colorize(),
-					winston.format.simple()
-				)
-			})
-		);
-	//}
 	return logger;
 }
-
-//
-// If we're not in production then log to the `console` with the format:
-// `${info.level}: ${info.message} JSON.stringify({ ...rest }) `
-//
-/*
-if (process.env.NODE_ENV !== 'production') {
-  logger.add(
-    new winston.transports.Console({
-      format: winston.format.simple(),
-    })
-  );
-}
-*/
