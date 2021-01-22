@@ -40,6 +40,7 @@ const BALANCE_TOTAL = Symbol();
 class Wallet extends EventTargetImpl {
 
 	static Mnemonic: typeof Mnemonic = Mnemonic;
+	static passworder = passworder;
 
 	// TODO - integrate with Kaspacore-lib
 	static networkTypes: Object = {
@@ -121,6 +122,10 @@ class Wallet extends EventTargetImpl {
 	 */
 	get receiveAddress() {
 		return this.addressManager.receiveAddress.current.address;
+	}
+
+	get changeAddress() {
+		return this.addressManager.changeAddress.current.address;
 	}
 
 	/**
@@ -327,6 +332,7 @@ class Wallet extends EventTargetImpl {
 		const {available, pending, total} = this.balance;
 		this.emit("ready", {available,pending,total});
 	    this.emitBalance();
+	    this.emitAddress();
 	    this.syncSignal.resolve();
 	}
 
@@ -365,6 +371,9 @@ class Wallet extends EventTargetImpl {
 		this.addressManagerInitialized = true;
 
 		this.addressManager.on("new-address", detail => {
+			if(!this.syncInProggress){
+				this.emitAddress();
+			}
 			//console.log("new-address", detail)
 			if (this.options.skipSyncBalance)
 				return
@@ -512,6 +521,19 @@ class Wallet extends EventTargetImpl {
 			available,
 			pending,
 			total
+		});
+	}
+
+	lastAddressNotification:{receive?:string, change?:string} = {};
+	emitAddress(){
+		const receive = this.receiveAddress;
+		const change = this.changeAddress;
+		let {receive:_receive, change:_change}= this.lastAddressNotification
+		if(receive == _receive && change == _change)
+			return
+		this.lastAddressNotification = {receive, change};
+		this.emit("new-address", {
+			receive, change
 		});
 	}
 
