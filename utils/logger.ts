@@ -2,8 +2,8 @@ import {FlowLogger} from '@aspectron/flow-logger';
 //import '../types/flow-logger';
 declare module '@aspectron/flow-logger' {
 	interface FlowLogger{
-		utxodebug(...args: any[]):void;
-		utxo(...args: any[]):void;
+		//utxodebug(...args: any[]):void;
+		//utxo(...args: any[]):void;
 	}
 }
 
@@ -14,7 +14,7 @@ const logger = new FlowLogger('FlowHttp', {
 	color: ['level']
 });
 
-logger.levels.enable('all');
+logger.enable('all');
 
 export type Logger = typeof logger; //TODO find how to export type from module
 export const log = logger;
