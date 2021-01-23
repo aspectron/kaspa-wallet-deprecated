@@ -207,7 +207,7 @@ class Wallet extends EventTargetImpl {
 	 */
 	constructor(privKey: string, seedPhrase: string, networkOptions: NetworkOptions, options: WalletOptions = {}) {
 		super();
-		this.logger = CreateLogger();
+		this.logger = CreateLogger('KaspaWallet');
 		this.api = new KaspaAPI();
 
 		let defaultOpt = {
