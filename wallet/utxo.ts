@@ -226,15 +226,10 @@ export class UtxoSet extends EventTargetImpl {
 
 	onUtxosChanged(added: Map < string, Api.Utxo[] > , removed: Map < string, RPC.Outpoint[] > ) {
 		// console.log("onUtxosChanged:res", added, removed)
-
 		added.forEach((utxos, address) => {
-
-			// utxos.sort((b, a)=> a.index-b.index)
 			//this.logger.log('info', `${address}: ${utxos.length} utxos found.+=+=+=+=+=+=+++++=======+===+====+====+====+`);
 			if (!utxos.length)
 				return
-
-			//console.log('seq:', seq++, 'tx:', utxos[0].transactionId);
 
 			if (!this.utxoStorage[address]) {
 				this.utxoStorage[address] = utxos;
@@ -250,6 +245,8 @@ export class UtxoSet extends EventTargetImpl {
 			}
 			this.add(utxos, address);
 		})
+
+		this.wallet.txStore.addFromUTXOs(added);
 
 		let utxoIds: string[] = [];
 		removed.forEach((utxos, address) => {

@@ -27,6 +27,7 @@ import {
 import {CreateLogger, Logger} from '../utils/logger';
 import {AddressManager} from './address-manager';
 import {UnspentOutput, UtxoSet} from './utxo';
+import {TXStore} from './tx-store';
 import {KaspaAPI} from './api';
 import {DEFAULT_FEE,DEFAULT_NETWORK} from '../config.json';
 import {EventTargetImpl} from './event-target-impl';
@@ -199,6 +200,7 @@ class Wallet extends EventTargetImpl {
 
 	options: WalletOpt;
 	connectSignal:helper.DeferredPromise;
+	txStore:TXStore;
 
 	/** Create a wallet.
 	 * @param walletSave (optional)
@@ -227,6 +229,7 @@ class Wallet extends EventTargetImpl {
 			this.api.setRPC(networkOptions.rpc);
 
 		this.utxoSet = new UtxoSet(this);
+		this.txStore = new TXStore(this);
 		//this.utxoSet.on("balance-update", this.updateBalance.bind(this));
 
 		if (privKey && seedPhrase) {
@@ -250,6 +253,13 @@ class Wallet extends EventTargetImpl {
 		this.api.on("disconnect", ()=>{
 			this.onApiDisconnect();
 		})
+
+		///TODO
+		///TODO
+		///TODO
+		setTimeout(()=>{
+			this.txStore.restore();
+		}, 1000)
 	}
 
 	async onApiConnect(){
@@ -550,7 +560,7 @@ class Wallet extends EventTargetImpl {
 	demolishWalletState(networkPrefix: Network = this.network): void {
 		this.utxoSet.clear();
 		this.addressManager = new AddressManager(this.HDWallet, networkPrefix);
-		this.pendingInfo.transactions = {};
+		//this.pendingInfo.transactions = {};
 		this.transactions = {};
 		this.transactionsStorage = {};
 	}
@@ -725,7 +735,7 @@ class Wallet extends EventTargetImpl {
 			this.logger.verbose(`tx ... incrementing user fee ${KSP(txParamsArg.fee)} by data fee ${KSP(dataFee)} total ${KSP(txParams.fee)}`);
 			data = this.composeTx(txParams);
 		}
-//		else
+		//else
 		// if(networkFeeMax && amountAvailable < dataFee+amountRequested)
 		// 	throw new Error(`Minimum fee required for this transaction is ${dataFee}`);
 		else if(networkFeeMax) {
@@ -752,14 +762,14 @@ class Wallet extends EventTargetImpl {
 		}
 
 		const { id, tx, utxos, utxoIds, rawTx, amount, toAddr } = data;
-		const { fee } = txParams;
+		const { fee, note='' } = txParams;
 
 		this.logger.info(`tx ... required data fee: ${KSP(dataFee)} (${utxos.length} UTXOs)`);// (${KSP(txParamsArg.fee)}+${KSP(dataFee)})`);
 		//this.logger.verbose(`tx ... final fee: ${KSP(dataFee+txParamsArg.fee)} (${KSP(txParamsArg.fee)}+${KSP(dataFee)})`);
 		this.logger.info(`tx ... resulting total: ${KSP(txParams.fee+txParams.amount)}`);
 
 
-//		console.log(utxos);
+		//console.log(utxos);
 
 		if (debug || this.loggerLevel > 0) {
 			this.logger.debug("sendTx:utxos", utxos)
@@ -845,22 +855,25 @@ class Wallet extends EventTargetImpl {
 		}
 
 		try {
-			const ts2 = Date.now();
+			const ts = Date.now();
 			let txid: string = await this.api.submitTransaction(rpcTX);
 			const ts3 = Date.now();
-			this.logger.info(`tx ... submission time ${((ts3-ts2)/1000).toFixed(2)} sec`);
+			this.logger.info(`tx ... submission time ${((ts3-ts)/1000).toFixed(2)} sec`);
 			this.logger.info(`txid: ${txid}`); // , ${id}`)
 			if(!txid)
 				return null;// as TxResp;
 
 			this.utxoSet.inUse.push(...utxoIds);
-			this.pendingInfo.add(tx.id, {
+			this.txStore.add({in:false, ts, id:txid, amount, address:toAddr, note, tx:rpcTX.transaction})
+			/*
+			this.pendingInfo.add(txid, {
 				rawTx: tx.toString(),
 				utxoIds,
 				amount,
 				to: toAddr,
 				fee
 			});
+			*/
 			const resp: TxResp = {
 				txid,
 				//rpctx
@@ -871,6 +884,7 @@ class Wallet extends EventTargetImpl {
 		}
 	}
 
+	/*
 	undoPendingTx(id: string): void {
 		const {	utxoIds	} = this.pendingInfo.transactions[id];
 		delete this.pendingInfo.transactions[id];
@@ -878,17 +892,20 @@ class Wallet extends EventTargetImpl {
 		this.addressManager.changeAddress.reverse();
 		this.runStateChangeHooks();
 	}
+	*/
 
 	/**
 	 * After we see the transaction in the API results, delete it from our pending list.
 	 * @param id The tx hash
 	 */
+	 /*
 	deletePendingTx(id: string): void {
 		// undo + delete old utxos
 		const {	utxoIds } = this.pendingInfo.transactions[id];
 		delete this.pendingInfo.transactions[id];
 		this.utxoSet.remove(utxoIds);
 	}
+	*/
 
 	runStateChangeHooks(): void {
 		//this.utxoSet.updateUtxoBalance();

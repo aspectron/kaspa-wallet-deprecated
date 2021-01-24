@@ -61,6 +61,7 @@ export interface TxSend {
   tx: bitcore.Transaction;
   changeAddrOverride? : string;
   networkFeeMax?:number;
+  note?:string;
 }
 
 export interface TxResp {
