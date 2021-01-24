@@ -54,9 +54,9 @@ export class TXStore{
 
 	save(tx:TXStoreItem){
 		if(typeof indexedDB != "undefined"){
-			let txIds = [...this.store.keys()].map(id=>id.substr(0, 10))
+			let txIds = [...this.store.keys()].map(id=>id.substr(0, 15))
 			iDB.set("kaspa-tx-ids", JSON.stringify(txIds));
-			iDB.set(tx.id.substr(0, 10), JSON.stringify(tx))
+			iDB.set(tx.id.substr(0, 15), JSON.stringify(tx))
 			//localStorage.setItem("kaspa-tx-ids", JSON.stringify(txIds));
 			//localStorage.setItem("kaspa-tx-"+tx.id, JSON.stringify(tx))
 		}
