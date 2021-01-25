@@ -242,4 +242,7 @@ export interface IRPC {
 
 	onConnect(cb:Function):void;
 	onDisconnect(cb:Function):void;
+	
+	disconnect();
+	connect():Promise<void>;
 }
