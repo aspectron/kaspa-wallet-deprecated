@@ -278,6 +278,7 @@ class Wallet extends EventTargetImpl {
 	connected:boolean|undefined;
 	onApiDisconnect() {
 		this.connected = false;
+		this.syncVirtualSelectedParentBlueScoreStarted = false;
 		this.logger.verbose("gRPC disconnected");
 		this.emit("api-disconnect");
 	}
