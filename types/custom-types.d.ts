@@ -62,6 +62,8 @@ export interface TxSend {
   changeAddrOverride? : string;
   networkFeeMax?:number;
   note?:string;
+  calculateNetworkFee?:boolean;
+  inclusiveFee?:boolean;
 }
 
 export interface TxResp {

@@ -711,38 +711,34 @@ class Wallet extends EventTargetImpl {
 		this.logger.info(`tx ... sending to ${txParamsArg.toAddr}`)
 		this.logger.info(`tx ... amount: ${KSP(txParamsArg.amount)} user fee: ${KSP(txParamsArg.fee)} max data fee: ${KSP(txParamsArg.networkFeeMax||0)}`)
 
-		//let sizeFee = Number.MAX_SAFE_INTEGER;
 		let txParams : TxSend = { ...txParamsArg } as TxSend;
-		//Object.assign(txParams, txParams_);
 		const networkFeeMax = txParams.networkFeeMax || 0;
+		const calculateNetworkFee = !!txParams.calculateNetworkFee;
+		const inclusiveFee = !!txParams.inclusiveFee;
 
 		let dataFeeLast = 0;
 		let data = this.composeTx(txParams);
 		let txSize = data.tx.toBuffer().length - data.tx.inputs.length * 2;
 		let dataFee = txSize * this.defaultFee;
-		let amountRequested = txParamsArg.amount+txParamsArg.fee;
+		const priorityFee = txParamsArg.fee;
+		const txAmount = txParamsArg.amount;
+		let amountRequested = txParamsArg.amount+priorityFee;
 
-		// !!! TODO - use reduce on UnspentOutput directly (TS)
-		// let amountAvailable = data.utxos.reduce((utxo:UnspentOutput,v)=>satoshis+v, 0);
 		let amountAvailable = data.utxos.map(utxo=>utxo.satoshis).reduce((a,b)=>a+b,0);
 		this.logger.verbose(`tx ... need data fee: ${KSP(dataFee)} total needed: ${KSP(amountRequested+dataFee)}`)
 		this.logger.verbose(`tx ... available: ${KSP(amountAvailable)} in ${data.utxos.length} UTXOs`)
-		// console.log('amountAvailable ->', amountAvailable);
-		if(!networkFeeMax && txParamsArg.fee < dataFee) {
-			throw new Error(`Fee supplied is ${txParamsArg.fee} but the minimum fee required for this transaction is ${dataFee}`);
+
+		if(networkFeeMax && dataFee > networkFeeMax) {
+			throw new Error(`Fee max is ${networkFeeMax} but the minimum fee required for this transaction is ${dataFee}`);
 		}
-		else if(networkFeeMax && amountAvailable >= dataFee+amountRequested) {
-			txParams.fee += dataFee;
-			this.logger.verbose(`tx ... incrementing user fee ${KSP(txParamsArg.fee)} by data fee ${KSP(dataFee)} total ${KSP(txParams.fee)}`);
-			data = this.composeTx(txParams);
-		}
-		//else
-		// if(networkFeeMax && amountAvailable < dataFee+amountRequested)
-		// 	throw new Error(`Minimum fee required for this transaction is ${dataFee}`);
-		else if(networkFeeMax) {
+
+		if(calculateNetworkFee){
 			do {
 				//console.log(`insufficient data fees... incrementing by ${dataFee}`);
-				txParams.fee = txParamsArg.fee+dataFee;
+				txParams.fee = priorityFee+dataFee;
+				if(inclusiveFee){
+					txParams.amount = txAmount-txParams.fee;
+				}
 				this.logger.verbose(`tx ... insufficient data fee for transaction size of ${txSize} bytes`);
 				this.logger.verbose(`tx ... need data fee: ${KSP(dataFee)} for ${data.utxos.length} UTXOs`);
 				this.logger.verbose(`tx ... rebuilding transaction with additional inputs`);
@@ -754,13 +750,21 @@ class Wallet extends EventTargetImpl {
 				if(data.utxos.length != utxoLen)
 					this.logger.verbose(`tx ... aggregating: ${data.utxos.length} UTXOs`);
 
-			} while(txParams.fee <= networkFeeMax && txParams.fee < dataFee+txParamsArg.fee);
+			} while(txParams.fee <= networkFeeMax && txParams.fee < dataFee+priorityFee);
 
 			if(txParams.fee > networkFeeMax)
 				throw new Error(`Maximum network fee exceeded; need: ${dataFee} maximum is: ${networkFeeMax}`);
 
-			// console.log(txParams);
+		}else if(dataFee > priorityFee){
+			throw new Error(`Minimum fee required for this transaction is ${dataFee}`);
+			if(inclusiveFee){
+				txParams.amount -= txParams.fee;
+				data = this.composeTx(txParams);
+			}
 		}
+
+
+
 
 		const { id, tx, utxos, utxoIds, rawTx, amount, toAddr } = data;
 		const { fee, note='' } = txParams;
