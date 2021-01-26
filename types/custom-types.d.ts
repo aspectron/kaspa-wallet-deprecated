@@ -1,4 +1,4 @@
-import bitcore from 'bitcore-lib-cash';
+import kaspacore from 'kaspacore-lib';
 import { KaspaAPI } from 'wallet/apiHelpers';
 
 export type Network = 'kaspa' | 'kaspadev' | 'kaspareg' | 'kaspatest' | 'kaspasim';
@@ -58,7 +58,7 @@ export interface TxSend {
   toAddr: string;
   amount: number;
   fee: number;
-  tx: bitcore.Transaction;
+  tx: kaspacore.Transaction;
   changeAddrOverride? : string;
   networkFeeMax?:number;
   note?:string;
@@ -69,6 +69,28 @@ export interface TxSend {
 export interface TxResp {
   txid: string;
   rpctx?: string;
+}
+
+export interface ComposeTxInfo{
+  tx: kaspacore.Transaction;
+  id: string;
+  rawTx: string;
+  utxoIds: string[];
+  amount: number;
+  toAddr: string;
+  fee: number;
+  utxos: kaspacore.Transaction.UnspentOutput[];
+  dataFee?:number;
+  totalAmount?:number;
+  txSize?:number;
+  note?:string;
+}
+
+export interface TxInfo  extends ComposeTxInfo{
+  dataFee:number;
+  totalAmount:number;
+  txSize:number;
+  note:string;
 }
 
 /*
