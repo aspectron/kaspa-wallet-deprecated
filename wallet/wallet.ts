@@ -716,6 +716,8 @@ class Wallet extends EventTargetImpl {
 		const calculateNetworkFee = !!txParams.calculateNetworkFee;
 		const inclusiveFee = !!txParams.inclusiveFee;
 
+		console.log("calculateNetworkFee", calculateNetworkFee, inclusiveFee)
+
 		let dataFeeLast = 0;
 		let data = this.composeTx(txParams);
 		let txSize = data.tx.toBuffer().length - data.tx.inputs.length * 2;
@@ -757,10 +759,9 @@ class Wallet extends EventTargetImpl {
 
 		}else if(dataFee > priorityFee){
 			throw new Error(`Minimum fee required for this transaction is ${dataFee}`);
-			if(inclusiveFee){
-				txParams.amount -= txParams.fee;
-				data = this.composeTx(txParams);
-			}
+		}else if(inclusiveFee){
+			txParams.amount -= txParams.fee;
+			data = this.composeTx(txParams);
 		}
 
 
