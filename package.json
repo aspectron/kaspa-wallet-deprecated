@@ -12,7 +12,7 @@
   },
   "dependencies": {
     "@aspectron/flow-key-crypt": "aspectron/flow-key-crypt",
-    "@aspectron/flow-logger": "aspectron/flow-logger",
+    "@aspectron/flow-logger": ">=1.0.2",
     "@types/node": "^14.14.9",
     "bitcore-mnemonic": "^8.23.1",
     "browser-passworder": "^2.0.3",
