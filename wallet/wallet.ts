@@ -654,7 +654,7 @@ class Wallet extends EventTargetImpl {
 			return [this.addressManager.all[String(cur.address)], ...prev] as string[];
 		}, []);
 
-		//console.log("privKeys::::", privKeys)
+		this.logger.info("utxos.length", utxos.length)
 
 		const changeAddr = changeAddrOverride || this.addressManager.changeAddress.next();
 		try {
@@ -734,14 +734,14 @@ class Wallet extends EventTargetImpl {
 				this.logger.verbose(`tx ... need data fee: ${KSP(dataFee)} for ${data.utxos.length} UTXOs`);
 				this.logger.verbose(`tx ... rebuilding transaction with additional inputs`);
 				let utxoLen = data.utxos.length;
-				//console.log(`final fee ${txParams.fee}`);
+				this.logger.debug(`final fee ${txParams.fee}`);
 				data = this.composeTx(txParams);
 				txSize = data.tx.toBuffer().length - data.tx.inputs.length * 2;
 				dataFee = txSize * this.defaultFee;
 				if(data.utxos.length != utxoLen)
 					this.logger.verbose(`tx ... aggregating: ${data.utxos.length} UTXOs`);
 
-			} while(txParams.fee <= networkFeeMax && txParams.fee < dataFee+priorityFee);
+			} while((!networkFeeMax || txParams.fee <= networkFeeMax) && txParams.fee < dataFee+priorityFee);
 
 			if(networkFeeMax && txParams.fee > networkFeeMax)
 				throw new Error(`Maximum network fee exceeded; need: ${dataFee} maximum is: ${networkFeeMax}`);
@@ -776,6 +776,7 @@ class Wallet extends EventTargetImpl {
 			fee, dataFee, totalAmount, txSize, note
 		} = data;
 
+
 		this.logger.info(`tx ... required data fee: ${KSP(dataFee)} (${utxos.length} UTXOs)`);// (${KSP(txParamsArg.fee)}+${KSP(dataFee)})`);
 		//this.logger.verbose(`tx ... final fee: ${KSP(dataFee+txParamsArg.fee)} (${KSP(txParamsArg.fee)}+${KSP(dataFee)})`);
 		this.logger.info(`tx ... resulting total: ${KSP(totalAmount)}`);
@@ -784,6 +785,7 @@ class Wallet extends EventTargetImpl {
 		//console.log(utxos);
 
 		if (debug || this.loggerLevel > 0) {
+			this.logger.debug("submitTransaction: estimateTx", data)
 			this.logger.debug("sendTx:utxos", utxos)
 			this.logger.debug("::utxos[0].script::", utxos[0].script)
 			//console.log("::utxos[0].address::", utxos[0].address)
@@ -791,7 +793,7 @@ class Wallet extends EventTargetImpl {
 
 		const {nLockTime: lockTime, version } = tx;
 
-		if (this.loggerLevel > 0)
+		if (debug || this.loggerLevel > 0)
 			this.logger.debug("composeTx:tx", "txSize:", txSize)
 
 
@@ -846,7 +848,7 @@ class Wallet extends EventTargetImpl {
 		const ts1 = Date.now();
 		this.logger.info(`tx ... generation time ${((ts1-ts0)/1000).toFixed(2)} sec`)
 
-		if (this.loggerLevel > 0) {
+		if (debug || this.loggerLevel > 0) {
 			this.logger.debug(`rpcTX ${JSON.stringify(rpcTX, null, "  ")}`)
 			this.logger.debug(`rpcTX ${JSON.stringify(rpcTX)}`)
 		}

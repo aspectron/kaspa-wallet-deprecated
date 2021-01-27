@@ -55,7 +55,7 @@ export class UtxoSet extends EventTargetImpl {
 	 */
 	add(utxos: Api.Utxo[], address: string): string[] {
 		const utxoIds: string[] = [];
-		this.logger.debug("add utxos", utxos)
+		this.logger.utxodebug("add utxos", utxos)
 		const {blueScore} = this.wallet;
 		utxos.forEach((utxo) => {
 			const utxoId = utxo.transactionId + utxo.index.toString();
