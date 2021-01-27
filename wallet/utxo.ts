@@ -7,6 +7,8 @@ import * as helper from '../utils/helper';
 import {Wallet} from './wallet';
 import {EventTargetImpl} from './event-target-impl';
 
+const KSP = helper.KSP;
+
 export class UnspentOutput extends kaspacore.Transaction.UnspentOutput {
 	blockBlueScore: number;
 	scriptPublicKeyVersion: number;
@@ -170,7 +172,7 @@ export class UtxoSet extends EventTargetImpl {
 			if (totalVal >= txAmount) break;
 		}
 		if (totalVal < txAmount)
-			throw new Error(`Transaction compose error. Need: ${txAmount}, UTXO Balance: ${totalVal}`);
+			throw new Error(`Transaction compose error. Need: ${KSP(txAmount)} KSP, UTXO Balance: ${KSP(totalVal)} KSP`);
 
 		return {
 			utxoIds,

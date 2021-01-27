@@ -7,6 +7,7 @@ import {CreateStorage, StorageType, classes as storageClasses} from './storage';
 import * as passworder1 from 'browser-passworder';
 import * as passworder2 from '@aspectron/flow-key-crypt';
 
+const KSP = helper.KSP;
 
 let passworder: typeof passworder1 | typeof passworder2;
 
@@ -18,8 +19,6 @@ if ( win && !win.nw) {
 } else {
 	passworder = passworder2;
 }
-
-import { Decimal } from 'decimal.js';
 
 import {
 	Network, NetworkOptions, SelectedNetwork, WalletSave, Api, TxSend, TxResp,
@@ -975,14 +974,5 @@ class Wallet extends EventTargetImpl {
 		kaspacore.setDebugLevel(level?1:0);
 	}
 }
-
-function KSP(v:number): string {
-	var [int,frac] = (new Decimal(v)).mul(1e-8).toFixed(8).split('.');
-	int = int.replace(/\B(?=(\d{3})+(?!\d))/g, ",");
-	frac = frac?.replace(/0+$/,'');
-	return frac ? `${int}.${frac}` : int;
-}
-
-
 
 export {Wallet}
