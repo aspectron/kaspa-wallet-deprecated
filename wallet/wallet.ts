@@ -731,7 +731,7 @@ class Wallet extends EventTargetImpl {
 		this.logger.verbose(`tx ... available: ${KSP(amountAvailable)} in ${data.utxos.length} UTXOs`)
 
 		if(networkFeeMax && dataFee > networkFeeMax) {
-			throw new Error(`Fee max is ${networkFeeMax} but the minimum fee required for this transaction is ${dataFee}`);
+			throw new Error(`Fee max is ${networkFeeMax} but the minimum fee required for this transaction is ${KSP(dataFee)} KSP`);
 		}
 
 		if(calculateNetworkFee){
@@ -755,10 +755,10 @@ class Wallet extends EventTargetImpl {
 			} while((!networkFeeMax || txParams.fee <= networkFeeMax) && txParams.fee < dataFee+priorityFee);
 
 			if(networkFeeMax && txParams.fee > networkFeeMax)
-				throw new Error(`Maximum network fee exceeded; need: ${dataFee} maximum is: ${networkFeeMax}`);
+				throw new Error(`Maximum network fee exceeded; need: ${KSP(dataFee)} KSP maximum is: ${KSP(networkFeeMax)} KSP`);
 
 		}else if(dataFee > priorityFee){
-			throw new Error(`Minimum fee required for this transaction is ${dataFee}`);
+			throw new Error(`Minimum fee required for this transaction is ${KSP(dataFee)} KSP`);
 		}else if(inclusiveFee){
 			txParams.amount -= txParams.fee;
 			data = this.composeTx(txParams);
