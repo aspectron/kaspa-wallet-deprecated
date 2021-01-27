@@ -17,13 +17,14 @@ export class TXStore{
 	static MAX = 5;
 	wallet:Wallet;
 	store:Map<string, TXStoreItem> = new Map();
-	idb:iDB;
+	idb:iDB|undefined;
 
 	constructor(wallet:Wallet){
 		this.wallet = wallet;
 		let {uid} = wallet;
 		//this.restore();
-		this.idb = new iDB({storeName:"tx", dbName:"kaspa_"+uid});
+		if(typeof indexedDB != "undefined")
+			this.idb = new iDB({storeName:"tx", dbName:"kaspa_"+uid});
 	}
 
 	add(tx:TXStoreItem){
@@ -60,7 +61,7 @@ export class TXStore{
 		if(typeof indexedDB != "undefined"){
 			//let txIds = [...this.store.keys()].map(id=>id.substr(0, 15))
 			//iDB.set("kaspa-tx-ids-"+uid, JSON.stringify(txIds));
-			this.idb.set(tx.id, JSON.stringify(tx))
+			this.idb?.set(tx.id, JSON.stringify(tx))
 			//localStorage.setItem("kaspa-tx-ids", JSON.stringify(txIds));
 			//localStorage.setItem("kaspa-tx-"+tx.id, JSON.stringify(tx))
 		}
@@ -84,7 +85,7 @@ export class TXStore{
 			*/
 
 			//iDB.getMany(txIds)
-			let entries = await this.idb.entries();
+			let entries = await this.idb?.entries()||[]
 			let length = entries.length;
 			let list:TXStoreItem[] = [];
 			for (let i=0; i<length;i++){
