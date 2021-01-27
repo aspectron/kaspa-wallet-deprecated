@@ -1,5 +1,5 @@
 import {Wallet} from './wallet';
-import * as iDB from './indexed-db';
+import {iDB} from './indexed-db';
 import {Api} from 'custom-types';
 
 export interface TXStoreItem{
@@ -17,10 +17,13 @@ export class TXStore{
 	static MAX = 5;
 	wallet:Wallet;
 	store:Map<string, TXStoreItem> = new Map();
+	idb:iDB;
 
 	constructor(wallet:Wallet){
 		this.wallet = wallet;
+		let {uid} = wallet;
 		//this.restore();
+		this.idb = new iDB({storeName:"tx", dbName:"kaspa_"+uid});
 	}
 
 	add(tx:TXStoreItem){
@@ -42,7 +45,7 @@ export class TXStore{
 				let item = {
 					in: true,
 					ts,
-					id: utxo.transactionId,
+					id: utxo.transactionId+":"+utxo.index,
 					amount: utxo.amount,
 					address,
 					tx:false//TODO
@@ -53,18 +56,21 @@ export class TXStore{
 	}
 
 	save(tx:TXStoreItem){
+		let {uid} = this.wallet
 		if(typeof indexedDB != "undefined"){
-			let txIds = [...this.store.keys()].map(id=>id.substr(0, 15))
-			iDB.set("kaspa-tx-ids", JSON.stringify(txIds));
-			iDB.set(tx.id.substr(0, 15), JSON.stringify(tx))
+			//let txIds = [...this.store.keys()].map(id=>id.substr(0, 15))
+			//iDB.set("kaspa-tx-ids-"+uid, JSON.stringify(txIds));
+			this.idb.set(tx.id, JSON.stringify(tx))
 			//localStorage.setItem("kaspa-tx-ids", JSON.stringify(txIds));
 			//localStorage.setItem("kaspa-tx-"+tx.id, JSON.stringify(tx))
 		}
 	}
 	async restore(){
+		let {uid} = this.wallet
 		if(typeof indexedDB != "undefined"){
+			/*
 			let txIds:string[] =[];
-			let ids = await iDB.get<string>("kaspa-tx-ids")
+			let ids = await iDB.get<string>("kaspa-tx-ids-"+uid)
 			.catch(e=>{
 				this.wallet.logger.error("LS-TX restore error - 101:", e)
 			})
@@ -75,22 +81,35 @@ export class TXStore{
 			}catch(e){
 				this.wallet.logger.error("LS-TX restore error - 102:", e)
 			}
+			*/
 
 			//iDB.getMany(txIds)
-			for (let i=0; i<txIds.length;i++){
-				let txStr = await iDB.get<string>(txIds[i])
+			let entries = await this.idb.entries();
+			let length = entries.length;
+			let list:TXStoreItem[] = [];
+			for (let i=0; i<length;i++){
+				let [key, txStr] = entries[i]//await iDB.get<string>(txIds[i])
+
+				/*
 				.catch(e=>{
 					this.wallet.logger.error("LS-TX restore error - 103:", e)
 				})
+				*/
 				if(!txStr)
 					continue;
 				try{
 					let tx = JSON.parse(txStr)
-					this.add(tx)
+					list.push(tx)
 				}catch(e){
 					this.wallet.logger.error("LS-TX parse error - 104:", txStr, e)
 				}
 			}
+
+			list.sort((a, b)=>{
+				return a.ts-b.ts;
+			}).map(o=>{
+				this.add(o)
+			})
 		}
 
 		/*

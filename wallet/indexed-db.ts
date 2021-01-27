@@ -25,192 +25,187 @@ export type UseStore = < T > (
 	callback: (store: IDBObjectStore) => T | PromiseLike < T > ,
 ) => Promise < T > ;
 
-let defaultGetStoreFunc: UseStore | undefined;
 
-function defaultGetStore() {
-	if (!defaultGetStoreFunc) {
-		defaultGetStoreFunc = createStore('keyval-store', 'keyval');
+
+export class iDB{
+
+	defaultGetStoreFunc: UseStore;
+	constructor(options:{storeName:string, dbName:string}){
+		let {storeName, dbName} = options;
+		this.defaultGetStoreFunc = createStore(dbName, storeName);
 	}
-	return defaultGetStoreFunc;
-}
 
-/**
- * Get a value by its key.
- *
- * @param key
- * @param customStore Method to get a custom store. Use with caution (see the docs).
- */
-export function get < T = any > (
-	key: IDBValidKey,
-	customStore = defaultGetStore(),
-): Promise < T | undefined > {
-	return customStore('readonly', (store) => promisifyRequest(store.get(key)));
-}
+	/**
+	 * Get a value by its key.
+	 *
+	 * @param key
+	 * @param customStore Method to get a custom store. Use with caution (see the docs).
+	 */
+	get<T=any>(key: IDBValidKey, customStore = this.defaultGetStoreFunc): Promise < T | undefined > {
+		return customStore('readonly', (store) => promisifyRequest(store.get(key)));
+	}
 
-/**
- * Set a value with a key.
- *
- * @param key
- * @param value
- * @param customStore Method to get a custom store. Use with caution (see the docs).
- */
-export function set(
-	key: IDBValidKey,
-	value: any,
-	customStore = defaultGetStore(),
-): Promise < void > {
-	return customStore('readwrite', (store) => {
-		store.put(value, key);
-		return promisifyRequest(store.transaction);
-	});
-}
+	/**
+	 * Set a value with a key.
+	 *
+	 * @param key
+	 * @param value
+	 * @param customStore Method to get a custom store. Use with caution (see the docs).
+	 */
+	set(
+		key: IDBValidKey,
+		value: any,
+		customStore = this.defaultGetStoreFunc
+	): Promise < void > {
+		return customStore('readwrite', (store) => {
+			store.put(value, key);
+			return promisifyRequest(store.transaction);
+		});
+	}
 
-/**
- * Set multiple values at once. This is faster than calling set() multiple times.
- * It's also atomic – if one of the pairs can't be added, none will be added.
- *
- * @param entries Array of entries, where each entry is an array of `[key, value]`.
- * @param customStore Method to get a custom store. Use with caution (see the docs).
- */
-export function setMany(
-	entries: [IDBValidKey, any][],
-	customStore = defaultGetStore(),
-): Promise < void > {
-	return customStore('readwrite', (store) => {
-		entries.forEach((entry) => store.put(entry[1], entry[0]));
-		return promisifyRequest(store.transaction);
-	});
-}
+	/**
+	 * Set multiple values at once. This is faster than calling set() multiple times.
+	 * It's also atomic – if one of the pairs can't be added, none will be added.
+	 *
+	 * @param entries Array of entries, where each entry is an array of `[key, value]`.
+	 * @param customStore Method to get a custom store. Use with caution (see the docs).
+	 */
+	setMany(
+		entries: [IDBValidKey, any][],
+		customStore = this.defaultGetStoreFunc,
+	): Promise < void > {
+		return customStore('readwrite', (store) => {
+			entries.forEach((entry) => store.put(entry[1], entry[0]));
+			return promisifyRequest(store.transaction);
+		});
+	}
 
-/**
- * Get multiple values by their keys
- *
- * @param keys
- * @param customStore Method to get a custom store. Use with caution (see the docs).
- */
-export function getMany(
-	keys: IDBValidKey[],
-	customStore = defaultGetStore(),
-): Promise < any[] > {
-	return customStore('readonly', (store) =>
-		Promise.all(keys.map((key) => promisifyRequest(store.get(key)))),
-	);
-}
+	/**
+	 * Get multiple values by their keys
+	 *
+	 * @param keys
+	 * @param customStore Method to get a custom store. Use with caution (see the docs).
+	 */
+	getMany(
+		keys: IDBValidKey[],
+		customStore = this.defaultGetStoreFunc,
+	): Promise < any[] > {
+		return customStore('readonly', (store) =>
+			Promise.all(keys.map((key) => promisifyRequest(store.get(key)))),
+		);
+	}
 
-/**
- * Update a value. This lets you see the old value and update it as an atomic operation.
- *
- * @param key
- * @param updater A callback that takes the old value and returns a new value.
- * @param customStore Method to get a custom store. Use with caution (see the docs).
- */
-export function update < T = any > (
-	key: IDBValidKey,
-	updater: (oldValue: T | undefined) => T,
-	customStore = defaultGetStore(),
-): Promise < void > {
-	return customStore(
-		'readwrite',
-		(store) =>
-		// Need to create the promise manually.
-		// If I try to chain promises, the transaction closes in browsers
-		// that use a promise polyfill (IE10/11).
-		new Promise((resolve, reject) => {
-			store.get(key).onsuccess = function() {
-				try {
-					store.put(updater(this.result), key);
-					resolve(promisifyRequest(store.transaction));
-				} catch (err) {
-					reject(err);
-				}
+	/**
+	 * Update a value. This lets you see the old value and update it as an atomic operation.
+	 *
+	 * @param key
+	 * @param updater A callback that takes the old value and returns a new value.
+	 * @param customStore Method to get a custom store. Use with caution (see the docs).
+	 */
+	update < T = any > (
+		key: IDBValidKey,
+		updater: (oldValue: T | undefined) => T,
+		customStore = this.defaultGetStoreFunc,
+	): Promise < void > {
+		return customStore(
+			'readwrite',
+			(store) =>
+			// Need to create the promise manually.
+			// If I try to chain promises, the transaction closes in browsers
+			// that use a promise polyfill (IE10/11).
+			new Promise((resolve, reject) => {
+				store.get(key).onsuccess = function() {
+					try {
+						store.put(updater(this.result), key);
+						resolve(promisifyRequest(store.transaction));
+					} catch (err) {
+						reject(err);
+					}
+				};
+			}),
+		);
+	}
+
+	/**
+	 * Delete a particular key from the store.
+	 *
+	 * @param key
+	 * @param customStore Method to get a custom store. Use with caution (see the docs).
+	 */
+	del(
+		key: IDBValidKey,
+		customStore = this.defaultGetStoreFunc,
+	): Promise < void > {
+		return customStore('readwrite', (store) => {
+			store.delete(key);
+			return promisifyRequest(store.transaction);
+		});
+	}
+
+	/**
+	 * Clear all values in the store.
+	 *
+	 * @param customStore Method to get a custom store. Use with caution (see the docs).
+	 */
+	clear(customStore = this.defaultGetStoreFunc): Promise < void > {
+		return customStore('readwrite', (store) => {
+			store.clear();
+			return promisifyRequest(store.transaction);
+		});
+	}
+
+	eachCursor(
+		customStore: UseStore,
+		callback: (cursor: IDBCursorWithValue) => void,
+	): Promise < void > {
+		return customStore('readonly', (store) => {
+			// This would be store.getAllKeys(), but it isn't supported by Edge or Safari.
+			// And openKeyCursor isn't supported by Safari.
+			store.openCursor().onsuccess = function() {
+				if (!this.result) return;
+				callback(this.result);
+				this.result.continue();
 			};
-		}),
-	);
-}
+			return promisifyRequest(store.transaction);
+		});
+	}
 
-/**
- * Delete a particular key from the store.
- *
- * @param key
- * @param customStore Method to get a custom store. Use with caution (see the docs).
- */
-export function del(
-	key: IDBValidKey,
-	customStore = defaultGetStore(),
-): Promise < void > {
-	return customStore('readwrite', (store) => {
-		store.delete(key);
-		return promisifyRequest(store.transaction);
-	});
-}
+	/**
+	 * Get all keys in the store.
+	 *
+	 * @param customStore Method to get a custom store. Use with caution (see the docs).
+	 */
+	keys(customStore = this.defaultGetStoreFunc): Promise < IDBValidKey[] > {
+		const items: IDBValidKey[] = [];
 
-/**
- * Clear all values in the store.
- *
- * @param customStore Method to get a custom store. Use with caution (see the docs).
- */
-export function clear(customStore = defaultGetStore()): Promise < void > {
-	return customStore('readwrite', (store) => {
-		store.clear();
-		return promisifyRequest(store.transaction);
-	});
-}
+		return this.eachCursor(customStore, (cursor) => items.push(cursor.key)).then(
+			() => items,
+		);
+	}
 
-function eachCursor(
-	customStore: UseStore,
-	callback: (cursor: IDBCursorWithValue) => void,
-): Promise < void > {
-	return customStore('readonly', (store) => {
-		// This would be store.getAllKeys(), but it isn't supported by Edge or Safari.
-		// And openKeyCursor isn't supported by Safari.
-		store.openCursor().onsuccess = function() {
-			if (!this.result) return;
-			callback(this.result);
-			this.result.continue();
-		};
-		return promisifyRequest(store.transaction);
-	});
-}
+	/**
+	 * Get all values in the store.
+	 *
+	 * @param customStore Method to get a custom store. Use with caution (see the docs).
+	 */
+	values(customStore = this.defaultGetStoreFunc): Promise < IDBValidKey[] > {
+		const items: any[] = [];
 
-/**
- * Get all keys in the store.
- *
- * @param customStore Method to get a custom store. Use with caution (see the docs).
- */
-export function keys(customStore = defaultGetStore()): Promise < IDBValidKey[] > {
-	const items: IDBValidKey[] = [];
+		return this.eachCursor(customStore, (cursor) => items.push(cursor.value)).then(
+			() => items,
+		);
+	}
 
-	return eachCursor(customStore, (cursor) => items.push(cursor.key)).then(
-		() => items,
-	);
-}
+	/**
+	 * Get all entries in the store. Each entry is an array of `[key, value]`.
+	 *
+	 * @param customStore Method to get a custom store. Use with caution (see the docs).
+	 */
+	entries(customStore = this.defaultGetStoreFunc): Promise < [IDBValidKey, any][] > {
+		const items: [IDBValidKey, any][] = [];
 
-/**
- * Get all values in the store.
- *
- * @param customStore Method to get a custom store. Use with caution (see the docs).
- */
-export function values(
-	customStore = defaultGetStore(),
-): Promise < IDBValidKey[] > {
-	const items: any[] = [];
-
-	return eachCursor(customStore, (cursor) => items.push(cursor.value)).then(
-		() => items,
-	);
-}
-
-/**
- * Get all entries in the store. Each entry is an array of `[key, value]`.
- *
- * @param customStore Method to get a custom store. Use with caution (see the docs).
- */
-export function entries(
-	customStore = defaultGetStore(),
-): Promise < [IDBValidKey, any][] > {
-	const items: [IDBValidKey, any][] = [];
-
-	return eachCursor(customStore, (cursor) =>
-		items.push([cursor.key, cursor.value]),
-	).then(() => items);
+		return this.eachCursor(customStore, (cursor) =>
+			items.push([cursor.key, cursor.value]),
+		).then(() => items);
+	}
 }

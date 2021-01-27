@@ -23,6 +23,17 @@ export const Deferred = (): DeferredPromise=>{
     return promise as DeferredPromise;
 }
 
+export const createHash = (str:string) => {
+    let hash = 0;
+    for (let i = 0; i < str.length; i++) {
+        const char = str.charCodeAt(i);
+        hash = (hash << 5) - hash + char;
+        hash &= hash; // Convert to 32bit integer
+    }
+    //console.log("hash", str, hash)
+    return new Uint32Array([hash])[0].toString(36);
+};
+
 // Returns a function, that, when invoked, will only be triggered at most once
 // during a given window of time. Normally, the throttled function will run
 // as much as it can, without ever going more than once per `wait` duration;

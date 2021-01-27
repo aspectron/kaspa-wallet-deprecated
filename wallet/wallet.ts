@@ -203,6 +203,8 @@ class Wallet extends EventTargetImpl {
 	connectSignal:helper.DeferredPromise;
 	txStore:TXStore;
 
+	uid:string;
+
 	/** Create a wallet.
 	 * @param walletSave (optional)
 	 * @param walletSave.privKey Saved wallet's private key.
@@ -229,9 +231,6 @@ class Wallet extends EventTargetImpl {
 		if (networkOptions.rpc)
 			this.api.setRPC(networkOptions.rpc);
 
-		this.utxoSet = new UtxoSet(this);
-		this.txStore = new TXStore(this);
-		//this.utxoSet.on("balance-update", this.updateBalance.bind(this));
 
 		if (privKey && seedPhrase) {
 			this.HDWallet = new kaspacore.HDPrivateKey(privKey);
@@ -242,6 +241,12 @@ class Wallet extends EventTargetImpl {
 			this.HDWallet = new kaspacore.HDPrivateKey(temp.toHDPrivateKey().toString());
 		}
 
+		this.uid = this.createUID();
+
+		this.utxoSet = new UtxoSet(this);
+		this.txStore = new TXStore(this);
+		//this.utxoSet.on("balance-update", this.updateBalance.bind(this));
+		
 		this.addressManager = new AddressManager(this.HDWallet, this.network);
 		if(this.options.disableAddressDerivation)
 			this.addressManager.receiveAddress.next();
@@ -261,6 +266,12 @@ class Wallet extends EventTargetImpl {
 		setTimeout(()=>{
 			this.txStore.restore();
 		}, 1000)
+	}
+
+	createUID(){
+		const {privateKey} = this.HDWallet.deriveChild(`m/44'/972/0'/1'/0'`);
+		let address = privateKey.toAddress(this.network).toString().split(":")[1]
+		return helper.createHash(address);
 	}
 
 	async onApiConnect(){
