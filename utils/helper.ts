@@ -10,7 +10,9 @@ export const KSP = (v:number): string =>{
 
 export const now = Date.now || function() {
     return new Date().getTime();
-};
+}
+
+export const UID = (join='')=>now()+join+(Math.random()*100000).toFixed(0);
 
 export const dpc = (delay: number | Function, fn ? : Function | number) => {
     if (typeof delay == 'function') {

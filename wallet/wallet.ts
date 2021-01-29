@@ -2,7 +2,8 @@ import {Buffer} from 'safe-buffer';
 const Mnemonic = require('bitcore-mnemonic');
 import * as kaspacore from 'kaspacore-lib';
 import * as helper from '../utils/helper';
-import {CreateStorage, StorageType, classes as storageClasses} from './storage';
+import {Storage, StorageType} from './storage';
+export * from './storage';
 
 import * as passworder1 from 'browser-passworder';
 import * as passworder2 from '@aspectron/flow-key-crypt';
@@ -43,7 +44,7 @@ const BALANCE_TOTAL = Symbol();
 class Wallet extends EventTargetImpl {
 
 	static Mnemonic: typeof Mnemonic = Mnemonic;
-	static passworder = passworder;
+	static passwordHandler = passworder;
 
 	// TODO - integrate with Kaspacore-lib
 	static networkTypes: Object = {
@@ -428,6 +429,7 @@ class Wallet extends EventTargetImpl {
 		this.storage.setFileName(fileName);
 	}
 	*/
+	/*
 	_storage: typeof storageClasses.Storage|undefined;
 
 	setStoragePassword(password: string) {
@@ -447,6 +449,7 @@ class Wallet extends EventTargetImpl {
 		storage.setPassword(password);
 		this._storage = storage;
 	}
+	*/
 
 	/**
 	 * Queries API for address[] UTXOs. Adds tx to transactions storage. Also sorts the entire transaction set.
@@ -961,7 +964,7 @@ class Wallet extends EventTargetImpl {
 	async export (password: string): Promise < string > {
 		const savedWallet: WalletSave = {
 			privKey: this.HDWallet.toString(),
-			seedPhrase: this.mnemonic,
+			seedPhrase: this.mnemonic
 		};
 		return passworder.encrypt(password, JSON.stringify(savedWallet));
 	}
