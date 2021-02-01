@@ -8,7 +8,7 @@ export * from './storage';
 import * as passworder1 from 'browser-passworder';
 import * as passworder2 from '@aspectron/flow-key-crypt';
 
-const KSP = helper.KSP;
+const KAS = helper.KAS;
 
 let passworder: typeof passworder1 | typeof passworder2;
 
@@ -62,8 +62,8 @@ class Wallet extends EventTargetImpl {
 	}
 
 
-	static KSP(v:number): string {
-		return KSP(v);
+	static KAS(v:number): string {
+		return KAS(v);
 	}
 
 
@@ -637,14 +637,14 @@ class Wallet extends EventTargetImpl {
 		return debugInfo;
 	}
 
-	// TODO: convert amount to yonis aka satoshis
+	// TODO: convert amount to sompis aka satoshis
 	// TODO: bn
 	/**
 	 * Compose a serialized, signed transaction
 	 * @param obj
 	 * @param obj.toAddr To address in cashaddr format (e.g. kaspatest:qq0d6h0prjm5mpdld5pncst3adu0yam6xch4tr69k2)
-	 * @param obj.amount Amount to send in yonis (100000000 (1e8) yonis in 1 KSP)
-	 * @param obj.fee Fee for miners in yonis
+	 * @param obj.amount Amount to send in sompis (100000000 (1e8) sompis in 1 KAS)
+	 * @param obj.fee Fee for miners in sompis
 	 * @param obj.changeAddrOverride Use this to override automatic change address derivation
 	 * @throws if amount is above `Number.MAX_SAFE_INTEGER`
 	 */
@@ -701,8 +701,8 @@ class Wallet extends EventTargetImpl {
 	 * Estimate transaction fee. Returns transaction data.
 	 * @param txParams
 	 * @param txParams.toAddr To address in cashaddr format (e.g. kaspatest:qq0d6h0prjm5mpdld5pncst3adu0yam6xch4tr69k2)
-	 * @param txParams.amount Amount to send in yonis (100000000 (1e8) yonis in 1 KSP)
-	 * @param txParams.fee Fee for miners in yonis
+	 * @param txParams.amount Amount to send in sompis (100000000 (1e8) sompis in 1 KAS)
+	 * @param txParams.fee Fee for miners in sompis
 	 * @throws `FetchError` if endpoint is down. API error message if tx error. Error if amount is too large to be represented as a javascript number.
 	 */
 	async estimateTransaction(txParamsArg: TxSend): Promise < TxInfo > {
@@ -711,7 +711,7 @@ class Wallet extends EventTargetImpl {
 			txParamsArg.fee = 0;
 
 		this.logger.info(`tx ... sending to ${txParamsArg.toAddr}`)
-		this.logger.info(`tx ... amount: ${KSP(txParamsArg.amount)} user fee: ${KSP(txParamsArg.fee)} max data fee: ${KSP(txParamsArg.networkFeeMax||0)}`)
+		this.logger.info(`tx ... amount: ${KAS(txParamsArg.amount)} user fee: ${KAS(txParamsArg.fee)} max data fee: ${KAS(txParamsArg.networkFeeMax||0)}`)
 
 		let txParams : TxSend = { ...txParamsArg } as TxSend;
 		const networkFeeMax = txParams.networkFeeMax || 0;
@@ -729,11 +729,11 @@ class Wallet extends EventTargetImpl {
 		let amountRequested = txParamsArg.amount+priorityFee;
 
 		let amountAvailable = data.utxos.map(utxo=>utxo.satoshis).reduce((a,b)=>a+b,0);
-		this.logger.verbose(`tx ... need data fee: ${KSP(dataFee)} total needed: ${KSP(amountRequested+dataFee)}`)
-		this.logger.verbose(`tx ... available: ${KSP(amountAvailable)} in ${data.utxos.length} UTXOs`)
+		this.logger.verbose(`tx ... need data fee: ${KAS(dataFee)} total needed: ${KAS(amountRequested+dataFee)}`)
+		this.logger.verbose(`tx ... available: ${KAS(amountAvailable)} in ${data.utxos.length} UTXOs`)
 
 		if(networkFeeMax && dataFee > networkFeeMax) {
-			throw new Error(`Fee max is ${networkFeeMax} but the minimum fee required for this transaction is ${KSP(dataFee)} KSP`);
+			throw new Error(`Fee max is ${networkFeeMax} but the minimum fee required for this transaction is ${KAS(dataFee)} KAS`);
 		}
 
 		if(calculateNetworkFee){
@@ -744,7 +744,7 @@ class Wallet extends EventTargetImpl {
 					txParams.amount = txAmount-txParams.fee;
 				}
 				this.logger.verbose(`tx ... insufficient data fee for transaction size of ${txSize} bytes`);
-				this.logger.verbose(`tx ... need data fee: ${KSP(dataFee)} for ${data.utxos.length} UTXOs`);
+				this.logger.verbose(`tx ... need data fee: ${KAS(dataFee)} for ${data.utxos.length} UTXOs`);
 				this.logger.verbose(`tx ... rebuilding transaction with additional inputs`);
 				let utxoLen = data.utxos.length;
 				this.logger.debug(`final fee ${txParams.fee}`);
@@ -757,10 +757,10 @@ class Wallet extends EventTargetImpl {
 			} while((!networkFeeMax || txParams.fee <= networkFeeMax) && txParams.fee < dataFee+priorityFee);
 
 			if(networkFeeMax && txParams.fee > networkFeeMax)
-				throw new Error(`Maximum network fee exceeded; need: ${KSP(dataFee)} KSP maximum is: ${KSP(networkFeeMax)} KSP`);
+				throw new Error(`Maximum network fee exceeded; need: ${KAS(dataFee)} KAS maximum is: ${KAS(networkFeeMax)} KAS`);
 
 		}else if(dataFee > priorityFee){
-			throw new Error(`Minimum fee required for this transaction is ${KSP(dataFee)} KSP`);
+			throw new Error(`Minimum fee required for this transaction is ${KAS(dataFee)} KAS`);
 		}else if(inclusiveFee){
 			txParams.amount -= txParams.fee;
 			data = this.composeTx(txParams);
@@ -777,8 +777,8 @@ class Wallet extends EventTargetImpl {
 	 * Send a transaction. Returns transaction id.
 	 * @param txParams
 	 * @param txParams.toAddr To address in cashaddr format (e.g. kaspatest:qq0d6h0prjm5mpdld5pncst3adu0yam6xch4tr69k2)
-	 * @param txParams.amount Amount to send in yonis (100000000 (1e8) yonis in 1 KSP)
-	 * @param txParams.fee Fee for miners in yonis
+	 * @param txParams.amount Amount to send in sompis (100000000 (1e8) sompis in 1 KAS)
+	 * @param txParams.fee Fee for miners in sompis
 	 * @throws `FetchError` if endpoint is down. API error message if tx error. Error if amount is too large to be represented as a javascript number.
 	 */
 	async submitTransaction(txParamsArg: TxSend, debug = false): Promise < TxResp | null > {
@@ -790,9 +790,9 @@ class Wallet extends EventTargetImpl {
 		} = data;
 
 
-		this.logger.info(`tx ... required data fee: ${KSP(dataFee)} (${utxos.length} UTXOs)`);// (${KSP(txParamsArg.fee)}+${KSP(dataFee)})`);
-		//this.logger.verbose(`tx ... final fee: ${KSP(dataFee+txParamsArg.fee)} (${KSP(txParamsArg.fee)}+${KSP(dataFee)})`);
-		this.logger.info(`tx ... resulting total: ${KSP(totalAmount)}`);
+		this.logger.info(`tx ... required data fee: ${KAS(dataFee)} (${utxos.length} UTXOs)`);// (${KAS(txParamsArg.fee)}+${KAS(dataFee)})`);
+		//this.logger.verbose(`tx ... final fee: ${KAS(dataFee+txParamsArg.fee)} (${KAS(txParamsArg.fee)}+${KAS(dataFee)})`);
+		this.logger.info(`tx ... resulting total: ${KAS(totalAmount)}`);
 
 
 		//console.log(utxos);

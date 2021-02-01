@@ -1,7 +1,7 @@
 import { Decimal } from 'decimal.js';
 export {Decimal};
 
-export const KSP = (v:number): string =>{
+export const KAS = (v:number): string =>{
     var [int,frac] = (new Decimal(v)).mul(1e-8).toFixed(8).split('.');
     int = int.replace(/\B(?=(\d{3})+(?!\d))/g, ",");
     frac = frac?.replace(/0+$/,'');

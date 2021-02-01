@@ -158,7 +158,7 @@ export interface TxSend {
 }
 ```
 - `toAddr` - Destination address
-- `amount` - Amount of KSP in base units
+- `amount` - Amount of KAS in base units (sompis)
 - `fee` - Transaction priority fee
 - `changeAddrOverride` - (optional) Allows you to supply your own address for the change transaction
 - `networkFeeMax` - (optional) Allows you to set an upper bound for automatic network (data storage) fee calculation.  Kaspa Wallet will automatically calculate appropriate fees and add them to the transaction based on the transaction size. This feature is disabled if the property is omitted or set to zero.
@@ -195,7 +195,7 @@ Wallet balance
 --------------
 
 Wallet retains 2 types of balances:
-- *available* - balance contains KSP ready to be spent, comprised of UTXO records with block maturity blue score over 100.
+- *available* - balance contains KAS ready to be spent, comprised of UTXO records with block maturity blue score over 100.
 - *pending* - balance contains newly received transactions with UTXO block maturity less than 100.  Upon each UTXO maturity balance is relocated from pending to available.
 
 `Wallet::balance` is an object containing the following properties that are updated during wallet operation:
