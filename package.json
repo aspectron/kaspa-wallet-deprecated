@@ -19,6 +19,10 @@
     "decimal.js": "^10.2.1",
     "kaspacore-lib": "aspectron/kaspacore-lib",
     "ts-node": "^9.0.0",
-    "typescript": "*"
+    "typescript": "*",
+    "crypto-js": "*"
+  },
+  "devDependencies": {
+    "@types/crypto-js": "^4.0.1"
   }
 }

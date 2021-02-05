@@ -4,22 +4,8 @@ import * as kaspacore from 'kaspacore-lib';
 import * as helper from '../utils/helper';
 import {Storage, StorageType} from './storage';
 export * from './storage';
-
-import * as passworder1 from 'browser-passworder';
-import * as passworder2 from '@aspectron/flow-key-crypt';
-
+import {Crypto} from './crypto';
 const KAS = helper.KAS;
-
-let passworder: typeof passworder1 | typeof passworder2;
-
-type Win = typeof window & {nw?:any};
-const win = typeof window != "undefined"? window as Win:null;
-
-if ( win && !win.nw) {
-	passworder = passworder1;
-} else {
-	passworder = passworder2;
-}
 
 import {
 	Network, NetworkOptions, SelectedNetwork, WalletSave, Api, TxSend, TxResp,
@@ -44,7 +30,8 @@ const BALANCE_TOTAL = Symbol();
 class Wallet extends EventTargetImpl {
 
 	static Mnemonic: typeof Mnemonic = Mnemonic;
-	static passwordHandler = passworder;
+	static passwordHandler = Crypto;
+	static Crypto = Crypto;
 
 	// TODO - integrate with Kaspacore-lib
 	static networkTypes: Object = {
@@ -71,14 +58,6 @@ class Wallet extends EventTargetImpl {
 		return kaspacore.initRuntime();
 	}
 
-
-    // static format(v, pad = 0) {
-	// 	let [int,frac] = Decimal(v||0).mul(1e-8).toFixed(8).split('.');
-    //     int = int.replace(/\B(?=(\d{3})+(?!\d))/g, ",").padStart(pad,' ');
-    //     frac = frac.replace(/0+$/,'');
-	//     return frac ? `${int}.${frac}` : int;
-	// }
-
 	/**
 	 * Converts a mnemonic to a new wallet.
 	 * @param seedPhrase The 12 word seed phrase.
@@ -99,20 +78,14 @@ class Wallet extends EventTargetImpl {
 	 * @throws Will throw "Incorrect password" if password is wrong
 	 */
 	static async import (password: string, encryptedMnemonic: string, networkOptions: NetworkOptions, options: WalletOptions = {}): Promise < Wallet > {
-		const decrypted = await passworder.decrypt(password, encryptedMnemonic);
+		const decrypted = await Crypto.decrypt(password, encryptedMnemonic);
 		const savedWallet = JSON.parse(decrypted) as WalletSave;
 		const myWallet = new this(savedWallet.privKey, savedWallet.seedPhrase, networkOptions, options);
 		return myWallet;
 	}
 
-
-	//static passworder1:any = passworder1;
-	//static passworder2:any = passworder2;
-
 	HDWallet: kaspacore.HDPrivateKey;
-
 	disableBalanceNotifications: boolean = false;
-
 	get balance(): {available: number, pending:number, total:number} {
 		return {
 			available: this[BALANCE_CONFIRMED],
@@ -966,7 +939,7 @@ class Wallet extends EventTargetImpl {
 			privKey: this.HDWallet.toString(),
 			seedPhrase: this.mnemonic
 		};
-		return passworder.encrypt(password, JSON.stringify(savedWallet));
+		return Crypto.encrypt(password, JSON.stringify(savedWallet));
 	}
 
 

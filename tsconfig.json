@@ -19,7 +19,7 @@
     "inlineSources": true,
     "resolveJsonModule": true,
     "experimentalDecorators":true,
-    "module":"CommonJS"//,
-    //"_esModuleInterop": true
+    "module":"CommonJS",
+    "esModuleInterop": true
   }
 }
