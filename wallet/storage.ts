@@ -23,6 +23,19 @@ export interface TXStoreItem{
 	note?:string;
 	tx?:any
 }
+export interface WalletMeta{
+	version?:string;
+	generator?:string;
+	encryption?:string;
+	wallet?:{mnemonic?:string}
+}
+export interface WalletContent{
+	type:string;
+	version:string;
+	generator:string;
+	encryption:string;
+	wallet:{mnemonic:string}
+}
 
 interface DBOptions{
 	fileName?:string,
@@ -32,7 +45,7 @@ interface DBOptions{
 abstract class DBInterface{
 	abstract createWallet(data:string):void;
 	abstract saveWallet(data:string):void;
-	abstract getWallet():string;
+	abstract getWallet():WalletContent|false;
 }
 
 interface DBConstructor {
@@ -54,8 +67,8 @@ class LSDB extends DBInterface{
 
 	}
 
-	getWallet():string{
-		return '';
+	getWallet():WalletContent|false{
+		return false;
 	}
 }
 
@@ -115,18 +128,34 @@ if(IS_NODE){
 			}
 		}
 
-		createWallet(data:string):void{
+		createWallet(data:string, meta:WalletMeta={}):void{
 			this.backup();
-			return this.saveWallet(data);
+			return this.saveWallet(data, meta);
 		}
-		saveWallet(data:string):void{
-			fs.writeFileSync(this.walletFile, data);
+		saveWallet(data:string, meta:WalletMeta={}):void{
+			let content = Object.assign({
+				type: "wallet",
+				encryption: "default",
+				version: "1.0.0",
+				generator: "cli",
+				wallet: {
+					mnemonic : data
+				}
+			}, meta||{})
+
+			fs.writeFileSync(this.walletFile, JSON.stringify(content));
 		}
 
-		getWallet():string{
-			if(fs.existsSync(this.walletFile))
-				return fs.readFileSync(this.walletFile)+""
-			return '';
+		getWallet():WalletContent|false{
+			if(fs.existsSync(this.walletFile)){
+				let content = fs.readFileSync(this.walletFile)+"";
+				try{
+					return JSON.parse(content);
+				}catch(e){
+					return false;
+				}
+			}
+			return false;
 		}
 	}
 
@@ -154,7 +183,7 @@ export class Storage{
 	/*
 	* @return {String|Buffer} wallet
 	*/
-	getWallet():string{
+	getWallet():WalletContent|false{
 		return this.db.getWallet();
 	}
 
