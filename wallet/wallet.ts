@@ -629,6 +629,7 @@ class Wallet extends EventTargetImpl {
 	}: TxSend): ComposeTxInfo {
 		// TODO: bn!
 		amount = parseInt(amount as any);
+		fee = parseInt(fee as any);
 		// if (this.loggerLevel > 0) {
 		// 	for (let i = 0; i < 100; i++)
 		// 		console.log('Wallet transaction request for', amount, typeof amount);
@@ -682,7 +683,6 @@ class Wallet extends EventTargetImpl {
 		await this.waitOrSync();
 		if(!txParamsArg.fee)
 			txParamsArg.fee = 0;
-
 		this.logger.info(`tx ... sending to ${txParamsArg.toAddr}`)
 		this.logger.info(`tx ... amount: ${KAS(txParamsArg.amount)} user fee: ${KAS(txParamsArg.fee)} max data fee: ${KAS(txParamsArg.networkFeeMax||0)}`)
 
