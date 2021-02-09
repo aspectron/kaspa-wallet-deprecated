@@ -87,7 +87,7 @@ if(IS_NODE){
 
 		constructor(opt:DBOptions={}){
 			super();
-			let {fileName="Kaspa", folder} = opt;
+			let {fileName="kaspa", folder} = opt;
 			this.fileName = fileName;
 			this.folder = folder||this.getHomeFolder();
 			if(!fs.existsSync(this.folder))
@@ -134,9 +134,9 @@ if(IS_NODE){
 		}
 		saveWallet(data:string, meta:WalletMeta={}):void{
 			let content = Object.assign({
-				type: "wallet",
+				type: "kaspa-wallet",
 				encryption: "default",
-				version: "1.0.0",
+				version: 1,
 				generator: "cli",
 				wallet: {
 					mnemonic : data
@@ -188,11 +188,11 @@ export class Storage{
 	}
 
 	createWallet(wallet:string){
-		this.logger.debug("createWallet:", wallet)
+		//this.logger.debug("createWallet:", wallet)
 		return this.db.createWallet(wallet);
 	}
 	saveWallet(wallet:string){
-		this.logger.debug("saveWallet:", wallet)
+		//this.logger.debug("saveWallet:", wallet)
 		return this.db.saveWallet(wallet);
 	}
 
