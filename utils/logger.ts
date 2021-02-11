@@ -1,7 +1,7 @@
 import {FlowLogger} from '@aspectron/flow-logger';
 
 let custom = ['utxo:cyan', 'utxodebug:cyan', 'tx:green', 'txdebug:green']
-const logger = new FlowLogger('KASPA-WALLET', {
+const logger = new FlowLogger('Kaspa Wallet', { 
 	display : ['name', 'level', 'time'], 
 	custom, 
 	color: ['level']
