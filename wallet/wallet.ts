@@ -289,7 +289,7 @@ class Wallet extends EventTargetImpl {
 		this.syncInProggress = true;
 		this.emit("sync-start");
 		const ts0 = Date.now();
-		this.logger.info(`sync ... starting ${syncOnce?'(monitoring disabled)':''}`);
+		this.logger.info(`sync ... starting wallet sync`);// ${syncOnce?'(monitoring disabled)':''}`);
 		//this.logger.info(`sync ............ started, syncOnce:${syncOnce}`)
 
 		//if last time syncOnce was OFF we have subscriptions to utxo-change
