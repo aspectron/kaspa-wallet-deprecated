@@ -1,5 +1,6 @@
 import {CreateLogger, Logger} from '../utils/logger';
 import {UID} from '../utils/helper';
+import { platform } from 'os';
 
 export type StorageType = 'FILE'|'LS';
 const IS_NODE = typeof process === 'object' 
@@ -106,18 +107,17 @@ if(IS_NODE){
 		}
 
 		getHomeFolder(){
-			let {LOCALAPPDATA, HOME} = process.env;
-			if(LOCALAPPDATA)
-				return path.join(LOCALAPPDATA, 'Kaspa');
-			if(!HOME){
+			let {APPDATA, HOME} = process.env;
+			if(!HOME)
 				HOME = os.homedir();
-			}
 
-			let folder = "/.local/share";
-			if(process.platform=='darwin')
-				folder = '/Library/Preferences';
+			if(APPDATA) // windows
+				return path.join(APPDATA, 'Kaspa');
 
-			return path.join(HOME, folder, 'Kaspa');
+			if(process.platform == 'darwin')
+				return path.join(HOME,'/Library/Application Support/Kaspa/');
+
+			return path.join(HOME, '.kaspa');
 		}
 
 		backup(){
