@@ -43,9 +43,9 @@ interface DBOptions{
 }
 
 abstract class DBInterface{
-	abstract createWallet(data:string):void;
+	abstract backup():void;
 	abstract saveWallet(data:string):void;
-	abstract getWallet():WalletContent|false;
+	abstract getWallet():string|false;
 }
 
 interface DBConstructor {
@@ -56,19 +56,24 @@ interface DBConstructor {
 const classes:{[key:string]:DBConstructor} = {};
 
 class LSDB extends DBInterface{
+	LS: any;
 	constructor(opt:DBOptions={}){
 		super();
+		this.LS = window.localStorage;
 	}
 
-	createWallet(data:string):void{
-
+	backup():void{
+		let data = this.getWallet();
+		if(!data)
+			return
+		this.LS.setItem("kaspa-wallet-"+Date.now(), data);
 	}
 	saveWallet(data:string):void{
-
+		this.LS.setItem("kaspa-wallet", data);
 	}
 
-	getWallet():WalletContent|false{
-		return false;
+	getWallet():string|false{
+		return this.LS.getItem("kaspa-wallet");
 	}
 }
 
@@ -128,33 +133,13 @@ if(IS_NODE){
 			}
 		}
 
-		createWallet(data:string, meta:WalletMeta={}):void{
-			this.backup();
-			return this.saveWallet(data, meta);
-		}
-		saveWallet(data:string, meta:WalletMeta={}):void{
-			let content = Object.assign({
-				type: "kaspa-wallet",
-				encryption: "default",
-				version: 1,
-				generator: "cli",
-				wallet: {
-					mnemonic : data
-				}
-			}, meta||{})
-
-			fs.writeFileSync(this.walletFile, JSON.stringify(content));
+		saveWallet(data:string):void{
+			fs.writeFileSync(this.walletFile, data);
 		}
 
-		getWallet():WalletContent|false{
-			if(fs.existsSync(this.walletFile)){
-				let content = fs.readFileSync(this.walletFile)+"";
-				try{
-					return JSON.parse(content);
-				}catch(e){
-					return false;
-				}
-			}
+		getWallet():string|false{
+			if(fs.existsSync(this.walletFile))
+				return fs.readFileSync(this.walletFile)+"";
 			return false;
 		}
 	}
@@ -184,16 +169,38 @@ export class Storage{
 	* @return {String|Buffer} wallet
 	*/
 	getWallet():WalletContent|false{
-		return this.db.getWallet();
+		let content = this.db.getWallet();
+		if(!content)
+			return false;
+		try{
+			return JSON.parse(content);
+		}catch(e){
+			return false;
+		}
 	}
 
-	createWallet(wallet:string){
-		//this.logger.debug("createWallet:", wallet)
-		return this.db.createWallet(wallet);
+	_buildWalletContent(mnemonic:string, meta:WalletMeta={}){
+		return Object.assign({
+			type: "kaspa-wallet",
+			encryption: "default",
+			version: 1,
+			generator: "cli",
+			wallet: {
+				mnemonic
+			}
+		}, meta||{})
 	}
-	saveWallet(wallet:string){
+
+	createWallet(mnemonic:string, meta:WalletMeta={}){
+		//this.logger.debug("createWallet:", wallet)
+		this.db.backup();
+		return this.saveWallet(mnemonic, meta);
+	}
+	saveWallet(mnemonic:string, meta:WalletMeta={}){
 		//this.logger.debug("saveWallet:", wallet)
-		return this.db.saveWallet(wallet);
+		let wallet = this._buildWalletContent(mnemonic, meta);
+		let json = JSON.stringify(wallet)
+		return this.db.saveWallet(json);
 	}
 
 	setLogLevel(level:string){
