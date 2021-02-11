@@ -7,7 +7,7 @@
   "license": "ISC",
   "scripts": {
     "watch": "tsc --watch",
-    "prepublishOnly": "rm -rf ./dist && tsc"
+    "prepublishOnly": "rm -rf ./dist && npm install && tsc"
   },
   "dependencies": {
     "@aspectron/flow-key-crypt": "aspectron/flow-key-crypt",
