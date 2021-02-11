@@ -31,8 +31,8 @@ Kaspa Wallet Framework
 Before you can use Kaspa Wallet, you need to initialize the framework. Framework initialization loads various dependencies such as `secp256k1-wasm` and `blake2b-wasm` modules use in the underlying transaction cryptography.
 
 ```js
-const { Wallet, initKaspaFramework } = require('kaspa-wallet');
-const { RPC } = require('kaspa-grpc-node');
+const { Wallet, initKaspaFramework } = require('@kaspa/wallet');
+const { RPC } = require('@kaspa/grpc-node');
 
 (async () => { 
   await initKaspaFramework();

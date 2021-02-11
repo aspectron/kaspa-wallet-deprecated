@@ -1,14 +1,13 @@
 {
-  "name": "kaspa-wallet",
+  "name": "@kaspa/wallet",
   "version": "0.0.2",
   "description": "Node module for kaspa",
   "main": "dist/index.js",
-  "author": "Kaspa Developers",
+  "author": "ASPECTRON Inc.",
   "license": "ISC",
   "scripts": {
-    "build": "tsc",
     "watch": "tsc --watch",
-    "prepare": "npm run build"
+    "prepublishOnly": "rm -rf ./dist && tsc"
   },
   "dependencies": {
     "@aspectron/flow-key-crypt": "aspectron/flow-key-crypt",
@@ -17,7 +16,7 @@
     "bitcore-mnemonic": "^8.23.1",
     "browser-passworder": "^2.0.3",
     "decimal.js": "^10.2.1",
-    "kaspacore-lib": "aspectron/kaspacore-lib",
+    "@kaspa/core-lib": "*",
     "ts-node": "^9.0.0",
     "typescript": "*",
     "crypto-js": "*"
