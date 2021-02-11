@@ -191,7 +191,7 @@ class Wallet extends EventTargetImpl {
 		let defaultOpt = {
 			skipSyncBalance: false,
 			syncOnce: false,
-			addressDiscoveryExtent: 128,
+			addressDiscoveryExtent: 64,
 			logLevel:'info',
 			disableAddressDerivation:false
 		};
@@ -557,7 +557,7 @@ class Wallet extends EventTargetImpl {
 	 * Derives receiveAddresses and changeAddresses and checks their transactions and UTXOs.
 	 * @param threshold stop discovering after `threshold` addresses with no activity
 	 */
-	async addressDiscovery(threshold = 128, debug = false): Promise <Map <string, {utxos: Api.Utxo[], address: string}>|null> {
+	async addressDiscovery(threshold = 64, debug = false): Promise <Map <string, {utxos: Api.Utxo[], address: string}>|null> {
 		let addressList: string[] = [];
 		let lastIndex = -1;
 		let debugInfo: Map < string, {utxos: Api.Utxo[], address: string} > | null = null;
