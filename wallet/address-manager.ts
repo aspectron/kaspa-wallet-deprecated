@@ -128,15 +128,20 @@ export class AddressManager extends EventTargetImpl {
 		address: string;
 		privateKey: kaspacore.PrivateKey
 	} {
+		//let ts0 = Date.now();
 		const dType = deriveType === 'receive' ? 0 : 1;
 		const {privateKey} = this.HDWallet.deriveChild(`m/44'/972/0'/${dType}'/${index}'`);
+		//let ts1 = Date.now();
+		//let publicKeys = secp256k1.export_public_keys(privateKey.toString());
+		const xonlyPubKey = secp256k1.export_public_key_xonly(privateKey.toString());
+		//let ts2 = Date.now();
 
-		let publicKeys = secp256k1.export_public_keys(privateKey.toString());
+		//console.log('durations:',(ts2-ts1)/1000,(ts1-ts0)/1000);
 		//let address1 = new kaspacore.PublicKey(publicKeys.pubkey, {network:this.network}).toAddress().toString();
 		//let address = privateKey.toAddress(this.network).toString();
 		//let pubkey = Buffer.from(publicKeys.pubkey, "hex");
 		//let {address:address3} = bitcoin.payments.p2pkh({pubkey});
-		let xonly = Buffer.from(publicKeys.xonly, "hex");
+		let xonly = Buffer.from(xonlyPubKey, "hex");
 		//@ts-ignore
 		let address = kaspacore.Address.fromPublicKeyHash(kaspacore.crypto.Hash.sha256ripemd160(xonly), this.network).toString();
 
