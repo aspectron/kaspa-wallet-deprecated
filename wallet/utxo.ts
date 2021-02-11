@@ -1,6 +1,6 @@
 import {Api,RPC,UnspentOutputInfo} from 'custom-types';
 // @ts-ignore
-import * as kaspacore from 'kaspacore-lib';
+import * as kaspacore from '@kaspa/core-lib';
 import * as crypto from 'crypto';
 import * as helper from '../utils/helper';
 // import * as api from './apiHelpers';

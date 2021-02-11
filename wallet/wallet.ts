@@ -1,6 +1,6 @@
 import {Buffer} from 'safe-buffer';
 const Mnemonic = require('bitcore-mnemonic');
-import * as kaspacore from 'kaspacore-lib';
+import * as kaspacore from '@kaspa/core-lib';
 import * as helper from '../utils/helper';
 import {Storage, StorageType} from './storage';
 export * from './storage';

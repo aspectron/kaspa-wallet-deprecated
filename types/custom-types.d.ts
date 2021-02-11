@@ -1,4 +1,4 @@
-import kaspacore from 'kaspacore-lib';
+import kaspacore from '@kaspa/core-lib';
 import { KaspaAPI } from 'wallet/apiHelpers';
 
 export type Network = 'kaspa' | 'kaspadev' | 'kaspareg' | 'kaspatest' | 'kaspasim';
