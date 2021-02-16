@@ -107,7 +107,7 @@ export class TXStore{
 			}
 
 			list.sort((a, b)=>{
-				return a.ts-b.ts;
+				return b.ts-a.ts;
 			}).map(o=>{
 				this.add(o)
 			})
