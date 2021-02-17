@@ -1,6 +1,6 @@
 {
   "name": "@kaspa/wallet",
-  "version": "0.0.6",
+  "version": "0.0.7",
   "description": "Node module for kaspa",
   "main": "dist/index.js",
   "author": "ASPECTRON Inc.",
@@ -11,7 +11,7 @@
   },
   "dependencies": {
     "@aspectron/flow-logger": ">=1.0.3",
-    "@kaspa/core-lib": ">=0.0.4",
+    "@kaspa/core-lib": ">=0.0.5",
     "@types/node": "^14.14.9",
     "bitcore-mnemonic": "^8.23.1",
     "browser-passworder": "^2.0.3",
