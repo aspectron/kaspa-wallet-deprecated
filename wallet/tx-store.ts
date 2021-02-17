@@ -8,6 +8,7 @@ export interface TXStoreItem{
 	id:string;
 	amount:number;
 	address:string;
+	blueScore:number;
 	note?:string;
 	tx?:any
 }
@@ -49,6 +50,7 @@ export class TXStore{
 					id: utxo.transactionId+":"+utxo.index,
 					amount: utxo.amount,
 					address,
+					blueScore:utxo.blockBlueScore,
 					tx:false//TODO
 				};
 				this.add(item);
