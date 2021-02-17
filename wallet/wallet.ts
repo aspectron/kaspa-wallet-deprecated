@@ -26,12 +26,15 @@ const BALANCE_CONFIRMED = Symbol();
 const BALANCE_PENDING = Symbol();
 const BALANCE_TOTAL = Symbol();
 
+export {kaspacore};
+
 /** Class representing an HDWallet with derivable child addresses */
 class Wallet extends EventTargetImpl {
 
 	static Mnemonic: typeof Mnemonic = Mnemonic;
 	static passwordHandler = Crypto;
 	static Crypto = Crypto;
+	static kaspacore=kaspacore;
 
 	// TODO - integrate with Kaspacore-lib
 	static networkTypes: Object = {

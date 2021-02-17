@@ -1,5 +1,10 @@
+import CryptoJS from 'crypto-js';
 import { Decimal } from 'decimal.js';
 export {Decimal};
+
+export const sha256 = (str:string)=>{
+    return CryptoJS.SHA256(str).toString(CryptoJS.enc.Hex)
+}
 
 export const KAS = (v:number): string =>{
     var [int,frac] = (new Decimal(v)).mul(1e-8).toFixed(8).split('.');
