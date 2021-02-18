@@ -28,14 +28,15 @@ export class TXStore{
 			this.idb = new iDB({storeName:"tx", dbName:"kaspa_"+uid});
 	}
 
-	add(tx:TXStoreItem){
+	add(tx:TXStoreItem, skipSave=false){
 		if(this.store.has(tx.id))
 			return false;
 		this.store.set(tx.id, tx);
 		this.wallet.emit("new-transaction", tx);
 		if(this.store.size > TXStore.MAX)
 			this.store = new Map([...this.store.entries()].slice(-TXStore.MAX));
-		this.save(tx);
+		if(!skipSave)
+			this.save(tx);
 		return true;
 	}
 	addFromUTXOs(list:Map<string, Api.Utxo[]>){
@@ -109,9 +110,9 @@ export class TXStore{
 			}
 
 			list.sort((a, b)=>{
-				return b.ts-a.ts;
+				return a.ts-b.ts;
 			}).map(o=>{
-				this.add(o)
+				this.add(o, true)
 			})
 		}
 

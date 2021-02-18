@@ -852,7 +852,11 @@ class Wallet extends EventTargetImpl {
 				return null;// as TxResp;
 
 			this.utxoSet.inUse.push(...utxoIds);
-			this.txStore.add({in:false, ts, id:txid, amount, address:toAddr, note, tx:rpcTX.transaction})
+			this.txStore.add({
+				in:false, ts, id:txid, amount, address:toAddr, note,
+				blueScore: this.blueScore,
+				tx:rpcTX.transaction
+			})
 			/*
 			this.pendingInfo.add(txid, {
 				rawTx: tx.toString(),
