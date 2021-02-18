@@ -695,8 +695,8 @@ class Wallet extends EventTargetImpl {
 		const networkFeeMax = txParams.networkFeeMax || 0;
 		const calculateNetworkFee = !!txParams.calculateNetworkFee;
 		const inclusiveFee = !!txParams.inclusiveFee;
-		txParams.skipSign = true;
-		const {skipSign=false} = txParams;
+		const {skipSign=true} = txParams;
+		txParams.skipSign = skipSign;
 
 		//console.log("calculateNetworkFee:", calculateNetworkFee, "inclusiveFee:", inclusiveFee)
 
@@ -774,6 +774,7 @@ class Wallet extends EventTargetImpl {
 	 */
 	async submitTransaction(txParamsArg: TxSend, debug = false): Promise < TxResp | null > {
 		const ts0 = Date.now();
+		txParamsArg.skipSign = false;
 		const data = await this.estimateTransaction(txParamsArg);
 		const { 
 			id, tx, utxos, utxoIds, rawTx, amount, toAddr,
@@ -969,6 +970,7 @@ class Wallet extends EventTargetImpl {
 	loggerLevel: number = 0;
 	setLogLevel(level: string) {
 		this.logger.setLevel(level);
+		this.loggerLevel = level!='none'?2:0;
 		kaspacore.setDebugLevel(level?1:0);
 	}
 }
