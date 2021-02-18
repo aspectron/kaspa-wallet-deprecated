@@ -48,7 +48,7 @@ class KaspaAPI extends EventTargetImpl{
 
 	}
 	_setConnected(isConnected:boolean){
-		console.log("wallet.api._setConnected", isConnected)
+		//console.log("wallet.api._setConnected", isConnected)
 		this.isConnected = isConnected;
 		this.emit(isConnected?"connect":'disconnect');
 	}
