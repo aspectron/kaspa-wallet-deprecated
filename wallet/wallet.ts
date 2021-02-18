@@ -629,6 +629,7 @@ class Wallet extends EventTargetImpl {
 		amount,
 		fee = DEFAULT_FEE,
 		changeAddrOverride,
+		skipSign = false
 	}: TxSend): ComposeTxInfo {
 		// TODO: bn!
 		amount = parseInt(amount as any);
@@ -654,7 +655,8 @@ class Wallet extends EventTargetImpl {
 				.setVersion(0)
 				.fee(fee)
 				.change(changeAddr)
-				.sign(privKeys, kaspacore.crypto.Signature.SIGHASH_ALL, 'schnorr');
+			if(!skipSign)
+				tx.sign(privKeys, kaspacore.crypto.Signature.SIGHASH_ALL, 'schnorr');
 
 			//window.txxxx = tx;
 			return {
@@ -693,12 +695,20 @@ class Wallet extends EventTargetImpl {
 		const networkFeeMax = txParams.networkFeeMax || 0;
 		const calculateNetworkFee = !!txParams.calculateNetworkFee;
 		const inclusiveFee = !!txParams.inclusiveFee;
+		txParams.skipSign = true;
+		const {skipSign=false} = txParams;
 
 		//console.log("calculateNetworkFee:", calculateNetworkFee, "inclusiveFee:", inclusiveFee)
 
 		let dataFeeLast = 0;
 		let data = this.composeTx(txParams);
-		let txSize = data.tx.toBuffer().length - data.tx.inputs.length * 2;
+		let txSize = data.tx.toBuffer(skipSign).length;
+		if(skipSign){
+			txSize += 151 * data.tx.inputs.length;
+		}else{
+			txSize -= data.tx.inputs.length * 2;
+		}
+
 		let dataFee = txSize * this.defaultFee;
 		const priorityFee = txParamsArg.fee;
 		const txAmount = txParamsArg.amount;
@@ -725,7 +735,12 @@ class Wallet extends EventTargetImpl {
 				let utxoLen = data.utxos.length;
 				this.logger.debug(`final fee ${txParams.fee}`);
 				data = this.composeTx(txParams);
-				txSize = data.tx.toBuffer().length - data.tx.inputs.length * 2;
+				txSize = data.tx.toBuffer(skipSign).length;
+				if(skipSign){
+					txSize += 151 * data.tx.inputs.length;
+				}else{
+					txSize -= data.tx.inputs.length * 2;
+				}
 				dataFee = txSize * this.defaultFee;
 				if(data.utxos.length != utxoLen)
 					this.logger.verbose(`tx ... aggregating: ${data.utxos.length} UTXOs`);

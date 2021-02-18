@@ -64,6 +64,7 @@ export interface TxSend {
   note?:string;
   calculateNetworkFee?:boolean;
   inclusiveFee?:boolean;
+  skipSign?:boolean
 }
 
 export interface TxResp {
