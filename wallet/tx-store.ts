@@ -39,23 +39,26 @@ export class TXStore{
 			this.save(tx);
 		return true;
 	}
+	addAddressUTXOs(address:string, utxos:Api.Utxo[], ts?:number){
+		if(!utxos.length || this.wallet.addressManager.isOurChange(address))
+			return
+		utxos.forEach(utxo=>{
+			let item = {
+				in: true,
+				ts: ts||Date.now(),
+				id: utxo.transactionId+":"+utxo.index,
+				amount: utxo.amount,
+				address,
+				blueScore:utxo.blockBlueScore,
+				tx:false//TODO
+			};
+			this.add(item);
+		})
+	}
 	addFromUTXOs(list:Map<string, Api.Utxo[]>){
 		let ts = Date.now();
 		list.forEach((utxos, address)=>{
-			if(!utxos.length || this.wallet.addressManager.isOurChange(address))
-				return
-			utxos.forEach(utxo=>{
-				let item = {
-					in: true,
-					ts,
-					id: utxo.transactionId+":"+utxo.index,
-					amount: utxo.amount,
-					address,
-					blueScore:utxo.blockBlueScore,
-					tx:false//TODO
-				};
-				this.add(item);
-			})
+			this.addAddressUTXOs(address, utxos, ts)
 		})
 	}
 
