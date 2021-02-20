@@ -19,9 +19,9 @@
     "decimal.js": "^10.2.1"
   },
   "devDependencies": {
-    "typescript": "*",
+    "@types/crypto-js": "^4.0.1",
     "ts-node": "^9.0.0",
-    "@types/crypto-js": "^4.0.1"
+    "typescript": "*"
   },
   "files": [
     "dist",
