@@ -18,6 +18,7 @@ export class TXStore{
 	static MAX = 5;
 	wallet:Wallet;
 	store:Map<string, TXStoreItem> = new Map();
+	txToEmitList:TXStoreItem[] = [];
 	idb:iDB|undefined;
 
 	constructor(wallet:Wallet){
@@ -32,7 +33,7 @@ export class TXStore{
 		if(this.store.has(tx.id))
 			return false;
 		this.store.set(tx.id, tx);
-		this.wallet.emit("new-transaction", tx);
+		this.emitTx(tx);
 		if(this.store.size > TXStore.MAX)
 			this.store = new Map([...this.store.entries()].slice(-TXStore.MAX));
 		if(!skipSave)
@@ -71,6 +72,22 @@ export class TXStore{
 			//localStorage.setItem("kaspa-tx-ids", JSON.stringify(txIds));
 			//localStorage.setItem("kaspa-tx-"+tx.id, JSON.stringify(tx))
 		}
+	}
+	emitTx(tx:TXStoreItem){
+		if(this.wallet.syncSignal && !this.wallet.syncInProggress){
+			this.wallet.emit("new-transaction", tx);
+			return;
+		}
+
+		this.txToEmitList.push(tx)
+		if(this.txToEmitList.length > 500){
+			this.emitTxs();
+		}
+	}
+	emitTxs(){
+		let list = this.txToEmitList;
+		this.txToEmitList = [];
+		this.wallet.emit("transactions", list);
 	}
 	async restore(){
 		let {uid} = this.wallet

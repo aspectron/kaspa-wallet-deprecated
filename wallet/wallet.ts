@@ -332,6 +332,7 @@ class Wallet extends EventTargetImpl {
 		this.emit("ready", {available,pending,total});
 	    this.emitBalance();
 	    this.emitAddress();
+	    this.txStore.emitTxs();
 	    this.syncSignal.resolve();
 	}
 
