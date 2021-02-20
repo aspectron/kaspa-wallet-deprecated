@@ -87,7 +87,7 @@ export class UtxoSet extends EventTargetImpl {
 			this.logger.utxodebug(`adding ${utxoIds.length} UTXO entries:\n`, utxoIds);
 			this.logger.utxo(`incoming ${utxoIds.length} UTXO entries`);
 		}
-		this.wallet.txStore.addAddressUTXOs(address, utxos);
+		//this.wallet.txStore.addAddressUTXOs(address, utxos);
 		return utxoIds;
 	}
 
