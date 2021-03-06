@@ -15,6 +15,7 @@ export interface WalletOpt{
   addressDiscoveryExtent:number;
   logLevel:string;
   disableAddressDerivation:boolean;
+  checkGRPCFlags:boolean;
 }
 
 export interface WalletOptions{
@@ -23,6 +24,7 @@ export interface WalletOptions{
   syncOnce?:boolean;
   logLevel?:string;
   disableAddressDerivation?:boolean;
+  checkGRPCFlags?:boolean;
 }
  
 export interface NetworkOptions{

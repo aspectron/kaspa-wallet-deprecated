@@ -196,7 +196,8 @@ class Wallet extends EventTargetImpl {
 			syncOnce: false,
 			addressDiscoveryExtent: 64,
 			logLevel:'info',
-			disableAddressDerivation:false
+			disableAddressDerivation:false,
+			checkGRPCFlags:false
 		};
 		// console.log("CREATING WALLET FOR NETWORK", this.network);
 		this.options = {...defaultOpt,	...options};
