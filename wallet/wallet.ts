@@ -788,8 +788,11 @@ class Wallet extends EventTargetImpl {
 			fee, dataFee, totalAmount, txSize, note, privKeys
 		} = data;
 
+		const ts_0 = Date.now();
 		tx.sign(privKeys, kaspacore.crypto.Signature.SIGHASH_ALL, 'schnorr');
+		const ts_1 = Date.now();
 		const rawTx = tx.toString();
+		const ts_2 = Date.now();
 
 
 		this.logger.info(`tx ... required data fee: ${KAS(dataFee)} (${utxos.length} UTXOs)`);// (${KAS(txParamsArg.fee)}+${KAS(dataFee)})`);
@@ -811,7 +814,7 @@ class Wallet extends EventTargetImpl {
 		if (debug || this.loggerLevel > 0)
 			this.logger.debug("composeTx:tx", "txSize:", txSize)
 
-
+		const ts_3 = Date.now();
 		const inputs: RPC.TransactionInput[] = tx.inputs.map((input: kaspacore.Transaction.Input) => {
 			if (debug || this.loggerLevel > 0) {
 				this.logger.debug("input.script.inspect", input.script.inspect())
@@ -826,7 +829,7 @@ class Wallet extends EventTargetImpl {
 				sequence: input.sequenceNumber
 			};
 		})
-
+		const ts_4 = Date.now();
 		const outputs: RPC.TransactionOutput[] = tx.outputs.map((output: kaspacore.Transaction.Output) => {
 			return {
 				amount: output.satoshis,
@@ -836,6 +839,7 @@ class Wallet extends EventTargetImpl {
 				}
 			}
 		})
+		const ts_5 = Date.now();
 
 		//const payloadStr = "0000000000000000000000000000000";
 		//const payload = Buffer.from(payloadStr).toString("base64");
@@ -868,11 +872,24 @@ class Wallet extends EventTargetImpl {
 			this.logger.debug(`rpcTX ${JSON.stringify(rpcTX)}`)
 		}
 
+		const ts_6 = Date.now();
+
+		this.logger.info(`time in msec`, {
+			"total": ts_6-ts0,
+			"estimateTransaction": ts_0-ts0,
+			"tx.sign": ts_1-ts_0,
+			"tx.toString": ts_2-ts_1,
+			//"ts_3-ts_2": ts_3-ts_2,
+			"tx.inputs.map": ts_4-ts_3,
+			"tx.outputs.map": ts_5-ts_4,
+			//"ts_6-ts_5": ts_6-ts_5
+		})
 
 		//const rpctx = JSON.stringify(rpcTX, null, "  ");
 		//console.log("rpcTX", rpcTX)
 		//console.log("\n\n########rpctx\n", rpctx+"\n\n\n")
-		//throw new Error("TODOXXXXXX")
+		//if(amount/1e8 > 3)
+		//	throw new Error("TODO XXXXXX")
 
 		try {
 			const ts = Date.now();
