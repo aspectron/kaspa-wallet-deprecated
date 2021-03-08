@@ -66,7 +66,8 @@ export interface TxSend {
   note?:string;
   calculateNetworkFee?:boolean;
   inclusiveFee?:boolean;
-  skipSign?:boolean
+  skipSign?:boolean,
+  privKeysInfo?:boolean
 }
 
 export interface TxResp {
@@ -87,6 +88,7 @@ export interface ComposeTxInfo{
   totalAmount?:number;
   txSize?:number;
   note?:string;
+  privKeys:string[];
 }
 
 export interface TxInfo  extends ComposeTxInfo{

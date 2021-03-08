@@ -631,7 +631,8 @@ class Wallet extends EventTargetImpl {
 		amount,
 		fee = DEFAULT_FEE,
 		changeAddrOverride,
-		skipSign = false
+		skipSign = false,
+		privKeysInfo = false
 	}: TxSend): ComposeTxInfo {
 		// TODO: bn!
 		amount = parseInt(amount as any);
@@ -648,6 +649,7 @@ class Wallet extends EventTargetImpl {
 		}, []);
 
 		this.logger.info("utxos.length", utxos.length)
+		//changeAddrOverride = "kaspatest:qpkjvksx4mqrl42ggp8zzn32w4lruj6cyvxv2cyfgq";
 
 		const changeAddr = changeAddrOverride || this.addressManager.changeAddress.next();
 		try {
@@ -669,7 +671,8 @@ class Wallet extends EventTargetImpl {
 				amount,
 				fee,
 				utxos,
-				toAddr
+				toAddr,
+				privKeys: privKeysInfo?privKeys:[]
 			};
 		} catch (e) {
 			// !!! FIXME 
@@ -697,8 +700,9 @@ class Wallet extends EventTargetImpl {
 		const networkFeeMax = txParams.networkFeeMax || 0;
 		const calculateNetworkFee = !!txParams.calculateNetworkFee;
 		const inclusiveFee = !!txParams.inclusiveFee;
-		const {skipSign=true} = txParams;
+		const {skipSign=true, privKeysInfo=false} = txParams;
 		txParams.skipSign = skipSign;
+		txParams.privKeysInfo = privKeysInfo;
 
 		//console.log("calculateNetworkFee:", calculateNetworkFee, "inclusiveFee:", inclusiveFee)
 
@@ -776,12 +780,16 @@ class Wallet extends EventTargetImpl {
 	 */
 	async submitTransaction(txParamsArg: TxSend, debug = false): Promise < TxResp | null > {
 		const ts0 = Date.now();
-		txParamsArg.skipSign = false;
+		txParamsArg.skipSign = true;
+		txParamsArg.privKeysInfo = true;
 		const data = await this.estimateTransaction(txParamsArg);
 		const { 
-			id, tx, utxos, utxoIds, rawTx, amount, toAddr,
-			fee, dataFee, totalAmount, txSize, note
+			id, tx, utxos, utxoIds, amount, toAddr,
+			fee, dataFee, totalAmount, txSize, note, privKeys
 		} = data;
+
+		tx.sign(privKeys, kaspacore.crypto.Signature.SIGHASH_ALL, 'schnorr');
+		const rawTx = tx.toString();
 
 
 		this.logger.info(`tx ... required data fee: ${KAS(dataFee)} (${utxos.length} UTXOs)`);// (${KAS(txParamsArg.fee)}+${KAS(dataFee)})`);
@@ -859,6 +867,12 @@ class Wallet extends EventTargetImpl {
 			this.logger.debug(`rpcTX ${JSON.stringify(rpcTX, null, "  ")}`)
 			this.logger.debug(`rpcTX ${JSON.stringify(rpcTX)}`)
 		}
+
+
+		//const rpctx = JSON.stringify(rpcTX, null, "  ");
+		//console.log("rpcTX", rpcTX)
+		//console.log("\n\n########rpctx\n", rpctx+"\n\n\n")
+		//throw new Error("TODOXXXXXX")
 
 		try {
 			const ts = Date.now();
