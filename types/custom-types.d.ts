@@ -67,7 +67,8 @@ export interface TxSend {
   calculateNetworkFee?:boolean;
   inclusiveFee?:boolean;
   skipSign?:boolean,
-  privKeysInfo?:boolean
+  privKeysInfo?:boolean;
+  skipUTXOInUseMark?:boolean;
 }
 
 export interface TxResp {
@@ -96,6 +97,10 @@ export interface TxInfo  extends ComposeTxInfo{
   totalAmount:number;
   txSize:number;
   note:string;
+}
+
+export interface BuildTxResult extends TxInfo{
+  rpcTX: RPC.SubmitTransactionRequest;
 }
 
 /*

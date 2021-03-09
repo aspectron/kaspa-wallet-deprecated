@@ -10,7 +10,7 @@ const KAS = helper.KAS;
 import {
 	Network, NetworkOptions, SelectedNetwork, WalletSave, Api, TxSend, TxResp,
 	PendingTransactions, WalletCache, IRPC, RPC, WalletOptions,	WalletOpt,
-	TxInfo, ComposeTxInfo
+	TxInfo, ComposeTxInfo, BuildTxResult
 } from '../types/custom-types';
 
 import {CreateLogger, Logger} from '../utils/logger';
@@ -771,14 +771,14 @@ class Wallet extends EventTargetImpl {
 	}
 
 	/**
-	 * Send a transaction. Returns transaction id.
+	 * Build a transaction. Returns transaction info.
 	 * @param txParams
 	 * @param txParams.toAddr To address in cashaddr format (e.g. kaspatest:qq0d6h0prjm5mpdld5pncst3adu0yam6xch4tr69k2)
 	 * @param txParams.amount Amount to send in sompis (100000000 (1e8) sompis in 1 KAS)
 	 * @param txParams.fee Fee for miners in sompis
 	 * @throws `FetchError` if endpoint is down. API error message if tx error. Error if amount is too large to be represented as a javascript number.
 	 */
-	async submitTransaction(txParamsArg: TxSend, debug = false): Promise < TxResp | null > {
+	async buildTransaction(txParamsArg: TxSend, debug = false): Promise < BuildTxResult > {
 		const ts0 = Date.now();
 		txParamsArg.skipSign = true;
 		txParamsArg.privKeysInfo = true;
@@ -885,11 +885,31 @@ class Wallet extends EventTargetImpl {
 			//"ts_6-ts_5": ts_6-ts_5
 		})
 
+		if(txParamsArg.skipUTXOInUseMark !== true){
+			this.utxoSet.inUse.push(...utxoIds);
+		}
+
 		//const rpctx = JSON.stringify(rpcTX, null, "  ");
 		//console.log("rpcTX", rpcTX)
 		//console.log("\n\n########rpctx\n", rpctx+"\n\n\n")
 		//if(amount/1e8 > 3)
 		//	throw new Error("TODO XXXXXX")
+		return {...data, rpcTX}
+	}
+
+	/**
+	 * Send a transaction. Returns transaction id.
+	 * @param txParams
+	 * @param txParams.toAddr To address in cashaddr format (e.g. kaspatest:qq0d6h0prjm5mpdld5pncst3adu0yam6xch4tr69k2)
+	 * @param txParams.amount Amount to send in sompis (100000000 (1e8) sompis in 1 KAS)
+	 * @param txParams.fee Fee for miners in sompis
+	 * @throws `FetchError` if endpoint is down. API error message if tx error. Error if amount is too large to be represented as a javascript number.
+	 */
+	async submitTransaction(txParamsArg: TxSend, debug = false): Promise < TxResp | null > {
+		txParamsArg.skipUTXOInUseMark = true;
+		const {
+			rpcTX, utxoIds, amount, toAddr, note
+		} = await this.buildTransaction(txParamsArg, debug);
 
 		try {
 			const ts = Date.now();
