@@ -947,7 +947,8 @@ class Wallet extends EventTargetImpl {
 			this.txStore.add({
 				in:false, ts, id:txid, amount, address:toAddr, note,
 				blueScore: this.blueScore,
-				tx:rpcTX.transaction
+				tx:rpcTX.transaction,
+				myAddress: this.addressManager.isOur(toAddr)
 			})
 			/*
 			this.pendingInfo.add(txid, {

@@ -10,7 +10,8 @@ export interface TXStoreItem{
 	address:string;
 	blueScore:number;
 	note?:string;
-	tx?:any
+	tx?:any,
+	myAddress?:boolean
 }
 
 export class TXStore{

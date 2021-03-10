@@ -201,7 +201,7 @@ export class AddressManager extends EventTargetImpl {
 	}
 
 	isOur(address:string):boolean{
-		return !!this.all[address];
+		return !!(this.changeAddress.keypairs[address] || this.receiveAddress.keypairs[address]);
 	}
 
 	isOurChange(address:string):boolean{
