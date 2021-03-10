@@ -60,7 +60,7 @@ export interface TxSend {
   toAddr: string;
   amount: number;
   fee: number;
-  tx: kaspacore.Transaction;
+  //tx?: kaspacore.Transaction;
   changeAddrOverride? : string;
   networkFeeMax?:number;
   note?:string;
@@ -68,7 +68,15 @@ export interface TxSend {
   inclusiveFee?:boolean;
   skipSign?:boolean,
   privKeysInfo?:boolean;
-  skipUTXOInUseMark?:boolean;
+  skipUTXOInUseMark?:boolean,
+  compoundingUTXO?:boolean,
+  compoundingUTXOMaxCount?:number
+}
+
+export interface TxCompoundOptions {
+  UTXOMaxCount?:number;
+  networkFeeMax?:number;
+  fee?:number;
 }
 
 export interface TxResp {

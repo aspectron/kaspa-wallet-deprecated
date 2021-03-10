@@ -10,7 +10,7 @@ const KAS = helper.KAS;
 import {
 	Network, NetworkOptions, SelectedNetwork, WalletSave, Api, TxSend, TxResp,
 	PendingTransactions, WalletCache, IRPC, RPC, WalletOptions,	WalletOpt,
-	TxInfo, ComposeTxInfo, BuildTxResult
+	TxInfo, ComposeTxInfo, BuildTxResult, TxCompoundOptions
 } from '../types/custom-types';
 
 import {CreateLogger, Logger} from '../utils/logger';
@@ -25,8 +25,9 @@ import {EventTargetImpl} from './event-target-impl';
 const BALANCE_CONFIRMED = Symbol();
 const BALANCE_PENDING = Symbol();
 const BALANCE_TOTAL = Symbol();
+const COMPOUND_UTXO_MAX_COUNT = 10000;
 
-export {kaspacore};
+export {kaspacore, COMPOUND_UTXO_MAX_COUNT};
 
 /** Class representing an HDWallet with derivable child addresses */
 class Wallet extends EventTargetImpl {
@@ -35,6 +36,7 @@ class Wallet extends EventTargetImpl {
 	static passwordHandler = Crypto;
 	static Crypto = Crypto;
 	static kaspacore=kaspacore;
+	static COMPOUND_UTXO_MAX_COUNT=COMPOUND_UTXO_MAX_COUNT;
 
 	// TODO - integrate with Kaspacore-lib
 	static networkTypes: Object = {
@@ -330,7 +332,10 @@ class Wallet extends EventTargetImpl {
 	    this.logger.info(`sync ... finished (sync done in ${delta} seconds)`);
 		this.emit("sync-finish");
 		const {available, pending, total} = this.balance;
-		this.emit("ready", {available,pending,total});
+		this.emit("ready", {
+			available,pending, total,
+			confirmedUtxosCount: this.utxoSet.confirmedCount
+		});
 	    this.emitBalance();
 	    this.emitAddress();
 	    this.txStore.emitTxs();
@@ -632,7 +637,9 @@ class Wallet extends EventTargetImpl {
 		fee = DEFAULT_FEE,
 		changeAddrOverride,
 		skipSign = false,
-		privKeysInfo = false
+		privKeysInfo = false,
+		compoundingUTXO = false,
+		compoundingUTXOMaxCount = COMPOUND_UTXO_MAX_COUNT
 	}: TxSend): ComposeTxInfo {
 		// TODO: bn!
 		amount = parseInt(amount as any);
@@ -642,7 +649,12 @@ class Wallet extends EventTargetImpl {
 		// 		console.log('Wallet transaction request for', amount, typeof amount);
 		// }
 		//if (!Number.isSafeInteger(amount)) throw new Error(`Amount ${amount} is too large`);
-		const {	utxos, utxoIds } = this.utxoSet.selectUtxos(amount + fee);
+		let utxos, utxoIds;
+		if(compoundingUTXO){
+			({utxos, utxoIds, amount} = this.utxoSet.collectUtxos(compoundingUTXOMaxCount));
+		}else{
+			({utxos, utxoIds} = this.utxoSet.selectUtxos(amount + fee));
+		}
 		
 		const privKeys = utxos.reduce((prev: string[], cur:UnspentOutput) => {
 			return [this.addressManager.all[String(cur.address)], ...prev] as string[];
@@ -675,8 +687,9 @@ class Wallet extends EventTargetImpl {
 				privKeys: privKeysInfo?privKeys:[]
 			};
 		} catch (e) {
-			// !!! FIXME 
-			this.addressManager.changeAddress.reverse();
+			// !!! FIXME
+			if(!changeAddrOverride)
+				this.addressManager.changeAddress.reverse();
 			throw e;
 		}
 	}
@@ -698,8 +711,8 @@ class Wallet extends EventTargetImpl {
 
 		let txParams : TxSend = { ...txParamsArg } as TxSend;
 		const networkFeeMax = txParams.networkFeeMax || 0;
-		const calculateNetworkFee = !!txParams.calculateNetworkFee;
-		const inclusiveFee = !!txParams.inclusiveFee;
+		let calculateNetworkFee = !!txParams.calculateNetworkFee;
+		let inclusiveFee = !!txParams.inclusiveFee;
 		const {skipSign=true, privKeysInfo=false} = txParams;
 		txParams.skipSign = skipSign;
 		txParams.privKeysInfo = privKeysInfo;
@@ -708,6 +721,7 @@ class Wallet extends EventTargetImpl {
 
 		let dataFeeLast = 0;
 		let data = this.composeTx(txParams);
+		
 		let txSize = data.tx.toBuffer(skipSign).length;
 		if(skipSign){
 			txSize += 151 * data.tx.inputs.length;
@@ -717,6 +731,15 @@ class Wallet extends EventTargetImpl {
 
 		let dataFee = txSize * this.defaultFee;
 		const priorityFee = txParamsArg.fee;
+
+		if(txParamsArg.compoundingUTXO){
+			inclusiveFee = true;
+			calculateNetworkFee = true;
+			txParamsArg.amount = data.amount;
+			txParams.amount = data.amount;
+			txParams.compoundingUTXO = false;
+		}
+
 		const txAmount = txParamsArg.amount;
 		let amountRequested = txParamsArg.amount+priorityFee;
 
@@ -946,6 +969,27 @@ class Wallet extends EventTargetImpl {
 	}
 
 	/*
+	* Compound UTXOs by re-sending funds to itself
+	*/	
+	compoundUTXOs(txCompoundOptions:TxCompoundOptions={}, debug=false):Promise<TxResp|null> {
+		const {
+			UTXOMaxCount=COMPOUND_UTXO_MAX_COUNT,
+			networkFeeMax=0,
+			fee=0
+		} = txCompoundOptions;
+
+		let txParamsArg = {
+			toAddr: this.addressManager.changeAddress.next(),
+			amount: -1,
+			fee,
+			networkFeeMax,
+			compoundingUTXO:true,
+			compoundingUTXOMaxCount:UTXOMaxCount
+		}
+		return this.submitTransaction(txParamsArg, debug)
+	}
+
+	/*
 	undoPendingTx(id: string): void {
 		const {	utxoIds	} = this.pendingInfo.transactions[id];
 		delete this.pendingInfo.transactions[id];
@@ -1003,7 +1047,6 @@ class Wallet extends EventTargetImpl {
 		//this.transactions = txParser(this.transactionsStorage, Object.keys(this.addressManager.all));
 		this.runStateChangeHooks();
 	}
-
 
 	/**
 	 * Generates encrypted wallet data.

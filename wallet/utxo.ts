@@ -35,10 +35,6 @@ export class UtxoSet extends EventTargetImpl {
 	availableBalance = 0;
 	debug: boolean = false;
 
-	get length(): number {
-		return Object.keys(this.utxos).length;
-	}
-
 	utxoStorage: Record < string, Api.Utxo[] > = {};
 
 	wallet: Wallet;
@@ -182,6 +178,45 @@ export class UtxoSet extends EventTargetImpl {
 		};
 	}
 
+	/**
+	 * Naively collect UTXOs.
+	 * @param maxCount Provide the max UTXOs count.
+	 */
+	collectUtxos(maxCount: number): {
+		utxoIds: string[];
+		utxos: UnspentOutput[],
+		amount: number
+	} {
+		const utxos: UnspentOutput[] = [];
+		const utxoIds: string[] = [];
+		let totalVal = 0;
+		let list = [...this.utxos.confirmed.values()];
+
+		list = list.filter((utxo) => {
+			const utxoId = utxo.txId + utxo.outputIndex;
+			return !this.inUse.includes(utxoId);
+		});
+
+		list.sort((a: UnspentOutput, b: UnspentOutput): number => {
+			return a.blockBlueScore - b.blockBlueScore || a.satoshis - b.satoshis || a.txId.localeCompare(b.txId) || a.outputIndex - b.outputIndex;
+		})
+
+		for (const utxo of list) {
+			const utxoId = utxo.txId + utxo.outputIndex;
+			utxoIds.push(utxoId);
+			utxos.push(utxo);
+			totalVal += utxo.satoshis;
+			if (utxos.length >= maxCount)
+				break;
+		}
+
+		return {
+			utxoIds,
+			utxos,
+			amount: totalVal
+		};
+	}
+
 	async syncAddressesUtxos(addresses: string[]) {
 		const newAddresses = addresses.map(address => {
 			if (this.addressesUtxoSyncStatuses.has(address))
@@ -287,5 +322,9 @@ export class UtxoSet extends EventTargetImpl {
 	}
 	get count():number{
 		return this.utxos.confirmed.size + this.utxos.pending.size;
+	}
+
+	get confirmedCount():number{
+		return this.utxos.confirmed.size
 	}
 }
