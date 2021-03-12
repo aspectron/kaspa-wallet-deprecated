@@ -899,7 +899,7 @@ class Wallet extends EventTargetImpl {
 
 		this.logger.info(`time in msec`, {
 			"total": ts_6-ts0,
-			"estimateTransaction": ts_0-ts0,
+			"estimate-transaction": ts_0-ts0,
 			"tx.sign": ts_1-ts_0,
 			"tx.toString": ts_2-ts_1,
 			//"ts_3-ts_2": ts_3-ts_2,
@@ -934,6 +934,8 @@ class Wallet extends EventTargetImpl {
 			rpcTX, utxoIds, amount, toAddr, note
 		} = await this.buildTransaction(txParamsArg, debug);
 
+		//console.log("rpcTX:", rpcTX)
+		//throw new Error("TODO : XXXX")
 		try {
 			const ts = Date.now();
 			let txid: string = await this.api.submitTransaction(rpcTX);
