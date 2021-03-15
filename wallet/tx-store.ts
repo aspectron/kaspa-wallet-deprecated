@@ -14,6 +14,15 @@ export interface TXStoreItem{
 	myAddress?:boolean
 }
 
+export const internalNames: {[key:string]:string} = {
+	mainnet : "default",
+	kaspa: "default",
+	testnet : "testnet3",
+	kaspatest: "testnet3",
+	kaspasim: "simnet",
+	kaspadev: "devnet"
+}
+
 export class TXStore{
 
 	static MAX = 5;
@@ -24,10 +33,11 @@ export class TXStore{
 
 	constructor(wallet:Wallet){
 		this.wallet = wallet;
-		let {uid} = wallet;
+		let {uid, network} = wallet;
+		let sNetwork:string = internalNames[network]||network;
 		//this.restore();
 		if(typeof indexedDB != "undefined")
-			this.idb = new iDB({storeName:"tx", dbName:"kaspa_"+uid});
+			this.idb = new iDB({storeName:"tx", dbName:"kaspa_"+uid+"_"+sNetwork});
 	}
 
 	add(tx:TXStoreItem, skipSave=false){
