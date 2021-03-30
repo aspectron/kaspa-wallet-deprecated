@@ -534,12 +534,12 @@ class Wallet extends EventTargetImpl {
 
 	debugInfo:DebugInfo = {inUseUTXOs:{satoshis:0, count:0}};
 	updateDebugInfo(){
-		let inUseUTXOs = {satoshis:20, count:10};
+		let inUseUTXOs = {satoshis:0, count:0};
 		let {confirmed, pending} = this.utxoSet.utxos||{};
 		this.utxoSet.inUse.map(utxoId => {
 			inUseUTXOs.satoshis += confirmed.get(utxoId)?.satoshis || pending.get(utxoId)?.satoshis || 0;
 		});
-		inUseUTXOs.count += this.utxoSet.inUse.length;
+		inUseUTXOs.count = this.utxoSet.inUse.length;
 		this.debugInfo = {inUseUTXOs};
 		this.emit("debug-info", {debugInfo:this.debugInfo});
 	}
