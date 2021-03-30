@@ -8,6 +8,9 @@ export * from './rpc';
 import {IRPC, RPC} from './rpc';
 import { KaspaAPI } from './apiHelpers';
 
+export interface DebugInfo {
+  inUseUTXOs:{satoshis:number, count:number}
+}
 
 export interface WalletOpt{
   skipSyncBalance:boolean;

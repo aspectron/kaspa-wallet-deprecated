@@ -10,7 +10,7 @@ const KAS = helper.KAS;
 import {
 	Network, NetworkOptions, SelectedNetwork, WalletSave, Api, TxSend, TxResp,
 	PendingTransactions, WalletCache, IRPC, RPC, WalletOptions,	WalletOpt,
-	TxInfo, ComposeTxInfo, BuildTxResult, TxCompoundOptions
+	TxInfo, ComposeTxInfo, BuildTxResult, TxCompoundOptions, DebugInfo
 } from '../types/custom-types';
 
 import {CreateLogger, Logger} from '../utils/logger';
@@ -532,6 +532,18 @@ class Wallet extends EventTargetImpl {
 		});
 	}
 
+	debugInfo:DebugInfo = {inUseUTXOs:{satoshis:0, count:0}};
+	updateDebugInfo(){
+		let inUseUTXOs = {satoshis:20, count:10};
+		let {confirmed, pending} = this.utxoSet.utxos||{};
+		this.utxoSet.inUse.map(utxoId => {
+			inUseUTXOs.satoshis += confirmed.get(utxoId)?.satoshis || pending.get(utxoId)?.satoshis || 0;
+		});
+		inUseUTXOs.count += this.utxoSet.inUse.length;
+		this.debugInfo = {inUseUTXOs};
+		this.emit("debug-info", {debugInfo:this.debugInfo});
+	}
+
 	lastAddressNotification:{receive?:string, change?:string} = {};
 	emitAddress(){
 		const receive = this.receiveAddress;
@@ -910,6 +922,7 @@ class Wallet extends EventTargetImpl {
 
 		if(txParamsArg.skipUTXOInUseMark !== true){
 			this.utxoSet.inUse.push(...utxoIds);
+			this.updateDebugInfo();
 		}
 
 		//const rpctx = JSON.stringify(rpcTX, null, "  ");
@@ -952,6 +965,7 @@ class Wallet extends EventTargetImpl {
 				tx:rpcTX.transaction,
 				myAddress: this.addressManager.isOur(toAddr)
 			})
+			this.updateDebugInfo();
 			/*
 			this.pendingInfo.add(txid, {
 				rawTx: tx.toString(),
