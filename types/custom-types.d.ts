@@ -124,15 +124,15 @@ export interface Confirmations {
 */
 
 export type WalletCache = {
-  pendingTx: Record<
+  /*pendingTx: Record<
     string,
     { to: string; utxoIds: string[]; rawTx: string; amount: number; fee: number }
-  >;
+  >;*/
   utxos: {
-    utxoStorage: Record<string, Api.Utxo[]>;
+    //utxoStorage: Record<string, Api.Utxo[]>;
     inUse: string[];
   };
-  transactionsStorage: Record<string, Api.Transaction[]>;
+  /*transactionsStorage: Record<string, Api.Transaction[]>;*/
   addresses: {
     receiveCounter: number;
     changeCounter: number;

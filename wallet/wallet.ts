@@ -25,7 +25,7 @@ import {EventTargetImpl} from './event-target-impl';
 const BALANCE_CONFIRMED = Symbol();
 const BALANCE_PENDING = Symbol();
 const BALANCE_TOTAL = Symbol();
-const COMPOUND_UTXO_MAX_COUNT = 10000;
+const COMPOUND_UTXO_MAX_COUNT = 1000;
 
 export {kaspacore, COMPOUND_UTXO_MAX_COUNT};
 
@@ -544,6 +544,11 @@ class Wallet extends EventTargetImpl {
 		this.emit("debug-info", {debugInfo:this.debugInfo});
 	}
 
+	emitCache(){
+		let {cache} = this;
+		this.emit("state-update", {cache});
+	}
+
 	lastAddressNotification:{receive?:string, change?:string} = {};
 	emitAddress(){
 		const receive = this.receiveAddress;
@@ -923,6 +928,7 @@ class Wallet extends EventTargetImpl {
 		if(txParamsArg.skipUTXOInUseMark !== true){
 			this.utxoSet.inUse.push(...utxoIds);
 			this.updateDebugInfo();
+			this.emitCache();
 		}
 
 		//const rpctx = JSON.stringify(rpcTX, null, "  ");
@@ -966,6 +972,7 @@ class Wallet extends EventTargetImpl {
 				myAddress: this.addressManager.isOur(toAddr)
 			})
 			this.updateDebugInfo();
+			this.emitCache()
 			/*
 			this.pendingInfo.add(txid, {
 				rawTx: tx.toString(),
@@ -1036,23 +1043,24 @@ class Wallet extends EventTargetImpl {
 
 	get cache() {
 		return {
-			pendingTx: this.pendingInfo.transactions,
+			//pendingTx: this.pendingInfo.transactions,
 			utxos: {
-				utxoStorage: this.utxoSet.utxoStorage,
+				//utxoStorage: this.utxoSet.utxoStorage,
 				inUse: this.utxoSet.inUse,
 			},
-			transactionsStorage: this.transactionsStorage,
+			//transactionsStorage: this.transactionsStorage,
 			addresses: {
 				receiveCounter: this.addressManager.receiveAddress.counter,
 				changeCounter: this.addressManager.changeAddress.counter,
-			},
+			}
 		};
 	}
 
 	restoreCache(cache: WalletCache): void {
-		this.pendingInfo.transactions = cache.pendingTx;
-		this.utxoSet.utxoStorage = cache.utxos.utxoStorage;
+		//this.pendingInfo.transactions = cache.pendingTx;
+		//this.utxoSet.utxoStorage = cache.utxos.utxoStorage;
 		this.utxoSet.inUse = cache.utxos.inUse;
+		/*
 		Object.entries(this.utxoSet.utxoStorage).forEach(([addr, utxos]: [string, Api.Utxo[]]) => {
 			this.utxoSet.add(utxos, addr);
 		});
@@ -1063,6 +1071,7 @@ class Wallet extends EventTargetImpl {
 		this.addressManager.changeAddress.advance(cache.addresses.changeCounter);
 		//this.transactions = txParser(this.transactionsStorage, Object.keys(this.addressManager.all));
 		this.runStateChangeHooks();
+		*/
 	}
 
 	/**

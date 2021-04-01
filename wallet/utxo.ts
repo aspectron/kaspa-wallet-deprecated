@@ -117,6 +117,7 @@ export class UtxoSet extends EventTargetImpl {
 		// assigns new array without any utxoIdsToEnable
 		this.inUse = this.inUse.filter((utxoId) => !utxoIdsToEnable.includes(utxoId));
 		this.wallet.updateDebugInfo();
+		this.wallet.emitCache();
 		// this.updateUtxoBalance();
 	}
 

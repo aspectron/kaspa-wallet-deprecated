@@ -1,6 +1,6 @@
 import {CreateLogger, Logger} from '../utils/logger';
 import {UID} from '../utils/helper';
-import { platform } from 'os';
+import { WalletCache } from '../types/custom-types';
 
 export type StorageType = 'FILE'|'LS';
 const IS_NODE = typeof process === 'object' 
@@ -47,6 +47,8 @@ abstract class DBInterface{
 	abstract backup():void;
 	abstract saveWallet(data:string):void;
 	abstract getWallet():string|false;
+	abstract getCache():string|undefined;
+	abstract saveCache(cache:string):void
 }
 
 interface DBConstructor {
@@ -67,7 +69,11 @@ class LSDB extends DBInterface{
 		let data = this.getWallet();
 		if(!data)
 			return
-		this.LS.setItem("kaspa-wallet-"+Date.now(), data);
+		let ts = Date.now();
+		this.LS.setItem("kaspa-wallet-"+ts, data);
+		let cache = this.getCache();
+		if(cache)
+			this.LS.setItem("kaspa-cache-"+ts, cache);
 	}
 	saveWallet(data:string):void{
 		this.LS.setItem("kaspa-wallet", data);
@@ -75,6 +81,14 @@ class LSDB extends DBInterface{
 
 	getWallet():string|false{
 		return this.LS.getItem("kaspa-wallet");
+	}
+
+	saveCache(cache:string){
+		return this.LS.setItem("kaspa-cache", cache);
+	}
+
+	getCache():string|undefined{
+		return this.LS.getItem("kaspa-cache");
 	}
 }
 
@@ -90,6 +104,7 @@ if(IS_NODE){
 		txFile:string;
 		fileName:string;
 		folder:string;
+		cacheFile:string;
 
 		constructor(opt:DBOptions={}){
 			super();
@@ -100,6 +115,7 @@ if(IS_NODE){
 				fs.mkdirSync(this.folder, {recursive:true})
 			this.walletFile = this.createFilePath('kpk');
 			this.txFile = this.createFilePath('ktx');
+			this.cacheFile = this.createFilePath('cache');
 		}
 
 		createFilePath(ext='kpk', suffix=''){
@@ -131,6 +147,10 @@ if(IS_NODE){
 				let newPath = this.createFilePath('ktx', bk)
 				fs.renameSync(this.txFile, newPath);
 			}
+			if(fs.existsSync(this.cacheFile)){
+				let newPath = this.createFilePath('cache', bk)
+				fs.renameSync(this.cacheFile, newPath);
+			}
 		}
 
 		saveWallet(data:string):void{
@@ -141,6 +161,16 @@ if(IS_NODE){
 			if(fs.existsSync(this.walletFile))
 				return fs.readFileSync(this.walletFile)+"";
 			return false;
+		}
+
+		saveCache(cache:string){
+			return fs.writeFileSync(this.cacheFile, cache);
+		}
+	
+		getCache():string|undefined{
+			if(fs.existsSync(this.cacheFile))
+				return fs.readFileSync(this.cacheFile)+"";
+			return undefined;
 		}
 	}
 
@@ -194,6 +224,7 @@ export class Storage{
 	createWallet(mnemonic:string, meta:WalletMeta={}){
 		//this.logger.debug("createWallet:", wallet)
 		this.db.backup();
+		this.db.saveCache('')
 		return this.saveWallet(mnemonic, meta);
 	}
 	saveWallet(mnemonic:string, meta:WalletMeta={}){
@@ -201,6 +232,26 @@ export class Storage{
 		let wallet = this._buildWalletContent(mnemonic, meta);
 		let json = JSON.stringify(wallet)
 		return this.db.saveWallet(json);
+	}
+
+	/*
+	* @return {WalletCache|undefined} cache
+	*/
+	getCache():WalletCache|false{
+		let cache = this.db.getCache();
+		if(!cache)
+			return false;
+		
+		try{
+			return JSON.parse(cache);
+		}catch(e){
+			return false;
+		}
+	}
+
+	saveCache(cache:WalletCache){
+		let data = JSON.stringify(cache);
+		this.db.saveCache(data);
 	}
 
 	setLogLevel(level:string){
