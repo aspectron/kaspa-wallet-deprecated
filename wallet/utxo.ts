@@ -74,6 +74,10 @@ export class UtxoSet extends EventTargetImpl {
 					blockBlueScore: utxo.blockBlueScore
 				})
 				confirmed = confirmed || this.isOurChange(unspentOutput);
+				//confirmed = /*confirmed || */this.isOurChange(unspentOutput);
+				//if(confirmed){
+				//	console.log("Change address: unspentOutput", blueScore-utxo.blockBlueScore, unspentOutput)
+				//}
 				let map = this.utxos[confirmed?'confirmed':'pending'];
 				map.set(utxoId, unspentOutput);
 				this.wallet.adjustBalance(confirmed, unspentOutput.satoshis);
