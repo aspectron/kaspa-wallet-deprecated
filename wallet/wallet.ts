@@ -340,6 +340,8 @@ class Wallet extends EventTargetImpl {
 	    this.emitAddress();
 	    this.txStore.emitTxs();
 	    this.syncSignal.resolve();
+		if(!this.utxoSet.clearMissing())
+			this.updateDebugInfo();
 	}
 
 	getVirtualSelectedParentBlueScore() {
@@ -535,13 +537,19 @@ class Wallet extends EventTargetImpl {
 	debugInfo:DebugInfo = {inUseUTXOs:{satoshis:0, count:0}};
 	updateDebugInfo(){
 		let inUseUTXOs = {satoshis:0, count:0};
-		let {confirmed, pending} = this.utxoSet.utxos||{};
+		let {confirmed, pending, used} = this.utxoSet.utxos||{};
 		this.utxoSet.inUse.map(utxoId => {
-			inUseUTXOs.satoshis += confirmed.get(utxoId)?.satoshis || pending.get(utxoId)?.satoshis || 0;
+			inUseUTXOs.satoshis += confirmed.get(utxoId)?.satoshis ||
+				pending.get(utxoId)?.satoshis ||
+				used.get(utxoId)?.satoshis || 0;
 		});
 		inUseUTXOs.count = this.utxoSet.inUse.length;
 		this.debugInfo = {inUseUTXOs};
 		this.emit("debug-info", {debugInfo:this.debugInfo});
+	}
+
+	clearUsedUTXOs(){
+		this.utxoSet.clearUsed();
 	}
 
 	emitCache(){
@@ -831,7 +839,7 @@ class Wallet extends EventTargetImpl {
 		const ts_0 = Date.now();
 		tx.sign(privKeys, kaspacore.crypto.Signature.SIGHASH_ALL, 'schnorr');
 		const ts_1 = Date.now();
-		const rawTx = tx.toString();
+		//const rawTx = tx.toString();
 		const ts_2 = Date.now();
 
 
@@ -926,9 +934,7 @@ class Wallet extends EventTargetImpl {
 		})
 
 		if(txParamsArg.skipUTXOInUseMark !== true){
-			this.utxoSet.inUse.push(...utxoIds);
-			this.updateDebugInfo();
-			this.emitCache();
+			this.utxoSet.updateUsed(utxos);
 		}
 
 		//const rpctx = JSON.stringify(rpcTX, null, "  ");

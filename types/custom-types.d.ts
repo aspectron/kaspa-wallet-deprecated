@@ -8,6 +8,8 @@ export * from './rpc';
 import {IRPC, RPC} from './rpc';
 import { KaspaAPI } from './apiHelpers';
 
+
+
 export interface DebugInfo {
   inUseUTXOs:{satoshis:number, count:number}
 }
@@ -95,7 +97,7 @@ export interface ComposeTxInfo{
   amount: number;
   toAddr: string;
   fee: number;
-  utxos: kaspacore.Transaction.UnspentOutput[];
+  utxos: UnspentOutput[];
   dataFee?:number;
   totalAmount?:number;
   txSize?:number;

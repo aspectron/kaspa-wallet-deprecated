@@ -1,4 +1,5 @@
-import {Api,RPC,UnspentOutputInfo} from 'custom-types';
+import {Api,RPC} from 'custom-types';
+import {UnspentOutput} from './unspent-output';
 // @ts-ignore
 import * as kaspacore from '@kaspa/core-lib';
 import * as crypto from 'crypto';
@@ -6,26 +7,19 @@ import * as helper from '../utils/helper';
 // import * as api from './apiHelpers';
 import {Wallet} from './wallet';
 import {EventTargetImpl} from './event-target-impl';
-
 const KAS = helper.KAS;
+export {UnspentOutput};
 
-export class UnspentOutput extends kaspacore.Transaction.UnspentOutput {
-	blockBlueScore: number;
-	scriptPublicKeyVersion: number;
-	constructor(o: UnspentOutputInfo) {
-		super(o);
-		this.blockBlueScore = o.blockBlueScore;
-		this.scriptPublicKeyVersion = o.scriptPublicKeyVersion;
-	}
-}
 let seq = 0;
 export class UtxoSet extends EventTargetImpl {
 	utxos: {
 		confirmed: Map <string, UnspentOutput >;
 		pending: Map <string, UnspentOutput >;
+		used:Map <string, UnspentOutput >;
 	} = {
 		confirmed: new Map(),
-		pending: new Map()
+		pending: new Map(),
+		used: new Map()
 	};
 
 	inUse: string[] = [];
@@ -81,6 +75,17 @@ export class UtxoSet extends EventTargetImpl {
 				let map = this.utxos[confirmed?'confirmed':'pending'];
 				map.set(utxoId, unspentOutput);
 				this.wallet.adjustBalance(confirmed, unspentOutput.satoshis);
+			}else if(utxoInUse){
+				let unspentOutput = new UnspentOutput({
+					txid: utxo.transactionId,
+					address,
+					vout: utxo.index,
+					scriptPubKey: utxo.scriptPublicKey.scriptPublicKey,
+					scriptPublicKeyVersion: utxo.scriptPublicKey.version,
+					satoshis: +utxo.amount,
+					blockBlueScore: utxo.blockBlueScore
+				})
+				this.utxos.used.set(utxoId, unspentOutput);
 			}
 		});
 		if (utxoIds.length) {
@@ -113,9 +118,30 @@ export class UtxoSet extends EventTargetImpl {
 		});
 	}
 
+	clearUsed(){
+		this.inUse = [];
+		this.utxos.used.clear();
+		this.wallet.updateDebugInfo();
+		this.wallet.emitCache();
+	}
+
+	clearMissing():boolean{
+		const {confirmed, pending, used} = this.utxos;
+		let missing = this.inUse.filter(utxoId=>{
+			return !(confirmed.has(utxoId) || pending.has(utxoId) || used.has(utxoId))
+		})
+		if(!missing.length)
+			return false
+		this.release(missing);
+		return true;
+	}
+
 	release(utxoIdsToEnable: string[]): void {
 		// assigns new array without any utxoIdsToEnable
 		this.inUse = this.inUse.filter((utxoId) => !utxoIdsToEnable.includes(utxoId));
+		utxoIdsToEnable.forEach(utxoId=>{
+			this.utxos.used.delete(utxoId);
+		})
 		this.wallet.updateDebugInfo();
 		this.wallet.emitCache();
 		// this.updateUtxoBalance();
@@ -136,10 +162,20 @@ export class UtxoSet extends EventTargetImpl {
 	clear(): void {
 		this.utxos.confirmed.clear();
 		this.utxos.pending.clear();
+		this.utxos.used.clear();
 		this.inUse = [];
 		this.availableBalance = 0;
 		this.utxoStorage = {};
 		this.logger.info('UTXO set cleared.');
+	}
+
+	updateUsed(utxos:UnspentOutput[]){
+		utxos.forEach(utxo=>{
+			this.inUse.push(utxo.id);
+			this.utxos.used.set(utxo.txId, utxo);
+		})
+		this.wallet.updateDebugInfo();
+		this.wallet.emitCache();
 	}
 
 	/**
@@ -157,8 +193,7 @@ export class UtxoSet extends EventTargetImpl {
 		let list = [...this.utxos.confirmed.values()];
 
 		list = list.filter((utxo) => {
-			const utxoId = utxo.txId + utxo.outputIndex;
-			return !this.inUse.includes(utxoId);
+			return !this.inUse.includes(utxo.id);
 		});
 
 		list.sort((a: UnspentOutput, b: UnspentOutput): number => {
@@ -166,10 +201,9 @@ export class UtxoSet extends EventTargetImpl {
 		})
 
 		for (const utxo of list) {
-			const utxoId = utxo.txId + utxo.outputIndex;
 			//console.log("info",`UTXO ID: ${utxoId}  , UTXO: ${utxo}`);
 			//if (!this.inUse.includes(utxoId)) {
-				utxoIds.push(utxoId);
+				utxoIds.push(utxo.id);
 				utxos.push(utxo);
 				totalVal += utxo.satoshis;
 			//}
@@ -199,8 +233,7 @@ export class UtxoSet extends EventTargetImpl {
 		let list = [...this.utxos.confirmed.values()];
 
 		list = list.filter((utxo) => {
-			const utxoId = utxo.txId + utxo.outputIndex;
-			return !this.inUse.includes(utxoId);
+			return !this.inUse.includes(utxo.id);
 		});
 
 		list.sort((a: UnspentOutput, b: UnspentOutput): number => {
@@ -208,8 +241,7 @@ export class UtxoSet extends EventTargetImpl {
 		})
 
 		for (const utxo of list) {
-			const utxoId = utxo.txId + utxo.outputIndex;
-			utxoIds.push(utxoId);
+			utxoIds.push(utxo.id);
 			utxos.push(utxo);
 			totalVal += utxo.satoshis;
 			if (utxos.length >= maxCount)
