@@ -25,7 +25,7 @@ import {EventTargetImpl} from './event-target-impl';
 const BALANCE_CONFIRMED = Symbol();
 const BALANCE_PENDING = Symbol();
 const BALANCE_TOTAL = Symbol();
-const COMPOUND_UTXO_MAX_COUNT = 1000;
+const COMPOUND_UTXO_MAX_COUNT = 49;
 
 export {kaspacore, COMPOUND_UTXO_MAX_COUNT};
 
@@ -680,7 +680,9 @@ class Wallet extends EventTargetImpl {
 		}else{
 			({utxos, utxoIds} = this.utxoSet.selectUtxos(amount + fee));
 		}
-		
+		if(utxos.length >=50){
+			throw new Error(`Maximum number of inputs (UTXOs) reached. Please reduce this transaction amount.`);
+		}
 		const privKeys = utxos.reduce((prev: string[], cur:UnspentOutput) => {
 			return [this.addressManager.all[String(cur.address)], ...prev] as string[];
 		}, []);
