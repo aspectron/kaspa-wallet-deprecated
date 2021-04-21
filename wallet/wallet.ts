@@ -25,7 +25,7 @@ import {EventTargetImpl} from './event-target-impl';
 const BALANCE_CONFIRMED = Symbol();
 const BALANCE_PENDING = Symbol();
 const BALANCE_TOTAL = Symbol();
-const COMPOUND_UTXO_MAX_COUNT = 49;
+const COMPOUND_UTXO_MAX_COUNT = 500;
 
 export {kaspacore, COMPOUND_UTXO_MAX_COUNT};
 
@@ -37,6 +37,9 @@ class Wallet extends EventTargetImpl {
 	static Crypto = Crypto;
 	static kaspacore=kaspacore;
 	static COMPOUND_UTXO_MAX_COUNT=COMPOUND_UTXO_MAX_COUNT;
+	static MaxMassAcceptedByBlock = 500000;
+	static MaxMassUTXOs = Wallet.MaxMassAcceptedByBlock -
+		kaspacore.Transaction.EstimatedStandaloneMassWithoutInputs;
 
 	// TODO - integrate with Kaspacore-lib
 	static networkTypes: Object = {
@@ -674,15 +677,15 @@ class Wallet extends EventTargetImpl {
 		// 		console.log('Wallet transaction request for', amount, typeof amount);
 		// }
 		//if (!Number.isSafeInteger(amount)) throw new Error(`Amount ${amount} is too large`);
-		let utxos, utxoIds;
+		let utxos, utxoIds, mass;
 		if(compoundingUTXO){
-			({utxos, utxoIds, amount} = this.utxoSet.collectUtxos(compoundingUTXOMaxCount));
+			({utxos, utxoIds, amount, mass} = this.utxoSet.collectUtxos(compoundingUTXOMaxCount));
 		}else{
-			({utxos, utxoIds} = this.utxoSet.selectUtxos(amount + fee));
+			({utxos, utxoIds, mass} = this.utxoSet.selectUtxos(amount + fee));
 		}
-		if(utxos.length >=50){
-			throw new Error(`Maximum number of inputs (UTXOs) reached. Please reduce this transaction amount.`);
-		}
+		//if(mass > Wallet.MaxMassUTXOs){
+		//	throw new Error(`Maximum number of inputs (UTXOs) reached. Please reduce this transaction amount.`);
+		//}
 		const privKeys = utxos.reduce((prev: string[], cur:UnspentOutput) => {
 			return [this.addressManager.all[String(cur.address)], ...prev] as string[];
 		}, []);
@@ -840,6 +843,12 @@ class Wallet extends EventTargetImpl {
 
 		const ts_0 = Date.now();
 		tx.sign(privKeys, kaspacore.crypto.Signature.SIGHASH_ALL, 'schnorr');
+		const txMass = tx.getMass();
+		this.logger.info("txMass", txMass)
+		if(txMass > Wallet.MaxMassAcceptedByBlock){
+			throw new Error(`Transaction size/mass limit reached. Please reduce this transaction amount.`);
+		}
+
 		const ts_1 = Date.now();
 		//const rawTx = tx.toString();
 		const ts_2 = Date.now();

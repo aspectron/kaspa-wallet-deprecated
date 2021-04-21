@@ -185,7 +185,8 @@ export class UtxoSet extends EventTargetImpl {
 	 */
 	selectUtxos(txAmount: number): {
 		utxoIds: string[];
-		utxos: UnspentOutput[]
+		utxos: UnspentOutput[],
+		mass: number
 	} {
 		const utxos: UnspentOutput[] = [];
 		const utxoIds: string[] = [];
@@ -199,12 +200,13 @@ export class UtxoSet extends EventTargetImpl {
 		list.sort((a: UnspentOutput, b: UnspentOutput): number => {
 			return a.blockBlueScore - b.blockBlueScore || a.satoshis - b.satoshis || a.txId.localeCompare(b.txId) || a.outputIndex - b.outputIndex;
 		})
-
+		let mass = 0;
 		for (const utxo of list) {
 			//console.log("info",`UTXO ID: ${utxoId}  , UTXO: ${utxo}`);
 			//if (!this.inUse.includes(utxoId)) {
 				utxoIds.push(utxo.id);
 				utxos.push(utxo);
+				mass += utxo.mass;
 				totalVal += utxo.satoshis;
 			//}
 			if (totalVal >= txAmount) break;
@@ -214,7 +216,8 @@ export class UtxoSet extends EventTargetImpl {
 
 		return {
 			utxoIds,
-			utxos
+			utxos,
+			mass
 		};
 	}
 
@@ -222,10 +225,11 @@ export class UtxoSet extends EventTargetImpl {
 	 * Naively collect UTXOs.
 	 * @param maxCount Provide the max UTXOs count.
 	 */
-	collectUtxos(maxCount: number): {
+	collectUtxos(maxCount: number = 10000): {
 		utxoIds: string[];
 		utxos: UnspentOutput[],
-		amount: number
+		amount: number,
+		mass: number
 	} {
 		const utxos: UnspentOutput[] = [];
 		const utxoIds: string[] = [];
@@ -239,19 +243,23 @@ export class UtxoSet extends EventTargetImpl {
 		list.sort((a: UnspentOutput, b: UnspentOutput): number => {
 			return a.blockBlueScore - b.blockBlueScore || a.satoshis - b.satoshis || a.txId.localeCompare(b.txId) || a.outputIndex - b.outputIndex;
 		})
-
+		let maxMass = Wallet.MaxMassUTXOs;
+		
+		let mass = 0;
 		for (const utxo of list) {
+			if (utxos.length >= maxCount || mass+utxo.mass >= maxMass)
+				break;
 			utxoIds.push(utxo.id);
 			utxos.push(utxo);
 			totalVal += utxo.satoshis;
-			if (utxos.length >= maxCount)
-				break;
+			mass += utxo.mass;
 		}
-
+		//console.log("maxMass:"+maxMass, "mass:"+mass)
 		return {
 			utxoIds,
 			utxos,
-			amount: totalVal
+			amount: totalVal,
+			mass
 		};
 	}
 
