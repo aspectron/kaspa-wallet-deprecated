@@ -17,8 +17,8 @@ export interface TXStoreItem{
 export const internalNames: {[key:string]:string} = {
 	mainnet : "default",
 	kaspa: "default",
-	testnet : "testnet4",
-	kaspatest: "testnet4",
+	testnet : "testnet5",
+	kaspatest: "testnet5",
 	kaspasim: "simnet",
 	kaspadev: "devnet"
 }
