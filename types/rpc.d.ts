@@ -36,7 +36,8 @@ export namespace RPC {
 	interface UTXOEntry{
 		amount: number;
 		scriptPublicKey: ScriptPublicKey;
-		blockBlueScore: number;
+		//blockBlueScore: number;
+		blockDaaScore: number;
 		isCoinbase: boolean; 
 	}
 
@@ -212,6 +213,14 @@ export namespace RPC {
 		virtualSelectedParentBlueScore: number;
 	}
 
+	interface VirtualDaaScoreChangedNotification{
+		virtualDaaScore:number;
+	}
+
+	interface NotifyVirtualDaaScoreChangedResponse{
+		error: Error;
+	}
+
 	interface NotifyUtxosChangedResponse{
 		error: Error;
 	}
@@ -219,6 +228,19 @@ export namespace RPC {
 	interface UtxosChangedNotification{
 		added:UTXOsByAddressesEntry[];
 		removed:UTXOsByAddressesEntry[];
+	}
+
+	interface GetBlockDagInfoResponse{
+		networkName:string;
+		blockCount:number;
+  		headerCount:number;
+		tipHashes:string[];
+  		difficulty:number
+  		pastMedianTime:number;
+  		virtualParentHashes:string[];
+  		pruningPointHash:string;
+  		virtualDaaScore:number;
+		error:Error
 	}
 
 	declare type callback<T> = (result: T) => void;
@@ -230,10 +252,11 @@ export interface IRPC {
 	getUtxosByAddresses(addresses:string[]): Promise<RPC.UTXOsByAddressesResponse>;
 	submitTransaction(tx: RPC.SubmitTransactionRequest): Promise<RPC.SubmitTransactionResponse>;
 	getVirtualSelectedParentBlueScore(): Promise<RPC.VirtualSelectedParentBlueScoreResponse>;
-	
+	getBlockDagInfo(): Promise<RPC.GetBlockDagInfoResponse>;
 	subscribeChainChanged(callback:Rpc.callback<Rpc.ChainChangedNotification>): RPC.SubPromise<RPC.NotifyChainChangedResponse>;
 	subscribeBlockAdded(callback:Rpc.callback<Rpc.BlockAddedNotification>): RPC.SubPromise<RPC.NotifyBlockAddedResponse>;
 	subscribeVirtualSelectedParentBlueScoreChanged(callback:RPC.callback<Rpc.VirtualSelectedParentBlueScoreChangedNotification>): RPC.SubPromise<RPC.NotifyVirtualSelectedParentBlueScoreChangedResponse>;
+	subscribeVirtualDaaScoreChanged(callback:RPC.callback<Rpc.VirtualDaaScoreChangedNotification>): RPC.SubPromise<RPC.NotifyVirtualDaaScoreChangedResponse>;
 	subscribeUtxosChanged(addresses:string[], callback:Rpc.callback<Rpc.UtxosChangedNotification>): RPC.SubPromise<RPC.NotifyUtxosChangedResponse>;
 	unSubscribeUtxosChanged(uid:string='');
 	unSubscribe(eventName:string, uid:string='');

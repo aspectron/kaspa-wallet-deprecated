@@ -351,12 +351,17 @@ class Wallet extends EventTargetImpl {
 		return this.api.getVirtualSelectedParentBlueScore();
 	}
 
+	getVirtualDaaScore() {
+		return this.api.getVirtualDaaScore();
+	}
+
 	async initBlueScoreSync(once:boolean = false) {
 		if(this.syncVirtualSelectedParentBlueScoreStarted)
 			return;
 		this.syncVirtualSelectedParentBlueScoreStarted = true;
-		let {blueScore} = await this.getVirtualSelectedParentBlueScore();
-
+		let r = await this.getVirtualDaaScore();
+		let {virtualDaaScore:blueScore} = r;
+		console.log("getVirtualSelectedParentBlueScore :result", r)
 		this.blueScore = blueScore;
 		this.emit("blue-score-changed", {blueScore})
 		this.utxoSet.updateUtxoBalance();
@@ -365,11 +370,12 @@ class Wallet extends EventTargetImpl {
 			this.syncVirtualSelectedParentBlueScoreStarted = false;
 			return;
 		}
-		this.api.subscribeVirtualSelectedParentBlueScoreChanged((result) => {
-			let {virtualSelectedParentBlueScore} = result;
-			this.blueScore = virtualSelectedParentBlueScore;
+		this.api.subscribeVirtualDaaScoreChanged((result) => {
+			let {virtualDaaScore} = result;
+			console.log("subscribeVirtualSelectedParentBlueScoreChanged:result", result)
+			this.blueScore = virtualDaaScore;
 			this.emit("blue-score-changed", {
-				blueScore: virtualSelectedParentBlueScore
+				blueScore: virtualDaaScore
 			})
 			this.utxoSet.updateUtxoBalance();
 		});
