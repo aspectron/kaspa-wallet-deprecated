@@ -10,11 +10,11 @@ import {EventTargetImpl} from './event-target-impl';
 const KAS = helper.KAS;
 
 export class UnspentOutput extends kaspacore.Transaction.UnspentOutput {
-	blockBlueScore: number;
+	blockDaaScore: number;
 	scriptPublicKeyVersion: number;
 	constructor(o: UnspentOutputInfo) {
 		super(o);
-		this.blockBlueScore = o.blockBlueScore;
+		this.blockDaaScore = o.blockDaaScore;
 		this.scriptPublicKeyVersion = o.scriptPublicKeyVersion;
 	}
 }
@@ -67,7 +67,8 @@ export class UtxoSet extends EventTargetImpl {
 			//console.log("utxoInUse", {utxoInUse, alreadyHaveIt})
 			if (!utxoInUse && !alreadyHaveIt /*&& utxo.isSpendable*/ ) {
 				utxoIds.push(utxoId);
-				let confirmed = (blueScore-utxo.blockBlueScore>=100);
+				const TEMP_VAR_DONT_MERGE = 233475; // TODO GET RID OF THIS
+				let confirmed = (TEMP_VAR_DONT_MERGE+Number(blueScore)-Number(utxo.blockDaaScore)>=100);
 				let map = this.utxos[confirmed?'confirmed':'pending'];
 				let unspentOutput = new UnspentOutput({
 					txid: utxo.transactionId,
@@ -76,7 +77,7 @@ export class UtxoSet extends EventTargetImpl {
 					scriptPubKey: utxo.scriptPublicKey.scriptPublicKey,
 					scriptPublicKeyVersion: utxo.scriptPublicKey.version,
 					satoshis: +utxo.amount,
-					blockBlueScore: utxo.blockBlueScore
+					blockDaaScore: utxo.blockDaaScore
 				})
 				map.set(utxoId, unspentOutput);
 				this.wallet.adjustBalance(confirmed, unspentOutput.satoshis);
@@ -120,7 +121,7 @@ export class UtxoSet extends EventTargetImpl {
 	updateUtxoBalance(): void {
 		const {blueScore} = this.wallet;
 		[...this.utxos.pending.values()].forEach(utxo=>{
-			if(blueScore-utxo.blockBlueScore < 100)
+			if(blueScore-utxo.blockDaaScore < 100)
 				return
 			this.utxos.pending.delete(utxo.txId+utxo.outputIndex);
 			this.wallet.adjustBalance(false, -utxo.satoshis, false);
@@ -158,7 +159,7 @@ export class UtxoSet extends EventTargetImpl {
 		});
 
 		list.sort((a: UnspentOutput, b: UnspentOutput): number => {
-			return a.blockBlueScore - b.blockBlueScore || a.satoshis - b.satoshis || a.txId.localeCompare(b.txId) || a.outputIndex - b.outputIndex;
+			return a.blockDaaScore - b.blockDaaScore || a.satoshis - b.satoshis || a.txId.localeCompare(b.txId) || a.outputIndex - b.outputIndex;
 		})
 
 		for (const utxo of list) {

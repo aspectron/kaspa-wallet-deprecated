@@ -143,6 +143,7 @@ export class AddressManager extends EventTargetImpl {
 		//let {address:address3} = bitcoin.payments.p2pkh({pubkey});
 		let xonly = Buffer.from(xonlyPubKey, "hex");
 		//@ts-ignore
+		
 		let address = kaspacore.Address.fromPublicKeyBuffer(xonly, this.network).toString();
 
 		/*

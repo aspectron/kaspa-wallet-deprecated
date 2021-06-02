@@ -36,7 +36,7 @@ export namespace RPC {
 	interface UTXOEntry{
 		amount: number;
 		scriptPublicKey: ScriptPublicKey;
-		blockBlueScore: number;
+		blockDaaScore: number;
 		isCoinbase: boolean; 
 	}
 
