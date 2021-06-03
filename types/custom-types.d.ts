@@ -44,7 +44,7 @@ export interface UnspentOutputInfo{
   vout:number,
   scriptPubKey:string,
   satoshis:number,
-  blockBlueScore:number,
+  blockDaaScore:number,
   scriptPublicKeyVersion:number
 }
 
@@ -164,7 +164,7 @@ export namespace Api{
     transactionId: string;
     transactionHash: string;
     acceptingBlockHash: string;
-    acceptingBlockBlueScore: number;
+    acceptingblockDaaScore: number;
     subnetworkId: string;
     lockTime: number;
     gas: number;
@@ -192,7 +192,7 @@ export namespace Api{
     transactionId: string;
     amount: number;
     scriptPublicKey: RPC.ScriptPublicKey;
-    blockBlueScore: number;
+    blockDaaScore: number;
     index: number;
     //acceptingBlockHash: string;
     //isSpent: boolean;

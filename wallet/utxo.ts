@@ -57,7 +57,7 @@ export class UtxoSet extends EventTargetImpl {
 			//console.log("utxoInUse", {utxoInUse, alreadyHaveIt})
 			if (!utxoInUse && !alreadyHaveIt /*&& utxo.isSpendable*/ ) {
 				utxoIds.push(utxoId);
-				let confirmed = (blueScore-utxo.blockBlueScore>=100);
+				let confirmed = (blueScore-utxo.blockDaaScore>=100);
 				let unspentOutput = new UnspentOutput({
 					txid: utxo.transactionId,
 					address,
@@ -65,12 +65,12 @@ export class UtxoSet extends EventTargetImpl {
 					scriptPubKey: utxo.scriptPublicKey.scriptPublicKey,
 					scriptPublicKeyVersion: utxo.scriptPublicKey.version,
 					satoshis: +utxo.amount,
-					blockBlueScore: utxo.blockBlueScore
+					blockDaaScore: utxo.blockDaaScore
 				})
 				confirmed = confirmed || this.isOurChange(unspentOutput);
 				//confirmed = /*confirmed || */this.isOurChange(unspentOutput);
 				//if(confirmed){
-				//	console.log("Change address: unspentOutput", blueScore-utxo.blockBlueScore, unspentOutput)
+				//	console.log("Change address: unspentOutput", blueScore-utxo.blockDaaScore, unspentOutput)
 				//}
 				let map = this.utxos[confirmed?'confirmed':'pending'];
 				map.set(utxoId, unspentOutput);
@@ -83,7 +83,7 @@ export class UtxoSet extends EventTargetImpl {
 					scriptPubKey: utxo.scriptPublicKey.scriptPublicKey,
 					scriptPublicKeyVersion: utxo.scriptPublicKey.version,
 					satoshis: +utxo.amount,
-					blockBlueScore: utxo.blockBlueScore
+					blockDaaScore: utxo.blockDaaScore
 				})
 				this.utxos.used.set(utxoId, unspentOutput);
 			}
@@ -150,7 +150,7 @@ export class UtxoSet extends EventTargetImpl {
 	updateUtxoBalance(): void {
 		const {blueScore} = this.wallet;
 		[...this.utxos.pending.values()].forEach(utxo=>{
-			if(blueScore-utxo.blockBlueScore < 100)
+			if(blueScore-utxo.blockDaaScore < 100)
 				return
 			this.utxos.pending.delete(utxo.txId+utxo.outputIndex);
 			this.wallet.adjustBalance(false, -utxo.satoshis, false);
@@ -198,7 +198,7 @@ export class UtxoSet extends EventTargetImpl {
 		});
 
 		list.sort((a: UnspentOutput, b: UnspentOutput): number => {
-			return a.blockBlueScore - b.blockBlueScore || a.satoshis - b.satoshis || a.txId.localeCompare(b.txId) || a.outputIndex - b.outputIndex;
+			return a.blockDaaScore - b.blockDaaScore || a.satoshis - b.satoshis || a.txId.localeCompare(b.txId) || a.outputIndex - b.outputIndex;
 		})
 		let mass = 0;
 		for (const utxo of list) {
@@ -241,7 +241,7 @@ export class UtxoSet extends EventTargetImpl {
 		});
 
 		list.sort((a: UnspentOutput, b: UnspentOutput): number => {
-			return a.blockBlueScore - b.blockBlueScore || a.satoshis - b.satoshis || a.txId.localeCompare(b.txId) || a.outputIndex - b.outputIndex;
+			return a.blockDaaScore - b.blockDaaScore || a.satoshis - b.satoshis || a.txId.localeCompare(b.txId) || a.outputIndex - b.outputIndex;
 		})
 		let maxMass = Wallet.MaxMassUTXOs;
 		

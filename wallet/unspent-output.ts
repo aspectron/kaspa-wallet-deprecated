@@ -1,14 +1,14 @@
 import * as kaspacore from '@kaspa/core-lib';
 import {UnspentOutputInfo} from '../types/custom-types';
 export class UnspentOutput extends kaspacore.Transaction.UnspentOutput {
-	blockBlueScore: number;
+	blockDaaScore: number;
 	scriptPublicKeyVersion: number;
 	id:string;
 	signatureOPCount:number;
 	mass:number;
 	constructor(o: UnspentOutputInfo) {
 		super(o);
-		this.blockBlueScore = o.blockBlueScore;
+		this.blockDaaScore = o.blockDaaScore;
 		this.scriptPublicKeyVersion = o.scriptPublicKeyVersion;
 		this.id = this.txId + this.outputIndex;
 		this.signatureOPCount = this.script.getSignatureOperationsCount();

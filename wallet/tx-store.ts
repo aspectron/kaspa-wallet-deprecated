@@ -61,7 +61,7 @@ export class TXStore{
 				id: utxo.transactionId+":"+utxo.index,
 				amount: utxo.amount,
 				address,
-				blueScore:utxo.blockBlueScore,
+				blueScore:utxo.blockDaaScore,
 				tx:false//TODO
 			};
 			this.add(item);
