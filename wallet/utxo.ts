@@ -67,8 +67,7 @@ export class UtxoSet extends EventTargetImpl {
 			//console.log("utxoInUse", {utxoInUse, alreadyHaveIt})
 			if (!utxoInUse && !alreadyHaveIt /*&& utxo.isSpendable*/ ) {
 				utxoIds.push(utxoId);
-				const TEMP_VAR_DONT_MERGE = 233475; // TODO GET RID OF THIS
-				let confirmed = (TEMP_VAR_DONT_MERGE+Number(blueScore)-Number(utxo.blockDaaScore)>=100);
+				let confirmed = (Number(blueScore)-Number(utxo.blockDaaScore)>=100);
 				let map = this.utxos[confirmed?'confirmed':'pending'];
 				let unspentOutput = new UnspentOutput({
 					txid: utxo.transactionId,
