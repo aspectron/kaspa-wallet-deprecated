@@ -48,7 +48,7 @@ class KaspaAPI extends EventTargetImpl{
 
 	}
 	_setConnected(isConnected:boolean){
-		//console.log("api._setConnected", isConnected)
+		//console.log("wallet.api._setConnected", isConnected)
 		this.isConnected = isConnected;
 		this.emit(isConnected?"connect":'disconnect');
 	}
@@ -59,8 +59,12 @@ class KaspaAPI extends EventTargetImpl{
 			//console.log("entry", entry)
 			let {transactionId, index} = entry.outpoint;
 			let {address, utxoEntry} = entry;
+<<<<<<< HEAD
 			let {amount, scriptPublicKey, blockDaaScore, isCoinbase} = utxoEntry;
 
+=======
+			let {amount, scriptPublicKey, isCoinbase, blockDaaScore:blockBlueScore} = utxoEntry;
+>>>>>>> origin/master
 			let item: Api.Utxo = {
 				amount,
 				scriptPublicKey,
@@ -111,12 +115,43 @@ class KaspaAPI extends EventTargetImpl{
 
 		return {blueScore: response.blueScore}
 	}
+	
+	async getVirtualDaaScore(): Promise<{virtualDaaScore:number}> {
+		if(!this.rpc)
+			return missingRPCProviderError();
+
+		const response = await this.rpc.getBlockDagInfo()
+		.catch((e) => {
+			throw new ApiError(`API connection error. ${e}`);
+		})
+		
+		if (response.error)
+			throw new ApiError(`API error (${response.error.errorCode}): ${response.error.message}`);
+
+		return {virtualDaaScore: response.virtualDaaScore}
+	}
+	
 
 	async subscribeVirtualSelectedParentBlueScoreChanged(callback:RPC.callback<RPC.VirtualSelectedParentBlueScoreChangedNotification>) {
 		if(!this.rpc)
 			return missingRPCProviderError();
 
 		const response = await this.rpc.subscribeVirtualSelectedParentBlueScoreChanged(callback)
+		.catch((e) => {
+			throw new ApiError(`API connection error. ${e}`);
+		})
+		
+		if (response.error)
+			throw new ApiError(`API error (${response.error.errorCode}): ${response.error.message}`);
+
+		return response;
+	}
+
+	async subscribeVirtualDaaScoreChanged(callback:RPC.callback<RPC.VirtualDaaScoreChangedNotification>) {
+		if(!this.rpc)
+			return missingRPCProviderError();
+
+		const response = await this.rpc.subscribeVirtualDaaScoreChanged(callback)
 		.catch((e) => {
 			throw new ApiError(`API connection error. ${e}`);
 		})

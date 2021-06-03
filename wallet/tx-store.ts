@@ -8,8 +8,19 @@ export interface TXStoreItem{
 	id:string;
 	amount:number;
 	address:string;
+	blueScore:number;
 	note?:string;
-	tx?:any
+	tx?:any,
+	myAddress?:boolean
+}
+
+export const internalNames: {[key:string]:string} = {
+	mainnet : "default",
+	kaspa: "default",
+	testnet : "testnet5c",
+	kaspatest: "testnet5c",
+	kaspasim: "simnet",
+	kaspadev: "devnet"
 }
 
 export class TXStore{
@@ -17,42 +28,49 @@ export class TXStore{
 	static MAX = 5;
 	wallet:Wallet;
 	store:Map<string, TXStoreItem> = new Map();
+	txToEmitList:TXStoreItem[] = [];
 	idb:iDB|undefined;
 
 	constructor(wallet:Wallet){
 		this.wallet = wallet;
-		let {uid} = wallet;
+		let {uid, network} = wallet;
+		let sNetwork:string = internalNames[network]||network;
 		//this.restore();
 		if(typeof indexedDB != "undefined")
-			this.idb = new iDB({storeName:"tx", dbName:"kaspa_"+uid});
+			this.idb = new iDB({storeName:"tx", dbName:"kaspa_"+uid+"_"+sNetwork});
 	}
 
-	add(tx:TXStoreItem){
+	add(tx:TXStoreItem, skipSave=false){
 		if(this.store.has(tx.id))
 			return false;
 		this.store.set(tx.id, tx);
-		this.wallet.emit("new-transaction", tx);
+		this.emitTx(tx);
 		if(this.store.size > TXStore.MAX)
 			this.store = new Map([...this.store.entries()].slice(-TXStore.MAX));
-		this.save(tx);
+		if(!skipSave)
+			this.save(tx);
 		return true;
+	}
+	addAddressUTXOs(address:string, utxos:Api.Utxo[], ts?:number){
+		if(!utxos.length || this.wallet.addressManager.isOurChange(address))
+			return
+		utxos.forEach(utxo=>{
+			let item = {
+				in: true,
+				ts: ts||Date.now(),
+				id: utxo.transactionId+":"+utxo.index,
+				amount: utxo.amount,
+				address,
+				blueScore:utxo.blockBlueScore,
+				tx:false//TODO
+			};
+			this.add(item);
+		})
 	}
 	addFromUTXOs(list:Map<string, Api.Utxo[]>){
 		let ts = Date.now();
 		list.forEach((utxos, address)=>{
-			if(!utxos.length || this.wallet.addressManager.isOurChange(address))
-				return
-			utxos.forEach(utxo=>{
-				let item = {
-					in: true,
-					ts,
-					id: utxo.transactionId+":"+utxo.index,
-					amount: utxo.amount,
-					address,
-					tx:false//TODO
-				};
-				this.add(item);
-			})
+			this.addAddressUTXOs(address, utxos, ts)
 		})
 	}
 
@@ -65,6 +83,22 @@ export class TXStore{
 			//localStorage.setItem("kaspa-tx-ids", JSON.stringify(txIds));
 			//localStorage.setItem("kaspa-tx-"+tx.id, JSON.stringify(tx))
 		}
+	}
+	emitTx(tx:TXStoreItem){
+		if(this.wallet.syncSignal && !this.wallet.syncInProggress){
+			this.wallet.emit("new-transaction", tx);
+			return;
+		}
+
+		this.txToEmitList.push(tx)
+		if(this.txToEmitList.length > 500){
+			this.emitTxs();
+		}
+	}
+	emitTxs(){
+		let list = this.txToEmitList;
+		this.txToEmitList = [];
+		this.wallet.emit("transactions", list);
 	}
 	async restore(){
 		let {uid} = this.wallet
@@ -109,7 +143,7 @@ export class TXStore{
 			list.sort((a, b)=>{
 				return a.ts-b.ts;
 			}).map(o=>{
-				this.add(o)
+				this.add(o, true)
 			})
 		}
 

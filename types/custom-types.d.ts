@@ -9,12 +9,18 @@ import {IRPC, RPC} from './rpc';
 import { KaspaAPI } from './apiHelpers';
 
 
+
+export interface DebugInfo {
+  inUseUTXOs:{satoshis:number, count:number}
+}
+
 export interface WalletOpt{
   skipSyncBalance:boolean;
   syncOnce:boolean;
   addressDiscoveryExtent:number;
   logLevel:string;
   disableAddressDerivation:boolean;
+  checkGRPCFlags:boolean;
 }
 
 export interface WalletOptions{
@@ -23,6 +29,7 @@ export interface WalletOptions{
   syncOnce?:boolean;
   logLevel?:string;
   disableAddressDerivation?:boolean;
+  checkGRPCFlags?:boolean;
 }
  
 export interface NetworkOptions{
@@ -58,12 +65,23 @@ export interface TxSend {
   toAddr: string;
   amount: number;
   fee: number;
-  tx: kaspacore.Transaction;
+  //tx?: kaspacore.Transaction;
   changeAddrOverride? : string;
   networkFeeMax?:number;
   note?:string;
   calculateNetworkFee?:boolean;
   inclusiveFee?:boolean;
+  skipSign?:boolean,
+  privKeysInfo?:boolean;
+  skipUTXOInUseMark?:boolean,
+  compoundingUTXO?:boolean,
+  compoundingUTXOMaxCount?:number
+}
+
+export interface TxCompoundOptions {
+  UTXOMaxCount?:number;
+  networkFeeMax?:number;
+  fee?:number;
 }
 
 export interface TxResp {
@@ -79,11 +97,12 @@ export interface ComposeTxInfo{
   amount: number;
   toAddr: string;
   fee: number;
-  utxos: kaspacore.Transaction.UnspentOutput[];
+  utxos: UnspentOutput[];
   dataFee?:number;
   totalAmount?:number;
   txSize?:number;
   note?:string;
+  privKeys:string[];
 }
 
 export interface TxInfo  extends ComposeTxInfo{
@@ -91,6 +110,10 @@ export interface TxInfo  extends ComposeTxInfo{
   totalAmount:number;
   txSize:number;
   note:string;
+}
+
+export interface BuildTxResult extends TxInfo{
+  rpcTX: RPC.SubmitTransactionRequest;
 }
 
 /*
@@ -103,15 +126,15 @@ export interface Confirmations {
 */
 
 export type WalletCache = {
-  pendingTx: Record<
+  /*pendingTx: Record<
     string,
     { to: string; utxoIds: string[]; rawTx: string; amount: number; fee: number }
-  >;
+  >;*/
   utxos: {
-    utxoStorage: Record<string, Api.Utxo[]>;
+    //utxoStorage: Record<string, Api.Utxo[]>;
     inUse: string[];
   };
-  transactionsStorage: Record<string, Api.Transaction[]>;
+  /*transactionsStorage: Record<string, Api.Transaction[]>;*/
   addresses: {
     receiveCounter: number;
     changeCounter: number;

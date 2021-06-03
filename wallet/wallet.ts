@@ -10,7 +10,7 @@ const KAS = helper.KAS;
 import {
 	Network, NetworkOptions, SelectedNetwork, WalletSave, Api, TxSend, TxResp,
 	PendingTransactions, WalletCache, IRPC, RPC, WalletOptions,	WalletOpt,
-	TxInfo, ComposeTxInfo
+	TxInfo, ComposeTxInfo, BuildTxResult, TxCompoundOptions, DebugInfo
 } from '../types/custom-types';
 
 import {CreateLogger, Logger} from '../utils/logger';
@@ -25,6 +25,9 @@ import {EventTargetImpl} from './event-target-impl';
 const BALANCE_CONFIRMED = Symbol();
 const BALANCE_PENDING = Symbol();
 const BALANCE_TOTAL = Symbol();
+const COMPOUND_UTXO_MAX_COUNT = 500;
+
+export {kaspacore, COMPOUND_UTXO_MAX_COUNT};
 
 /** Class representing an HDWallet with derivable child addresses */
 class Wallet extends EventTargetImpl {
@@ -32,6 +35,11 @@ class Wallet extends EventTargetImpl {
 	static Mnemonic: typeof Mnemonic = Mnemonic;
 	static passwordHandler = Crypto;
 	static Crypto = Crypto;
+	static kaspacore=kaspacore;
+	static COMPOUND_UTXO_MAX_COUNT=COMPOUND_UTXO_MAX_COUNT;
+	static MaxMassAcceptedByBlock = 500000;
+	static MaxMassUTXOs = Wallet.MaxMassAcceptedByBlock -
+		kaspacore.Transaction.EstimatedStandaloneMassWithoutInputs;
 
 	// TODO - integrate with Kaspacore-lib
 	static networkTypes: Object = {
@@ -193,7 +201,8 @@ class Wallet extends EventTargetImpl {
 			syncOnce: false,
 			addressDiscoveryExtent: 64,
 			logLevel:'info',
-			disableAddressDerivation:false
+			disableAddressDerivation:false,
+			checkGRPCFlags:false
 		};
 		// console.log("CREATING WALLET FOR NETWORK", this.network);
 		this.options = {...defaultOpt,	...options};
@@ -326,22 +335,33 @@ class Wallet extends EventTargetImpl {
 	    this.logger.info(`sync ... finished (sync done in ${delta} seconds)`);
 		this.emit("sync-finish");
 		const {available, pending, total} = this.balance;
-		this.emit("ready", {available,pending,total});
+		this.emit("ready", {
+			available,pending, total,
+			confirmedUtxosCount: this.utxoSet.confirmedCount
+		});
 	    this.emitBalance();
 	    this.emitAddress();
+	    this.txStore.emitTxs();
 	    this.syncSignal.resolve();
+		if(!this.utxoSet.clearMissing())
+			this.updateDebugInfo();
 	}
 
 	getVirtualSelectedParentBlueScore() {
 		return this.api.getVirtualSelectedParentBlueScore();
 	}
 
+	getVirtualDaaScore() {
+		return this.api.getVirtualDaaScore();
+	}
+
 	async initBlueScoreSync(once:boolean = false) {
 		if(this.syncVirtualSelectedParentBlueScoreStarted)
 			return;
 		this.syncVirtualSelectedParentBlueScoreStarted = true;
-		let {blueScore} = await this.getVirtualSelectedParentBlueScore();
-
+		let r = await this.getVirtualDaaScore();
+		let {virtualDaaScore:blueScore} = r;
+		console.log("getVirtualSelectedParentBlueScore :result", r)
 		this.blueScore = blueScore;
 		this.emit("blue-score-changed", {blueScore})
 		this.utxoSet.updateUtxoBalance();
@@ -350,11 +370,12 @@ class Wallet extends EventTargetImpl {
 			this.syncVirtualSelectedParentBlueScoreStarted = false;
 			return;
 		}
-		this.api.subscribeVirtualSelectedParentBlueScoreChanged((result) => {
-			let {virtualSelectedParentBlueScore} = result;
-			this.blueScore = virtualSelectedParentBlueScore;
+		this.api.subscribeVirtualDaaScoreChanged((result) => {
+			let {virtualDaaScore} = result;
+			console.log("subscribeVirtualSelectedParentBlueScoreChanged:result", result)
+			this.blueScore = virtualDaaScore;
 			this.emit("blue-score-changed", {
-				blueScore: virtualSelectedParentBlueScore
+				blueScore: virtualDaaScore
 			})
 			this.utxoSet.updateUtxoBalance();
 		});
@@ -522,6 +543,29 @@ class Wallet extends EventTargetImpl {
 		});
 	}
 
+	debugInfo:DebugInfo = {inUseUTXOs:{satoshis:0, count:0}};
+	updateDebugInfo(){
+		let inUseUTXOs = {satoshis:0, count:0};
+		let {confirmed, pending, used} = this.utxoSet.utxos||{};
+		this.utxoSet.inUse.map(utxoId => {
+			inUseUTXOs.satoshis += confirmed.get(utxoId)?.satoshis ||
+				pending.get(utxoId)?.satoshis ||
+				used.get(utxoId)?.satoshis || 0;
+		});
+		inUseUTXOs.count = this.utxoSet.inUse.length;
+		this.debugInfo = {inUseUTXOs};
+		this.emit("debug-info", {debugInfo:this.debugInfo});
+	}
+
+	clearUsedUTXOs(){
+		this.utxoSet.clearUsed();
+	}
+
+	emitCache(){
+		let {cache} = this;
+		this.emit("state-update", {cache});
+	}
+
 	lastAddressNotification:{receive?:string, change?:string} = {};
 	emitAddress(){
 		const receive = this.receiveAddress;
@@ -626,6 +670,10 @@ class Wallet extends EventTargetImpl {
 		amount,
 		fee = DEFAULT_FEE,
 		changeAddrOverride,
+		skipSign = false,
+		privKeysInfo = false,
+		compoundingUTXO = false,
+		compoundingUTXOMaxCount = COMPOUND_UTXO_MAX_COUNT
 	}: TxSend): ComposeTxInfo {
 		// TODO: bn!
 		amount = parseInt(amount as any);
@@ -635,13 +683,21 @@ class Wallet extends EventTargetImpl {
 		// 		console.log('Wallet transaction request for', amount, typeof amount);
 		// }
 		//if (!Number.isSafeInteger(amount)) throw new Error(`Amount ${amount} is too large`);
-		const {	utxos, utxoIds } = this.utxoSet.selectUtxos(amount + fee);
-		
+		let utxos, utxoIds, mass;
+		if(compoundingUTXO){
+			({utxos, utxoIds, amount, mass} = this.utxoSet.collectUtxos(compoundingUTXOMaxCount));
+		}else{
+			({utxos, utxoIds, mass} = this.utxoSet.selectUtxos(amount + fee));
+		}
+		//if(mass > Wallet.MaxMassUTXOs){
+		//	throw new Error(`Maximum number of inputs (UTXOs) reached. Please reduce this transaction amount.`);
+		//}
 		const privKeys = utxos.reduce((prev: string[], cur:UnspentOutput) => {
 			return [this.addressManager.all[String(cur.address)], ...prev] as string[];
 		}, []);
 
 		this.logger.info("utxos.length", utxos.length)
+		//changeAddrOverride = "kaspatest:qpkjvksx4mqrl42ggp8zzn32w4lruj6cyvxv2cyfgq";
 
 		const changeAddr = changeAddrOverride || this.addressManager.changeAddress.next();
 		try {
@@ -651,7 +707,8 @@ class Wallet extends EventTargetImpl {
 				.setVersion(0)
 				.fee(fee)
 				.change(changeAddr)
-				.sign(privKeys, kaspacore.crypto.Signature.SIGHASH_ALL, 'schnorr');
+			if(!skipSign)
+				tx.sign(privKeys, kaspacore.crypto.Signature.SIGHASH_ALL, 'schnorr');
 
 			//window.txxxx = tx;
 			return {
@@ -662,11 +719,13 @@ class Wallet extends EventTargetImpl {
 				amount,
 				fee,
 				utxos,
-				toAddr
+				toAddr,
+				privKeys: privKeysInfo?privKeys:[]
 			};
 		} catch (e) {
-			// !!! FIXME 
-			this.addressManager.changeAddress.reverse();
+			// !!! FIXME
+			if(!changeAddrOverride)
+				this.addressManager.changeAddress.reverse();
 			throw e;
 		}
 	}
@@ -688,16 +747,35 @@ class Wallet extends EventTargetImpl {
 
 		let txParams : TxSend = { ...txParamsArg } as TxSend;
 		const networkFeeMax = txParams.networkFeeMax || 0;
-		const calculateNetworkFee = !!txParams.calculateNetworkFee;
-		const inclusiveFee = !!txParams.inclusiveFee;
+		let calculateNetworkFee = !!txParams.calculateNetworkFee;
+		let inclusiveFee = !!txParams.inclusiveFee;
+		const {skipSign=true, privKeysInfo=false} = txParams;
+		txParams.skipSign = skipSign;
+		txParams.privKeysInfo = privKeysInfo;
 
 		//console.log("calculateNetworkFee:", calculateNetworkFee, "inclusiveFee:", inclusiveFee)
 
 		let dataFeeLast = 0;
 		let data = this.composeTx(txParams);
-		let txSize = data.tx.toBuffer().length - data.tx.inputs.length * 2;
+		
+		let txSize = data.tx.toBuffer(skipSign).length;
+		if(skipSign){
+			txSize += 151 * data.tx.inputs.length;
+		}else{
+			txSize -= data.tx.inputs.length * 2;
+		}
+
 		let dataFee = txSize * this.defaultFee;
 		const priorityFee = txParamsArg.fee;
+
+		if(txParamsArg.compoundingUTXO){
+			inclusiveFee = true;
+			calculateNetworkFee = true;
+			txParamsArg.amount = data.amount;
+			txParams.amount = data.amount;
+			txParams.compoundingUTXO = false;
+		}
+
 		const txAmount = txParamsArg.amount;
 		let amountRequested = txParamsArg.amount+priorityFee;
 
@@ -722,7 +800,12 @@ class Wallet extends EventTargetImpl {
 				let utxoLen = data.utxos.length;
 				this.logger.debug(`final fee ${txParams.fee}`);
 				data = this.composeTx(txParams);
-				txSize = data.tx.toBuffer().length - data.tx.inputs.length * 2;
+				txSize = data.tx.toBuffer(skipSign).length;
+				if(skipSign){
+					txSize += 151 * data.tx.inputs.length;
+				}else{
+					txSize -= data.tx.inputs.length * 2;
+				}
 				dataFee = txSize * this.defaultFee;
 				if(data.utxos.length != utxoLen)
 					this.logger.verbose(`tx ... aggregating: ${data.utxos.length} UTXOs`);
@@ -747,20 +830,34 @@ class Wallet extends EventTargetImpl {
 	}
 
 	/**
-	 * Send a transaction. Returns transaction id.
+	 * Build a transaction. Returns transaction info.
 	 * @param txParams
 	 * @param txParams.toAddr To address in cashaddr format (e.g. kaspatest:qq0d6h0prjm5mpdld5pncst3adu0yam6xch4tr69k2)
 	 * @param txParams.amount Amount to send in sompis (100000000 (1e8) sompis in 1 KAS)
 	 * @param txParams.fee Fee for miners in sompis
 	 * @throws `FetchError` if endpoint is down. API error message if tx error. Error if amount is too large to be represented as a javascript number.
 	 */
-	async submitTransaction(txParamsArg: TxSend, debug = false): Promise < TxResp | null > {
+	async buildTransaction(txParamsArg: TxSend, debug = false): Promise < BuildTxResult > {
 		const ts0 = Date.now();
+		txParamsArg.skipSign = true;
+		txParamsArg.privKeysInfo = true;
 		const data = await this.estimateTransaction(txParamsArg);
 		const { 
-			id, tx, utxos, utxoIds, rawTx, amount, toAddr,
-			fee, dataFee, totalAmount, txSize, note
+			id, tx, utxos, utxoIds, amount, toAddr,
+			fee, dataFee, totalAmount, txSize, note, privKeys
 		} = data;
+
+		const ts_0 = Date.now();
+		tx.sign(privKeys, kaspacore.crypto.Signature.SIGHASH_ALL, 'schnorr');
+		const txMass = tx.getMass();
+		this.logger.info("txMass", txMass)
+		if(txMass > Wallet.MaxMassAcceptedByBlock){
+			throw new Error(`Transaction size/mass limit reached. Please reduce this transaction amount.`);
+		}
+
+		const ts_1 = Date.now();
+		//const rawTx = tx.toString();
+		const ts_2 = Date.now();
 
 
 		this.logger.info(`tx ... required data fee: ${KAS(dataFee)} (${utxos.length} UTXOs)`);// (${KAS(txParamsArg.fee)}+${KAS(dataFee)})`);
@@ -782,7 +879,7 @@ class Wallet extends EventTargetImpl {
 		if (debug || this.loggerLevel > 0)
 			this.logger.debug("composeTx:tx", "txSize:", txSize)
 
-
+		const ts_3 = Date.now();
 		const inputs: RPC.TransactionInput[] = tx.inputs.map((input: kaspacore.Transaction.Input) => {
 			if (debug || this.loggerLevel > 0) {
 				this.logger.debug("input.script.inspect", input.script.inspect())
@@ -797,7 +894,7 @@ class Wallet extends EventTargetImpl {
 				sequence: input.sequenceNumber
 			};
 		})
-
+		const ts_4 = Date.now();
 		const outputs: RPC.TransactionOutput[] = tx.outputs.map((output: kaspacore.Transaction.Output) => {
 			return {
 				amount: output.satoshis,
@@ -807,6 +904,7 @@ class Wallet extends EventTargetImpl {
 				}
 			}
 		})
+		const ts_5 = Date.now();
 
 		//const payloadStr = "0000000000000000000000000000000";
 		//const payload = Buffer.from(payloadStr).toString("base64");
@@ -839,6 +937,47 @@ class Wallet extends EventTargetImpl {
 			this.logger.debug(`rpcTX ${JSON.stringify(rpcTX)}`)
 		}
 
+		const ts_6 = Date.now();
+
+		this.logger.info(`time in msec`, {
+			"total": ts_6-ts0,
+			"estimate-transaction": ts_0-ts0,
+			"tx.sign": ts_1-ts_0,
+			"tx.toString": ts_2-ts_1,
+			//"ts_3-ts_2": ts_3-ts_2,
+			"tx.inputs.map": ts_4-ts_3,
+			"tx.outputs.map": ts_5-ts_4,
+			//"ts_6-ts_5": ts_6-ts_5
+		})
+
+		if(txParamsArg.skipUTXOInUseMark !== true){
+			this.utxoSet.updateUsed(utxos);
+		}
+
+		//const rpctx = JSON.stringify(rpcTX, null, "  ");
+		//console.log("rpcTX", rpcTX)
+		//console.log("\n\n########rpctx\n", rpctx+"\n\n\n")
+		//if(amount/1e8 > 3)
+		//	throw new Error("TODO XXXXXX")
+		return {...data, rpcTX}
+	}
+
+	/**
+	 * Send a transaction. Returns transaction id.
+	 * @param txParams
+	 * @param txParams.toAddr To address in cashaddr format (e.g. kaspatest:qq0d6h0prjm5mpdld5pncst3adu0yam6xch4tr69k2)
+	 * @param txParams.amount Amount to send in sompis (100000000 (1e8) sompis in 1 KAS)
+	 * @param txParams.fee Fee for miners in sompis
+	 * @throws `FetchError` if endpoint is down. API error message if tx error. Error if amount is too large to be represented as a javascript number.
+	 */
+	async submitTransaction(txParamsArg: TxSend, debug = false): Promise < TxResp | null > {
+		txParamsArg.skipUTXOInUseMark = true;
+		const {
+			rpcTX, utxoIds, amount, toAddr, note
+		} = await this.buildTransaction(txParamsArg, debug);
+
+		//console.log("rpcTX:", rpcTX)
+		//throw new Error("TODO : XXXX")
 		try {
 			const ts = Date.now();
 			let txid: string = await this.api.submitTransaction(rpcTX);
@@ -849,7 +988,14 @@ class Wallet extends EventTargetImpl {
 				return null;// as TxResp;
 
 			this.utxoSet.inUse.push(...utxoIds);
-			this.txStore.add({in:false, ts, id:txid, amount, address:toAddr, note, tx:rpcTX.transaction})
+			this.txStore.add({
+				in:false, ts, id:txid, amount, address:toAddr, note,
+				blueScore: this.blueScore,
+				tx:rpcTX.transaction,
+				myAddress: this.addressManager.isOur(toAddr)
+			})
+			this.updateDebugInfo();
+			this.emitCache()
 			/*
 			this.pendingInfo.add(txid, {
 				rawTx: tx.toString(),
@@ -867,6 +1013,27 @@ class Wallet extends EventTargetImpl {
 		} catch (e) {
 			throw e;
 		}
+	}
+
+	/*
+	* Compound UTXOs by re-sending funds to itself
+	*/	
+	compoundUTXOs(txCompoundOptions:TxCompoundOptions={}, debug=false):Promise<TxResp|null> {
+		const {
+			UTXOMaxCount=COMPOUND_UTXO_MAX_COUNT,
+			networkFeeMax=0,
+			fee=0
+		} = txCompoundOptions;
+
+		let txParamsArg = {
+			toAddr: this.addressManager.changeAddress.next(),
+			amount: -1,
+			fee,
+			networkFeeMax,
+			compoundingUTXO:true,
+			compoundingUTXOMaxCount:UTXOMaxCount
+		}
+		return this.submitTransaction(txParamsArg, debug)
 	}
 
 	/*
@@ -899,23 +1066,24 @@ class Wallet extends EventTargetImpl {
 
 	get cache() {
 		return {
-			pendingTx: this.pendingInfo.transactions,
+			//pendingTx: this.pendingInfo.transactions,
 			utxos: {
-				utxoStorage: this.utxoSet.utxoStorage,
+				//utxoStorage: this.utxoSet.utxoStorage,
 				inUse: this.utxoSet.inUse,
 			},
-			transactionsStorage: this.transactionsStorage,
+			//transactionsStorage: this.transactionsStorage,
 			addresses: {
 				receiveCounter: this.addressManager.receiveAddress.counter,
 				changeCounter: this.addressManager.changeAddress.counter,
-			},
+			}
 		};
 	}
 
 	restoreCache(cache: WalletCache): void {
-		this.pendingInfo.transactions = cache.pendingTx;
-		this.utxoSet.utxoStorage = cache.utxos.utxoStorage;
+		//this.pendingInfo.transactions = cache.pendingTx;
+		//this.utxoSet.utxoStorage = cache.utxos.utxoStorage;
 		this.utxoSet.inUse = cache.utxos.inUse;
+		/*
 		Object.entries(this.utxoSet.utxoStorage).forEach(([addr, utxos]: [string, Api.Utxo[]]) => {
 			this.utxoSet.add(utxos, addr);
 		});
@@ -926,8 +1094,8 @@ class Wallet extends EventTargetImpl {
 		this.addressManager.changeAddress.advance(cache.addresses.changeCounter);
 		//this.transactions = txParser(this.transactionsStorage, Object.keys(this.addressManager.all));
 		this.runStateChangeHooks();
+		*/
 	}
-
 
 	/**
 	 * Generates encrypted wallet data.
@@ -947,6 +1115,7 @@ class Wallet extends EventTargetImpl {
 	loggerLevel: number = 0;
 	setLogLevel(level: string) {
 		this.logger.setLevel(level);
+		this.loggerLevel = level!='none'?2:0;
 		kaspacore.setDebugLevel(level?1:0);
 	}
 }
