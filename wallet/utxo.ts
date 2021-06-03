@@ -70,7 +70,7 @@ export class UtxoSet extends EventTargetImpl {
 				confirmed = confirmed || this.isOurChange(unspentOutput);
 				//confirmed = /*confirmed || */this.isOurChange(unspentOutput);
 				//if(confirmed){
-				//	console.log("Change address: unspentOutput", blueScore-utxo.blockBlueScore, unspentOutput)
+				//	console.log("Change address: unspentOutput", blueScore-utxo.blockDaaScore, unspentOutput)
 				//}
 				let map = this.utxos[confirmed?'confirmed':'pending'];
 				map.set(utxoId, unspentOutput);
@@ -83,7 +83,7 @@ export class UtxoSet extends EventTargetImpl {
 					scriptPubKey: utxo.scriptPublicKey.scriptPublicKey,
 					scriptPublicKeyVersion: utxo.scriptPublicKey.version,
 					satoshis: +utxo.amount,
-					blockBlueScore: utxo.blockBlueScore
+					blockDaaScore: utxo.blockDaaScore
 				})
 				this.utxos.used.set(utxoId, unspentOutput);
 			}
@@ -241,7 +241,7 @@ export class UtxoSet extends EventTargetImpl {
 		});
 
 		list.sort((a: UnspentOutput, b: UnspentOutput): number => {
-			return a.blockBlueScore - b.blockBlueScore || a.satoshis - b.satoshis || a.txId.localeCompare(b.txId) || a.outputIndex - b.outputIndex;
+			return a.blockDaaScore - b.blockDaaScore || a.satoshis - b.satoshis || a.txId.localeCompare(b.txId) || a.outputIndex - b.outputIndex;
 		})
 		let maxMass = Wallet.MaxMassUTXOs;
 		

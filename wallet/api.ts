@@ -59,12 +59,8 @@ class KaspaAPI extends EventTargetImpl{
 			//console.log("entry", entry)
 			let {transactionId, index} = entry.outpoint;
 			let {address, utxoEntry} = entry;
-<<<<<<< HEAD
 			let {amount, scriptPublicKey, blockDaaScore, isCoinbase} = utxoEntry;
 
-=======
-			let {amount, scriptPublicKey, isCoinbase, blockDaaScore:blockBlueScore} = utxoEntry;
->>>>>>> origin/master
 			let item: Api.Utxo = {
 				amount,
 				scriptPublicKey,
