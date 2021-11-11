@@ -45,7 +45,8 @@ export interface UnspentOutputInfo{
   scriptPubKey:string,
   satoshis:number,
   blockDaaScore:number,
-  scriptPublicKeyVersion:number
+  scriptPublicKeyVersion:number,
+  isCoinbase:boolean
 }
 
 export interface SelectedNetwork {

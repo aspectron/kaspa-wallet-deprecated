@@ -6,6 +6,8 @@ export class UnspentOutput extends kaspacore.Transaction.UnspentOutput {
 	id:string;
 	signatureOPCount:number;
 	mass:number;
+	isCoinbase:boolean;
+	scriptPubKey:string;
 	constructor(o: UnspentOutputInfo) {
 		super(o);
 		this.blockDaaScore = o.blockDaaScore;
@@ -14,5 +16,7 @@ export class UnspentOutput extends kaspacore.Transaction.UnspentOutput {
 		this.signatureOPCount = this.script.getSignatureOperationsCount();
 		this.mass = this.signatureOPCount * kaspacore.Transaction.MassPerSigOp;
 		this.mass+= 151 * kaspacore.Transaction.MassPerTxByte; //standalone mass 
+		this.isCoinbase = o.isCoinbase,
+		this.scriptPubKey = o.scriptPubKey
 	}
 }

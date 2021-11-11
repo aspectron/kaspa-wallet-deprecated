@@ -11,7 +11,8 @@ export interface TXStoreItem{
 	blueScore:number;
 	note?:string;
 	tx?:any,
-	myAddress?:boolean
+	myAddress?:boolean,
+	isMoved?:boolean
 }
 
 export const internalNames: {[key:string]:string} = {
@@ -25,7 +26,7 @@ export const internalNames: {[key:string]:string} = {
 
 export class TXStore{
 
-	static MAX = 5;
+	static MAX = 20000;
 	wallet:Wallet;
 	store:Map<string, TXStoreItem> = new Map();
 	txToEmitList:TXStoreItem[] = [];
@@ -41,6 +42,7 @@ export class TXStore{
 	}
 
 	add(tx:TXStoreItem, skipSave=false){
+		//console.log("idb add:tx:", "ts:"+tx.ts, "skipSave:"+skipSave, tx)
 		if(this.store.has(tx.id))
 			return false;
 		this.store.set(tx.id, tx);
@@ -50,6 +52,27 @@ export class TXStore{
 		if(!skipSave)
 			this.save(tx);
 		return true;
+	}
+	removePendingUTXO(utxo:Api.Utxo, address:string=''){
+		let id = utxo.transactionId+":"+utxo.index;
+		let dbItem = this.store.get(id);
+		if(dbItem){
+			dbItem.isMoved = true;
+			this.store.set(id, dbItem);
+			this.save(dbItem);
+		}else{
+			dbItem = {
+				in: true,
+				ts: Date.now(),
+				id,
+				amount: utxo.amount,
+				address,
+				blueScore:utxo.blockDaaScore,
+				tx:false,//TODO
+				isMoved:true
+			};
+		}
+		this.emitTx(dbItem);
 	}
 	addAddressUTXOs(address:string, utxos:Api.Utxo[], ts?:number){
 		if(!utxos.length || this.wallet.addressManager.isOurChange(address))
@@ -86,7 +109,11 @@ export class TXStore{
 	}
 	emitTx(tx:TXStoreItem){
 		if(this.wallet.syncSignal && !this.wallet.syncInProggress){
-			this.wallet.emit("new-transaction", tx);
+			if(tx.isMoved){
+				this.wallet.emit("moved-transaction", tx);
+			}else{
+				this.wallet.emit("new-transaction", tx);
+			}
 			return;
 		}
 
@@ -121,6 +148,7 @@ export class TXStore{
 			//iDB.getMany(txIds)
 			let entries = await this.idb?.entries()||[]
 			let length = entries.length;
+			console.log("idb entries length:", length)
 			let list:TXStoreItem[] = [];
 			for (let i=0; i<length;i++){
 				let [key, txStr] = entries[i]//await iDB.get<string>(txIds[i])

@@ -65,7 +65,8 @@ export class UtxoSet extends EventTargetImpl {
 					scriptPubKey: utxo.scriptPublicKey.scriptPublicKey,
 					scriptPublicKeyVersion: utxo.scriptPublicKey.version,
 					satoshis: +utxo.amount,
-					blockDaaScore: utxo.blockDaaScore
+					blockDaaScore: utxo.blockDaaScore,
+					isCoinbase: utxo.isCoinbase
 				})
 				confirmed = confirmed || this.isOurChange(unspentOutput);
 				//confirmed = /*confirmed || */this.isOurChange(unspentOutput);
@@ -83,7 +84,8 @@ export class UtxoSet extends EventTargetImpl {
 					scriptPubKey: utxo.scriptPublicKey.scriptPublicKey,
 					scriptPublicKeyVersion: utxo.scriptPublicKey.version,
 					satoshis: +utxo.amount,
-					blockDaaScore: utxo.blockDaaScore
+					blockDaaScore: utxo.blockDaaScore,
+					isCoinbase: utxo.isCoinbase
 				})
 				this.utxos.used.set(utxoId, unspentOutput);
 			}
@@ -102,6 +104,7 @@ export class UtxoSet extends EventTargetImpl {
 
 	remove(utxoIds: string[]): void {
 		this.release(utxoIds);
+		let {blueScore} = this.wallet;
 		let utxo;
 		utxoIds.forEach(id=> {
 			utxo = this.utxos.confirmed.get(id);
@@ -114,6 +117,22 @@ export class UtxoSet extends EventTargetImpl {
 			if(utxo){
 				this.utxos.pending.delete(id);
 				this.wallet.adjustBalance(false, -utxo.satoshis);
+
+				//duplicate tx issue handling
+				if(utxo.blockDaaScore-blueScore < 70){
+					let apiUTXO:Api.Utxo = {
+						transactionId: utxo.txId,
+						amount:utxo.satoshis,
+						scriptPublicKey:{
+							version:utxo.scriptPublicKeyVersion,
+							scriptPublicKey: utxo.scriptPubKey
+						},
+						blockDaaScore:utxo.blockDaaScore,
+						index:utxo.outputIndex,
+						isCoinbase:utxo.isCoinbase
+					}
+					this.wallet.txStore.removePendingUTXO(apiUTXO, utxo.address.toString())
+				}
 			}
 		});
 	}

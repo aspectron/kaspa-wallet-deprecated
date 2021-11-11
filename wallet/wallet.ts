@@ -241,13 +241,6 @@ class Wallet extends EventTargetImpl {
 		this.api.on("disconnect", ()=>{
 			this.onApiDisconnect();
 		})
-
-		///TODO
-		///TODO
-		///TODO
-		setTimeout(()=>{
-			this.txStore.restore();
-		}, 1000)
 	}
 
 	createUID(){
@@ -297,6 +290,7 @@ class Wallet extends EventTargetImpl {
 
 		this.syncInProggress = true;
 		this.emit("sync-start");
+		await this.txStore.restore();
 		const ts0 = Date.now();
 		this.logger.info(`sync ... starting wallet sync`);// ${syncOnce?'(monitoring disabled)':''}`);
 		//this.logger.info(`sync ............ started, syncOnce:${syncOnce}`)
@@ -372,13 +366,17 @@ class Wallet extends EventTargetImpl {
 		}
 		this.api.subscribeVirtualDaaScoreChanged((result) => {
 			let {virtualDaaScore} = result;
-			console.log("subscribeVirtualSelectedParentBlueScoreChanged:result", result)
+			//console.log("subscribeVirtualSelectedParentBlueScoreChanged:result", result)
 			this.blueScore = virtualDaaScore;
 			this.emit("blue-score-changed", {
 				blueScore: virtualDaaScore
 			})
 			this.utxoSet.updateUtxoBalance();
-		});
+		}).then(r=>{
+			console.log("subscribeVirtualDaaScoreChanged:responce", r)
+		}, e=>{
+			console.log("subscribeVirtualDaaScoreChanged:error", e)
+		})
 	}
 
 	addressManagerInitialized:boolean|undefined;
