@@ -1,6 +1,6 @@
 {
   "name": "@kaspa/wallet",
-  "version": "1.4.5",
+  "version": "1.4.6",
   "description": "Node module for kaspa",
   "main": "dist/index.js",
   "author": "ASPECTRON Inc.",

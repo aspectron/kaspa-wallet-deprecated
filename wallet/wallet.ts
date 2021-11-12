@@ -721,6 +721,7 @@ class Wallet extends EventTargetImpl {
 				privKeys: privKeysInfo?privKeys:[]
 			};
 		} catch (e) {
+			console.log("composeTx:error", e)
 			// !!! FIXME
 			if(!changeAddrOverride)
 				this.addressManager.changeAddress.reverse();
@@ -889,7 +890,8 @@ class Wallet extends EventTargetImpl {
 					index: input.outputIndex
 				},
 				signatureScript: input.script.toBuffer().toString("hex"),
-				sequence: input.sequenceNumber
+				sequence: input.sequenceNumber,
+				sigOpCount:1
 			};
 		})
 		const ts_4 = Date.now();
