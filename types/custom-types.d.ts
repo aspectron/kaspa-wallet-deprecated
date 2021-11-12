@@ -21,6 +21,7 @@ export interface WalletOpt{
   logLevel:string;
   disableAddressDerivation:boolean;
   checkGRPCFlags:boolean;
+  minimumRelayTransactionFee:number;
 }
 
 export interface WalletOptions{
@@ -30,6 +31,7 @@ export interface WalletOptions{
   logLevel?:string;
   disableAddressDerivation?:boolean;
   checkGRPCFlags?:boolean;
+  minimumRelayTransactionFee?:number;
 }
  
 export interface NetworkOptions{

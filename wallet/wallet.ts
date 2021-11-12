@@ -27,6 +27,11 @@ const BALANCE_PENDING = Symbol();
 const BALANCE_TOTAL = Symbol();
 const COMPOUND_UTXO_MAX_COUNT = 500;
 
+const SompiPerKaspa = 100_000_000
+
+// MaxSompi is the maximum transaction amount allowed in sompi.
+const MaxSompi = 21_000_000 * SompiPerKaspa
+
 export {kaspacore, COMPOUND_UTXO_MAX_COUNT};
 
 /** Class representing an HDWallet with derivable child addresses */
@@ -202,7 +207,8 @@ class Wallet extends EventTargetImpl {
 			addressDiscoveryExtent: 64,
 			logLevel:'info',
 			disableAddressDerivation:false,
-			checkGRPCFlags:false
+			checkGRPCFlags:false,
+			minimumRelayTransactionFee:1000
 		};
 		// console.log("CREATING WALLET FOR NETWORK", this.network);
 		this.options = {...defaultOpt,	...options};
@@ -729,6 +735,22 @@ class Wallet extends EventTargetImpl {
 		}
 	}
 
+	minimumRequiredTransactionRelayFee(mass:number):number{
+		let minimumFee = (mass * this.options.minimumRelayTransactionFee) / 1000
+
+		if (minimumFee == 0 && this.options.minimumRelayTransactionFee > 0) {
+			minimumFee = this.options.minimumRelayTransactionFee
+		}
+
+		// Set the minimum fee to the maximum possible value if the calculated
+		// fee is not in the valid range for monetary amounts.
+		if (minimumFee > MaxSompi) {
+			minimumFee = MaxSompi
+		}
+
+		return minimumFee
+	}
+
 	/**
 	 * Estimate transaction fee. Returns transaction data.
 	 * @param txParams
@@ -757,14 +779,8 @@ class Wallet extends EventTargetImpl {
 		let dataFeeLast = 0;
 		let data = this.composeTx(txParams);
 		
-		let txSize = data.tx.toBuffer(skipSign).length;
-		if(skipSign){
-			txSize += 151 * data.tx.inputs.length;
-		}else{
-			txSize -= data.tx.inputs.length * 2;
-		}
-
-		let dataFee = txSize * this.defaultFee;
+		let {txSize, mass} = data.tx.getMassAndSize();
+		let dataFee = this.minimumRequiredTransactionRelayFee(mass);
 		const priorityFee = txParamsArg.fee;
 
 		if(txParamsArg.compoundingUTXO){
@@ -799,13 +815,8 @@ class Wallet extends EventTargetImpl {
 				let utxoLen = data.utxos.length;
 				this.logger.debug(`final fee ${txParams.fee}`);
 				data = this.composeTx(txParams);
-				txSize = data.tx.toBuffer(skipSign).length;
-				if(skipSign){
-					txSize += 151 * data.tx.inputs.length;
-				}else{
-					txSize -= data.tx.inputs.length * 2;
-				}
-				dataFee = txSize * this.defaultFee;
+				({txSize, mass} = data.tx.getMassAndSize());
+				dataFee = this.minimumRequiredTransactionRelayFee(mass);
 				if(data.utxos.length != utxoLen)
 					this.logger.verbose(`tx ... aggregating: ${data.utxos.length} UTXOs`);
 
@@ -848,7 +859,7 @@ class Wallet extends EventTargetImpl {
 
 		const ts_0 = Date.now();
 		tx.sign(privKeys, kaspacore.crypto.Signature.SIGHASH_ALL, 'schnorr');
-		const txMass = tx.getMass();
+		const {mass:txMass} = tx.getMassAndSize();
 		this.logger.info("txMass", txMass)
 		if(txMass > Wallet.MaxMassAcceptedByBlock){
 			throw new Error(`Transaction size/mass limit reached. Please reduce this transaction amount.`);
