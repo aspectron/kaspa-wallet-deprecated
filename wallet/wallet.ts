@@ -4,6 +4,7 @@ import * as kaspacore from '@kaspa/core-lib';
 import * as helper from '../utils/helper';
 import {Storage, StorageType} from './storage';
 export * from './storage';
+export * from './error';
 import {Crypto} from './crypto';
 const KAS = helper.KAS;
 
@@ -17,7 +18,7 @@ import {CreateLogger, Logger} from '../utils/logger';
 import {AddressManager} from './address-manager';
 import {UnspentOutput, UtxoSet} from './utxo';
 import {TXStore} from './tx-store';
-import {KaspaAPI} from './api';
+import {KaspaAPI, ApiError} from './api';
 import {DEFAULT_FEE,DEFAULT_NETWORK} from '../config.json';
 import {EventTargetImpl} from './event-target-impl';
 
@@ -43,8 +44,9 @@ class Wallet extends EventTargetImpl {
 	static kaspacore=kaspacore;
 	static COMPOUND_UTXO_MAX_COUNT=COMPOUND_UTXO_MAX_COUNT;
 	static MaxMassAcceptedByBlock = 500000;
-	static MaxMassUTXOs = Wallet.MaxMassAcceptedByBlock -
-		kaspacore.Transaction.EstimatedStandaloneMassWithoutInputs;
+	static MaxMassUTXOs = 100000;
+	//Wallet.MaxMassAcceptedByBlock -
+	//kaspacore.Transaction.EstimatedStandaloneMassWithoutInputs;
 
 	// TODO - integrate with Kaspacore-lib
 	static networkTypes: Object = {
@@ -200,7 +202,8 @@ class Wallet extends EventTargetImpl {
 		super();
 		this.logger = CreateLogger('KaspaWallet');
 		this.api = new KaspaAPI();
-
+		//@ts-ignore
+		//postMessage({error:new ApiError("test") })
 		let defaultOpt = {
 			skipSyncBalance: false,
 			syncOnce: false,
@@ -212,6 +215,7 @@ class Wallet extends EventTargetImpl {
 		};
 		// console.log("CREATING WALLET FOR NETWORK", this.network);
 		this.options = {...defaultOpt,	...options};
+		//this.options.addressDiscoveryExtent = 500;
 		this.setLogLevel(this.options.logLevel); 
 
 		this.network = networkOptions.network;
@@ -610,13 +614,22 @@ class Wallet extends EventTargetImpl {
 		let lastIndex = -1;
 		let debugInfo: Map < string, {utxos: Api.Utxo[], address: string} > | null = null;
 
-		this.logger.info(`sync ... running address discovery`);
-
+		this.logger.info(`sync ... running address discovery, threshold:${threshold}`);
+		let highestIndex = {
+			receive:0,
+			change:0
+		}
+		/*
+		let emptySlotCount = {
+			receive:0,
+			change:0
+		}
+		*/
 		const doDiscovery = async(
 			n:number, deriveType:'receive'|'change', offset:number
 		): Promise <number> => {
 
-			// this.logger.info(`sync ... scanning addresses`);
+			this.logger.info(`sync ... scanning ${offset} - ${offset+n} ${deriveType} addresses`);
 			const derivedAddresses = this.addressManager.getAddresses(n, deriveType, offset);
 			const addresses = derivedAddresses.map((obj) => obj.address);
 			addressList = [...addressList, ...addresses];
@@ -630,18 +643,21 @@ class Wallet extends EventTargetImpl {
 				debugInfo = txID2Info;
 			if (addressesWithUTXOs.length === 0) {
 				// address discovery complete
-				const lastAddressIndexWithTx = offset - (threshold - n) - 1;
+				const lastAddressIndexWithTx = highestIndex[deriveType];//offset - (threshold - n) - 1;
 				this.logger.verbose(`${deriveType}: address discovery complete`);
 				this.logger.verbose(`${deriveType}: last activity on address #${lastAddressIndexWithTx}`);
-				this.logger.verbose(`${deriveType}: no activity from ${lastAddressIndexWithTx + 1}..${lastAddressIndexWithTx + threshold}`);
-				return lastAddressIndexWithTx;
+				this.logger.verbose(`${deriveType}: no activity from ${offset}..${offset + n}`);
+				//if(emptySlotCount[deriveType]>0)
+					return lastAddressIndexWithTx;
+				//emptySlotCount[deriveType]++;
 			}
 			// else keep doing discovery
-			const nAddressesLeft =
+			const index =
 				derivedAddresses
 				.filter((obj) => addressesWithUTXOs.includes(obj.address))
-				.reduce((prev, cur) => Math.max(prev, cur.index), 0) + 1;
-			return doDiscovery(nAddressesLeft, deriveType, offset + n);
+				.reduce((prev, cur) => Math.max(prev, cur.index), highestIndex[deriveType]);
+			highestIndex[deriveType] = index;
+			return doDiscovery(n, deriveType, offset + n);
 		};
 		const highestReceiveIndex = await doDiscovery(threshold, 'receive', 0);
 		const highestChangeIndex = await doDiscovery(threshold, 'change', 0);

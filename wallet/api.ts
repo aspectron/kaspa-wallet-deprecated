@@ -1,11 +1,18 @@
 import { Api, IRPC, RPC } from 'custom-types';
 import {EventTargetImpl, EventListener} from './event-target-impl';
-class ApiError extends Error {
+export class ApiError{
 	// eslint-disable-next-line @typescript-eslint/no-explicit-any
-	constructor(...args: any[]) {
-		super(...args);
+	name:string;
+	message:string;
+	stack:any;
+	constructor(message:string) {
+		//super(...args);
 		this.name = 'ApiError';
-		Error.captureStackTrace(this, ApiError);
+		this.message = message;
+		if (!Error.captureStackTrace)
+			this.stack = ((new Error(message)).stack+"").split("↵").join("\n");
+		else
+			Error.captureStackTrace(this, ApiError);
 	}
 }
 
