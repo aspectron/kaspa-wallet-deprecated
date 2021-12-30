@@ -207,7 +207,7 @@ class Wallet extends EventTargetImpl {
 		let defaultOpt = {
 			skipSyncBalance: false,
 			syncOnce: false,
-			addressDiscoveryExtent: 64,
+			addressDiscoveryExtent:100,
 			logLevel:'info',
 			disableAddressDerivation:false,
 			checkGRPCFlags:false,
@@ -647,7 +647,7 @@ class Wallet extends EventTargetImpl {
 				this.logger.verbose(`${deriveType}: address discovery complete`);
 				this.logger.verbose(`${deriveType}: last activity on address #${lastAddressIndexWithTx}`);
 				this.logger.verbose(`${deriveType}: no activity from ${offset}..${offset + n}`);
-				//if(emptySlotCount[deriveType]>0)
+				//if(offset > 12000)
 					return lastAddressIndexWithTx;
 				//emptySlotCount[deriveType]++;
 			}
@@ -767,6 +767,13 @@ class Wallet extends EventTargetImpl {
 		return minimumFee
 	}
 
+	/*
+	validateAddress(addr:string):boolean{
+		let address = new kaspacore.Address(addr);
+		return address.type == "pubkey";
+	}
+	*/
+
 	/**
 	 * Estimate transaction fee. Returns transaction data.
 	 * @param txParams
@@ -781,6 +788,10 @@ class Wallet extends EventTargetImpl {
 			txParamsArg.fee = 0;
 		this.logger.info(`tx ... sending to ${txParamsArg.toAddr}`)
 		this.logger.info(`tx ... amount: ${KAS(txParamsArg.amount)} user fee: ${KAS(txParamsArg.fee)} max data fee: ${KAS(txParamsArg.networkFeeMax||0)}`)
+
+		//if(!this.validateAddress(txParamsArg.toAddr)){
+		//	throw new Error("Invalid address")
+		//}
 
 		let txParams : TxSend = { ...txParamsArg } as TxSend;
 		const networkFeeMax = txParams.networkFeeMax || 0;
