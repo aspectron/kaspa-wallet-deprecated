@@ -68,7 +68,7 @@ Wallet creation functions accept following configuration objects:
 ```ts
 export interface WalletOptions{
   skipSyncBalance?:boolean;           // do not perform balance sync
-  addressDiscoveryExtent?:number;     // address derivation scan (default 128)
+  addressDiscoveryExtent?:number;     // address derivation scan (default 64)
   syncOnce?:boolean;                  // 'sync-and-exit' (true) or 'monitoring' mode
   logLevel?:string;                   // wallet log level
   disableAddressDerivation?:boolean;  // disable address derivation and discovery
