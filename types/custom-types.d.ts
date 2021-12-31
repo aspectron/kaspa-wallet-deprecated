@@ -9,6 +9,17 @@ import {IRPC, RPC} from './rpc';
 import { KaspaAPI } from './apiHelpers';
 
 
+export interface ScaneMoreResultItem{
+  start:number,
+  end:number,
+  final:number
+}
+export interface ScaneMoreResult{
+  error?:any,
+  code:string,
+  receive?:ScaneMoreResultItem,
+  change?:ScaneMoreResultItem
+}
 
 export interface DebugInfo {
   inUseUTXOs:{satoshis:number, count:number}

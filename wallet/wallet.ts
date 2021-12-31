@@ -11,7 +11,8 @@ const KAS = helper.KAS;
 import {
 	Network, NetworkOptions, SelectedNetwork, WalletSave, Api, TxSend, TxResp,
 	PendingTransactions, WalletCache, IRPC, RPC, WalletOptions,	WalletOpt,
-	TxInfo, ComposeTxInfo, BuildTxResult, TxCompoundOptions, DebugInfo
+	TxInfo, ComposeTxInfo, BuildTxResult, TxCompoundOptions, DebugInfo,
+	ScaneMoreResult
 } from '../types/custom-types';
 
 import {CreateLogger, Logger} from '../utils/logger';
@@ -605,26 +606,76 @@ class Wallet extends EventTargetImpl {
 		this.transactionsStorage = {};
 	}
 
+	async scanMoreAddresses(count=100, debug=false, receiveStart=-1, changeStart=-1): Promise<ScaneMoreResult>{
+		if (this.syncInProggress)
+			return {error: "Sync in progress", code:"SYNC-IN-PROGRESS"};
+
+		if(receiveStart < 0)
+			receiveStart = this.addressManager.receiveAddress.counter
+
+		if(changeStart < 0)
+			changeStart = this.addressManager.changeAddress.counter
+
+		this.syncInProggress = true;
+		let error = false;
+		let res = await this.addressDiscovery(this.options.addressDiscoveryExtent, debug, receiveStart, changeStart, count)
+		.catch(e=>{
+			this.logger.info("addressDiscovery:error", e)
+			error = e;
+		})
+
+		this.syncInProggress = false;
+		if(!this.syncOnce)
+			this.utxoSet.utxoSubscribe();
+
+		if(error)
+			return {error, code:"ADDRESS-DISCOVERY"};
+
+		let {highestIndex=null, endPoints=null} = res||{};
+		this.logger.info("scanMoreAddresses:highestIndex", highestIndex)
+		this.logger.info("scanMoreAddresses:endPoints", endPoints)
+
+		return {
+			code:"SUCCESS",
+			receive:{
+				start:receiveStart,
+				end: endPoints?.receive||receiveStart+count,
+				final:this.addressManager.receiveAddress.counter-1
+			},
+			change:{
+				start:changeStart,
+				end: endPoints?.change||changeStart+count,
+				final:this.addressManager.changeAddress.counter-1
+			}
+		};
+	}
+
 	/**
 	 * Derives receiveAddresses and changeAddresses and checks their transactions and UTXOs.
 	 * @param threshold stop discovering after `threshold` addresses with no activity
 	 */
-	async addressDiscovery(threshold = 64, debug = false): Promise <Map <string, {utxos: Api.Utxo[], address: string}>|null> {
+	async addressDiscovery(threshold = 64, debug = false, receiveStart=0, changeStart=0, count=0): Promise <{
+		debugInfo: Map <string, {utxos: Api.Utxo[], address: string}>|null;
+		highestIndex:{receive:number, change:number},
+		endPoints:{receive:number, change:number}
+	}> {
 		let addressList: string[] = [];
-		let lastIndex = -1;
 		let debugInfo: Map < string, {utxos: Api.Utxo[], address: string} > | null = null;
 
 		this.logger.info(`sync ... running address discovery, threshold:${threshold}`);
 		let highestIndex = {
+			receive:this.addressManager.receiveAddress.counter-1,
+			change:this.addressManager.changeAddress.counter-1
+		}
+		let endPoints = {
 			receive:0,
 			change:0
 		}
-		/*
-		let emptySlotCount = {
-			receive:0,
-			change:0
+		let maxOffset = {
+			receive: receiveStart + count,
+			change: changeStart + count
 		}
-		*/
+
 		const doDiscovery = async(
 			n:number, deriveType:'receive'|'change', offset:number
 		): Promise <number> => {
@@ -647,9 +698,10 @@ class Wallet extends EventTargetImpl {
 				this.logger.verbose(`${deriveType}: address discovery complete`);
 				this.logger.verbose(`${deriveType}: last activity on address #${lastAddressIndexWithTx}`);
 				this.logger.verbose(`${deriveType}: no activity from ${offset}..${offset + n}`);
-				//if(offset > 12000)
+				if(offset >= maxOffset[deriveType]){
+					endPoints[deriveType] = offset+n;
 					return lastAddressIndexWithTx;
-				//emptySlotCount[deriveType]++;
+				}
 			}
 			// else keep doing discovery
 			const index =
@@ -659,19 +711,20 @@ class Wallet extends EventTargetImpl {
 			highestIndex[deriveType] = index;
 			return doDiscovery(n, deriveType, offset + n);
 		};
-		const highestReceiveIndex = await doDiscovery(threshold, 'receive', 0);
-		const highestChangeIndex = await doDiscovery(threshold, 'change', 0);
+		const highestReceiveIndex = await doDiscovery(threshold, 'receive', receiveStart);
+		const highestChangeIndex = await doDiscovery(threshold, 'change', changeStart);
 		this.addressManager.receiveAddress.advance(highestReceiveIndex + 1);
 		this.addressManager.changeAddress.advance(highestChangeIndex + 1);
 		this.logger.verbose(
-			`receive address index: ${highestReceiveIndex}; change address index: ${highestChangeIndex}`
+			`receive address index: ${highestReceiveIndex}; change address index: ${highestChangeIndex}`,
+			`receive-address-index: ${this.addressManager.receiveAddress.counter}; change address index: ${this.addressManager.changeAddress.counter}`
 		);
 
 		if(!this.syncOnce && !this.syncInProggress)
 			await this.utxoSet.utxoSubscribe();
 
 		this.runStateChangeHooks();
-		return debugInfo;
+		return {highestIndex, endPoints, debugInfo};
 	}
 
 	// TODO: convert amount to sompis aka satoshis
