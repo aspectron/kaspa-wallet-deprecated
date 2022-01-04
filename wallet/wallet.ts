@@ -208,7 +208,7 @@ class Wallet extends EventTargetImpl {
 		let defaultOpt = {
 			skipSyncBalance: false,
 			syncOnce: false,
-			addressDiscoveryExtent:100,
+			addressDiscoveryExtent:150,
 			logLevel:'info',
 			disableAddressDerivation:false,
 			checkGRPCFlags:false,
