@@ -770,7 +770,6 @@ class Wallet extends EventTargetImpl {
 		}, []);
 
 		this.logger.info("utxos.length", utxos.length)
-		//changeAddrOverride = "kaspatest:qpkjvksx4mqrl42ggp8zzn32w4lruj6cyvxv2cyfgq";
 
 		const changeAddr = changeAddrOverride || this.addressManager.changeAddress.next();
 		try {
@@ -836,6 +835,14 @@ class Wallet extends EventTargetImpl {
 	 * @throws `FetchError` if endpoint is down. API error message if tx error. Error if amount is too large to be represented as a javascript number.
 	 */
 	async estimateTransaction(txParamsArg: TxSend): Promise < TxInfo > {
+		let address = this.addressManager.changeAddress.current.address;
+		if(!address){
+			address = this.addressManager.changeAddress.next();
+		}
+		txParamsArg.changeAddrOverride = address;
+		return this.composeTxAndNetworkFeeInfo(txParamsArg);
+	}
+	async composeTxAndNetworkFeeInfo(txParamsArg: TxSend): Promise < TxInfo >{
 		await this.waitOrSync();
 		if(!txParamsArg.fee)
 			txParamsArg.fee = 0;
@@ -856,7 +863,6 @@ class Wallet extends EventTargetImpl {
 
 		//console.log("calculateNetworkFee:", calculateNetworkFee, "inclusiveFee:", inclusiveFee)
 
-		let dataFeeLast = 0;
 		let data = this.composeTx(txParams);
 		
 		let {txSize, mass} = data.tx.getMassAndSize();
@@ -916,6 +922,7 @@ class Wallet extends EventTargetImpl {
 		data.totalAmount = txParams.fee+txParams.amount;
 		data.txSize = txSize;
 		data.note = txParamsArg.note||"";
+
 		return data as TxInfo
 	}
 
@@ -931,7 +938,7 @@ class Wallet extends EventTargetImpl {
 		const ts0 = Date.now();
 		txParamsArg.skipSign = true;
 		txParamsArg.privKeysInfo = true;
-		const data = await this.estimateTransaction(txParamsArg);
+		const data = await this.composeTxAndNetworkFeeInfo(txParamsArg);
 		const { 
 			id, tx, utxos, utxoIds, amount, toAddr,
 			fee, dataFee, totalAmount, txSize, note, privKeys
@@ -1063,6 +1070,13 @@ class Wallet extends EventTargetImpl {
 	 */
 	async submitTransaction(txParamsArg: TxSend, debug = false): Promise < TxResp | null > {
 		txParamsArg.skipUTXOInUseMark = true;
+
+		let reverseChangeAddress = false;
+		if(!txParamsArg.changeAddrOverride){
+			txParamsArg.changeAddrOverride = this.addressManager.changeAddress.next();
+			reverseChangeAddress = true;
+		}
+
 		const {
 			rpcTX, utxoIds, amount, toAddr, note
 		} = await this.buildTransaction(txParamsArg, debug);
@@ -1075,8 +1089,11 @@ class Wallet extends EventTargetImpl {
 			const ts3 = Date.now();
 			this.logger.info(`tx ... submission time ${((ts3-ts)/1000).toFixed(2)} sec`);
 			this.logger.info(`txid: ${txid}`);
-			if(!txid)
+			if(!txid){
+				if(reverseChangeAddress)
+					this.addressManager.changeAddress.reverse();
 				return null;// as TxResp;
+			}
 
 			this.utxoSet.inUse.push(...utxoIds);
 			this.txStore.add({
@@ -1102,6 +1119,8 @@ class Wallet extends EventTargetImpl {
 			}
 			return resp;
 		} catch (e) {
+			if(reverseChangeAddress)
+				this.addressManager.changeAddress.reverse();
 			throw e;
 		}
 	}
@@ -1109,22 +1128,33 @@ class Wallet extends EventTargetImpl {
 	/*
 	* Compound UTXOs by re-sending funds to itself
 	*/	
-	compoundUTXOs(txCompoundOptions:TxCompoundOptions={}, debug=false):Promise<TxResp|null> {
+	async compoundUTXOs(txCompoundOptions:TxCompoundOptions={}, debug=false):Promise<TxResp|null> {
 		const {
 			UTXOMaxCount=COMPOUND_UTXO_MAX_COUNT,
 			networkFeeMax=0,
 			fee=0
 		} = txCompoundOptions;
 
+		let toAddr = this.addressManager.changeAddress.next()
+
 		let txParamsArg = {
-			toAddr: this.addressManager.changeAddress.next(),
+			toAddr,
+			changeAddrOverride:toAddr,
 			amount: -1,
 			fee,
 			networkFeeMax,
 			compoundingUTXO:true,
 			compoundingUTXOMaxCount:UTXOMaxCount
 		}
-		return this.submitTransaction(txParamsArg, debug)
+		try {
+			let res = await this.submitTransaction(txParamsArg, debug);
+			if(!res?.txid)
+				this.addressManager.changeAddress.reverse()
+			return res;
+		}catch(e){
+			this.addressManager.changeAddress.reverse();
+			throw e;
+		}
 	}
 
 	/*
