@@ -19,6 +19,7 @@ import {CreateLogger, Logger} from '../utils/logger';
 import {AddressManager} from './address-manager';
 import {UnspentOutput, UtxoSet} from './utxo';
 import {TXStore} from './tx-store';
+import {CacheStore} from './cache-store';
 import {KaspaAPI, ApiError} from './api';
 import {DEFAULT_FEE,DEFAULT_NETWORK} from '../config.json';
 import {EventTargetImpl} from './event-target-impl';
@@ -191,6 +192,7 @@ class Wallet extends EventTargetImpl {
 	options: WalletOpt;
 	connectSignal:helper.DeferredPromise;
 	txStore:TXStore;
+	cacheStore:CacheStore;
 
 	uid:string;
 
@@ -238,6 +240,7 @@ class Wallet extends EventTargetImpl {
 
 		this.utxoSet = new UtxoSet(this);
 		this.txStore = new TXStore(this);
+		this.cacheStore = new CacheStore(this);
 		//this.utxoSet.on("balance-update", this.updateBalance.bind(this));
 		
 		this.addressManager = new AddressManager(this.HDWallet, this.network);
@@ -302,6 +305,7 @@ class Wallet extends EventTargetImpl {
 		this.syncInProggress = true;
 		this.emit("sync-start");
 		await this.txStore.restore();
+		await this.cacheStore.restore();
 		const ts0 = Date.now();
 		this.logger.info(`sync ... starting wallet sync`);// ${syncOnce?'(monitoring disabled)':''}`);
 		//this.logger.info(`sync ............ started, syncOnce:${syncOnce}`)
@@ -617,6 +621,7 @@ class Wallet extends EventTargetImpl {
 			changeStart = this.addressManager.changeAddress.counter
 
 		this.syncInProggress = true;
+		this.emit("scan-more-addresses-started", {receiveStart, changeStart})
 		let error = false;
 		let res = await this.addressDiscovery(this.options.addressDiscoveryExtent, debug, receiveStart, changeStart, count)
 		.catch(e=>{
@@ -627,6 +632,7 @@ class Wallet extends EventTargetImpl {
 		this.syncInProggress = false;
 		if(!this.syncOnce)
 			this.utxoSet.utxoSubscribe();
+		this.emit("scan-more-addresses-ended", {error})
 
 		if(error)
 			return {error, code:"ADDRESS-DISCOVERY"};
@@ -634,6 +640,11 @@ class Wallet extends EventTargetImpl {
 		let {highestIndex=null, endPoints=null} = res||{};
 		this.logger.info("scanMoreAddresses:highestIndex", highestIndex)
 		this.logger.info("scanMoreAddresses:endPoints", endPoints)
+
+		this.emit("scan-more-addresses-ended", {
+			receiveFinal:this.addressManager.receiveAddress.counter-1,
+			changeFinal:this.addressManager.changeAddress.counter-1
+		})
 
 		return {
 			code:"SUCCESS",
@@ -663,6 +674,8 @@ class Wallet extends EventTargetImpl {
 		let debugInfo: Map < string, {utxos: Api.Utxo[], address: string} > | null = null;
 
 		this.logger.info(`sync ... running address discovery, threshold:${threshold}`);
+		const cacheIndexes = this.cacheStore.getAddressIndexes()??{receive:0, change:0}
+		this.logger.info(`sync ...cacheIndexes: receive:${cacheIndexes.receive}, change:${cacheIndexes.change}`);
 		let highestIndex = {
 			receive:this.addressManager.receiveAddress.counter-1,
 			change:this.addressManager.changeAddress.counter-1
@@ -681,6 +694,11 @@ class Wallet extends EventTargetImpl {
 		): Promise <number> => {
 
 			this.logger.info(`sync ... scanning ${offset} - ${offset+n} ${deriveType} addresses`);
+			this.emit("sync-progress", {
+				start:offset,
+				end:offset+n,
+				addressType:deriveType
+			})
 			const derivedAddresses = this.addressManager.getAddresses(n, deriveType, offset);
 			const addresses = derivedAddresses.map((obj) => obj.address);
 			addressList = [...addressList, ...addresses];
@@ -698,7 +716,7 @@ class Wallet extends EventTargetImpl {
 				this.logger.verbose(`${deriveType}: address discovery complete`);
 				this.logger.verbose(`${deriveType}: last activity on address #${lastAddressIndexWithTx}`);
 				this.logger.verbose(`${deriveType}: no activity from ${offset}..${offset + n}`);
-				if(offset >= maxOffset[deriveType]){
+				if(offset >= maxOffset[deriveType] && offset >= cacheIndexes[deriveType]){
 					endPoints[deriveType] = offset+n;
 					return lastAddressIndexWithTx;
 				}
@@ -724,6 +742,13 @@ class Wallet extends EventTargetImpl {
 			await this.utxoSet.utxoSubscribe();
 
 		this.runStateChangeHooks();
+		let addressIndexes = {
+			receive:this.addressManager.receiveAddress.counter,
+			change:this.addressManager.changeAddress.counter
+		}
+		this.logger.info(`sync ...new cache: receive:${addressIndexes.receive}, change:${addressIndexes.change}`);
+		this.cacheStore.setAddressIndexes(addressIndexes)
+		this.emit("sync-end", addressIndexes)
 		return {highestIndex, endPoints, debugInfo};
 	}
 

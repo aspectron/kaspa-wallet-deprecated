@@ -1,3 +1,5 @@
+import { version } from "os";
+
 export function promisifyRequest < T = undefined > (
 	request: IDBRequest < T > | IDBTransaction,
 ): Promise < T > {
@@ -9,15 +11,37 @@ export function promisifyRequest < T = undefined > (
 	});
 }
 
-export function createStore(dbName: string, storeName: string): UseStore {
-	const request = indexedDB.open(dbName);
-	request.onupgradeneeded = () => request.result.createObjectStore(storeName);
+export function createStore(dbName: string, storeNames: string[], version:number): CreateStoreResult {
+	const request = indexedDB.open(dbName, version);
+	request.onupgradeneeded = () => {
+		const db = request.result;
+		let list = db.objectStoreNames;
+		storeNames.forEach(storeName=>{
+			console.log("createStore", storeName, list.contains(storeName), list)
+			if(!list.contains(storeName)){
+				let result = db.createObjectStore(storeName)
+				console.log("db.createObjectStore:", result)
+			}
+		})
+	};
+
 	const dbp = promisifyRequest(request);
 
-	return (txMode, callback) =>
-		dbp.then((db) =>
-			callback(db.transaction(storeName, txMode).objectStore(storeName)),
-		);
+	return {
+		dbName,
+		getUseStore(storeName:string){
+			return <T>(txMode:IDBTransactionMode, callback:Callback<T>)=>dbp.then((db) =>
+				callback(db.transaction(storeName, txMode).objectStore(storeName)),
+			)
+		}
+	 }
+}
+
+export type Callback<T> = (store: IDBObjectStore) => T | PromiseLike < T >;
+
+export type CreateStoreResult = {
+	dbName:string,
+	getUseStore(storeName: string):UseStore
 }
 
 export type UseStore = < T > (
@@ -29,10 +53,26 @@ export type UseStore = < T > (
 
 export class iDB{
 
+	static store:CreateStoreResult;
+
+	static getOrCreateStore(storeName:string, dbName:string, version:number):UseStore{
+		if(this.store?.dbName == dbName)
+			return this.store.getUseStore(storeName);
+		return createStore(dbName, [storeName], version).getUseStore(storeName);
+	}
+
+	static buildDB(dbName:string, version=1, storeNames=["tx", "cache"]){
+		if(!this.store){
+			this.store = createStore(dbName, storeNames, version)
+		}
+	}
+
 	defaultGetStoreFunc: UseStore;
 	constructor(options:{storeName:string, dbName:string}){
 		let {storeName, dbName} = options;
-		this.defaultGetStoreFunc = createStore(dbName, storeName);
+		const version = 3;
+		iDB.buildDB(dbName, version);
+		this.defaultGetStoreFunc = iDB.getOrCreateStore(storeName, dbName, version);
 	}
 
 	/**

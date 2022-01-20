@@ -15,13 +15,14 @@ export interface TXStoreItem{
 	isMoved?:boolean
 }
 
-export const internalNames: {[key:string]:string} = {
+export const internalNames = {
 	mainnet : "default",
 	kaspa: "default",
-	testnet : "testnet5c",
-	kaspatest: "testnet5c",
+	testnet : "testnet",
+	kaspatest: "testnet",
 	kaspasim: "simnet",
-	kaspadev: "devnet"
+	kaspadev: "devnet",
+  kaspareg: "kaspareg"
 }
 
 export class TXStore{
@@ -100,11 +101,7 @@ export class TXStore{
 	save(tx:TXStoreItem){
 		let {uid} = this.wallet
 		if(typeof indexedDB != "undefined"){
-			//let txIds = [...this.store.keys()].map(id=>id.substr(0, 15))
-			//iDB.set("kaspa-tx-ids-"+uid, JSON.stringify(txIds));
 			this.idb?.set(tx.id, JSON.stringify(tx))
-			//localStorage.setItem("kaspa-tx-ids", JSON.stringify(txIds));
-			//localStorage.setItem("kaspa-tx-"+tx.id, JSON.stringify(tx))
 		}
 	}
 	emitTx(tx:TXStoreItem){
@@ -128,36 +125,13 @@ export class TXStore{
 		this.wallet.emit("transactions", list);
 	}
 	async restore(){
-		let {uid} = this.wallet
 		if(typeof indexedDB != "undefined"){
-			/*
-			let txIds:string[] =[];
-			let ids = await iDB.get<string>("kaspa-tx-ids-"+uid)
-			.catch(e=>{
-				this.wallet.logger.error("LS-TX restore error - 101:", e)
-			})
-			if(!ids)
-				return
-			try{
-				txIds = JSON.parse(ids) as string[];
-			}catch(e){
-				this.wallet.logger.error("LS-TX restore error - 102:", e)
-			}
-			*/
-
-			//iDB.getMany(txIds)
 			let entries = await this.idb?.entries()||[]
 			let length = entries.length;
 			console.log("idb entries length:", length)
 			let list:TXStoreItem[] = [];
 			for (let i=0; i<length;i++){
-				let [key, txStr] = entries[i]//await iDB.get<string>(txIds[i])
-
-				/*
-				.catch(e=>{
-					this.wallet.logger.error("LS-TX restore error - 103:", e)
-				})
-				*/
+				let [key, txStr] = entries[i]
 				if(!txStr)
 					continue;
 				try{
@@ -174,34 +148,5 @@ export class TXStore{
 				this.add(o, true)
 			})
 		}
-
-		/*
-		if(typeof localStorage != "undefined"){
-			let txIds:string[] =[], ids:string|null = localStorage.getItem("kaspa-tx-ids");
-			if(!ids)
-				return
-			try{
-				txIds = JSON.parse(ids) as string[];
-			}catch(e){
-				this.wallet.logger.error("LS-TX restore error", e)
-			}
-
-			txIds.map(id=>{
-				let txStr:string|null = localStorage.getItem("kaspa-tx-"+id);
-				if(!txStr)
-					return
-				try{
-					let tx = JSON.parse(txStr)
-					this.add(tx)
-				}catch(e){
-					this.wallet.logger.error("LS-TX parse error", txStr, e)
-				}
-			})
-		}
-		*/
-
-
 	}
-
-	
 }
