@@ -743,8 +743,8 @@ class Wallet extends EventTargetImpl {
 
 		this.runStateChangeHooks();
 		let addressIndexes = {
-			receive:this.addressManager.receiveAddress.counter,
-			change:this.addressManager.changeAddress.counter
+			receive:Math.max(cacheIndexes.receive, this.addressManager.receiveAddress.counter),
+			change:Math.max(cacheIndexes.change, this.addressManager.changeAddress.counter)
 		}
 		this.logger.info(`sync ...new cache: receive:${addressIndexes.receive}, change:${addressIndexes.change}`);
 		this.cacheStore.setAddressIndexes(addressIndexes)
