@@ -765,6 +765,7 @@ class Wallet extends EventTargetImpl {
 	 */
 	composeTx({
 		toAddr,
+		fromAddr,
 		amount,
 		fee = DEFAULT_FEE,
 		changeAddrOverride,
@@ -783,9 +784,9 @@ class Wallet extends EventTargetImpl {
 		//if (!Number.isSafeInteger(amount)) throw new Error(`Amount ${amount} is too large`);
 		let utxos, utxoIds, mass;
 		if(compoundingUTXO){
-			({utxos, utxoIds, amount, mass} = this.utxoSet.collectUtxos(compoundingUTXOMaxCount));
+			({utxos, utxoIds, amount, mass} = this.utxoSet.collectUtxos(compoundingUTXOMaxCount, fromAddr));
 		}else{
-			({utxos, utxoIds, mass} = this.utxoSet.selectUtxos(amount + fee));
+			({utxos, utxoIds, mass} = this.utxoSet.selectUtxos(amount + fee, fromAddr));
 		}
 		//if(mass > Wallet.MaxMassUTXOs){
 		//	throw new Error(`Maximum number of inputs (UTXOs) reached. Please reduce this transaction amount.`);
@@ -1164,6 +1165,7 @@ class Wallet extends EventTargetImpl {
 
 		let txParamsArg = {
 			toAddr,
+			fromAddr: undefined,
 			changeAddrOverride:toAddr,
 			amount: -1,
 			fee,

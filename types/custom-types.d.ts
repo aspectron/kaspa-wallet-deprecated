@@ -77,6 +77,7 @@ export type WalletSave = {
 
 export interface TxSend {
   toAddr: string;
+  fromAddr: string|undefined;
   amount: number;
   fee: number;
   //tx?: kaspacore.Transaction;
