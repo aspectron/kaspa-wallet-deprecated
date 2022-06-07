@@ -58,7 +58,9 @@ export class CacheStore{
 	}
 	async restore(){
 		if(this.idb){
-			let entries = await this.idb?.entries()||[]
+			let entries = await this.idb.entries().catch((err)=>{
+				console.log("cache-store: entries():error", err)
+			})||[];
 			let length = entries.length;
 			console.log("cache idb entries:", entries)
 			let list:CacheStoreItem[] = [];

@@ -125,10 +125,12 @@ export class TXStore{
 		this.wallet.emit("transactions", list);
 	}
 	async restore(){
-		if(typeof indexedDB != "undefined"){
-			let entries = await this.idb?.entries()||[]
+		if(this.idb){
+			let entries = await this.idb.entries().catch((err)=>{
+				console.log("tx-store: entries():error", err)
+			})||[];
 			let length = entries.length;
-			console.log("idb entries length:", length)
+			console.log("tx-entries length:", length)
 			let list:TXStoreItem[] = [];
 			for (let i=0; i<length;i++){
 				let [key, txStr] = entries[i]

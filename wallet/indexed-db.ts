@@ -12,6 +12,7 @@ export function promisifyRequest < T = undefined > (
 }
 
 export function createStore(dbName: string, storeNames: string[], version:number): CreateStoreResult {
+	//console.log("createStore", dbName, storeNames, version)
 	const request = indexedDB.open(dbName, version);
 	request.onupgradeneeded = () => {
 		const db = request.result;
@@ -53,24 +54,28 @@ export type UseStore = < T > (
 
 export class iDB{
 
-	static store:CreateStoreResult;
+	static stores:CreateStoreResult[] = [];
 
 	static getOrCreateStore(storeName:string, dbName:string, version:number):UseStore{
-		if(this.store?.dbName == dbName)
-			return this.store.getUseStore(storeName);
+		let store = this.stores.find(s=>s.dbName == dbName);
+		if(store)
+			return store.getUseStore(storeName);
 		return createStore(dbName, [storeName], version).getUseStore(storeName);
 	}
 
 	static buildDB(dbName:string, version=1, storeNames=["tx", "cache"]){
-		if(!this.store){
-			this.store = createStore(dbName, storeNames, version)
+		let store = this.stores.find(s=>s.dbName == dbName);
+		//console.log("iDB.buildDB - A", dbName, version, storeNames)
+		if(!store){
+			//console.log("iDB.buildDB - B", storeNames)
+			this.stores.push(createStore(dbName, storeNames, version))
 		}
 	}
 
 	defaultGetStoreFunc: UseStore;
 	constructor(options:{storeName:string, dbName:string}){
 		let {storeName, dbName} = options;
-		const version = 3;
+		const version = 4;
 		iDB.buildDB(dbName, version);
 		this.defaultGetStoreFunc = iDB.getOrCreateStore(storeName, dbName, version);
 	}
@@ -201,11 +206,17 @@ export class iDB{
 		return customStore('readonly', (store) => {
 			// This would be store.getAllKeys(), but it isn't supported by Edge or Safari.
 			// And openKeyCursor isn't supported by Safari.
-			store.openCursor().onsuccess = function() {
-				if (!this.result) return;
+			let req = store.openCursor();
+			req.onsuccess = function() {
+				//console.log("store.openCursor.onsuccess", this)
+				if (!this.result)
+					return;
 				callback(this.result);
 				this.result.continue();
 			};
+			req.onerror = function(e) {
+				console.log("store.openCursor.onerror", e, this)
+			}
 			return promisifyRequest(store.transaction);
 		});
 	}
