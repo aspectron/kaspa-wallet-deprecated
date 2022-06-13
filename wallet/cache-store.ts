@@ -21,7 +21,7 @@ export class CacheStore{
 	constructor(wallet:Wallet){
 		this.wallet = wallet;
 		let {uid, network} = wallet;
-        console.log("wallet:uid", uid)
+        console.log("CacheStore:wallet:uid", uid)
 		let sNetwork:string = internalNames[network]||network;
 		if(typeof indexedDB != "undefined")
 			this.idb = new iDB({storeName:"cache", dbName:"kaspa_"+uid+"_"+sNetwork});
