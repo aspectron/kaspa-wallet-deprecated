@@ -195,8 +195,8 @@ Wallet balance
 --------------
 
 Wallet retains 2 types of balances:
-- *available* - balance contains KAS ready to be spent, comprised of UTXO records with block maturity blue score over 100.
-- *pending* - balance contains newly received transactions with UTXO block maturity less than 100.  Upon each UTXO maturity balance is relocated from pending to available.
+- *available* - balance contains KAS ready to be spent, comprised of UTXO records with block maturity blue score over 10.
+- *pending* - balance contains newly received transactions with UTXO block maturity less than 10.  Upon each UTXO maturity balance is relocated from pending to available.
 
 `Wallet::balance` is an object containing the following properties that are updated during wallet operation:
 ```js

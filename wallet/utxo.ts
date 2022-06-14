@@ -9,6 +9,7 @@ import {Wallet} from './wallet';
 import {EventTargetImpl} from './event-target-impl';
 const KAS = helper.KAS;
 export {UnspentOutput};
+export const CONFIRMATION_COUNT = 10;
 
 let seq = 0;
 export class UtxoSet extends EventTargetImpl {
@@ -57,7 +58,7 @@ export class UtxoSet extends EventTargetImpl {
 			//console.log("utxoInUse", {utxoInUse, alreadyHaveIt})
 			if (!utxoInUse && !alreadyHaveIt /*&& utxo.isSpendable*/ ) {
 				utxoIds.push(utxoId);
-				let confirmed = (blueScore-utxo.blockDaaScore>=100);
+				let confirmed = (blueScore-utxo.blockDaaScore>=CONFIRMATION_COUNT);
 				let unspentOutput = new UnspentOutput({
 					txid: utxo.transactionId,
 					address,
@@ -169,7 +170,7 @@ export class UtxoSet extends EventTargetImpl {
 	updateUtxoBalance(): void {
 		const {blueScore} = this.wallet;
 		[...this.utxos.pending.values()].forEach(utxo=>{
-			if(blueScore-utxo.blockDaaScore < 100)
+			if(blueScore-utxo.blockDaaScore < CONFIRMATION_COUNT)
 				return
 			this.utxos.pending.delete(utxo.txId+utxo.outputIndex);
 			this.wallet.adjustBalance(false, -utxo.satoshis, false);
