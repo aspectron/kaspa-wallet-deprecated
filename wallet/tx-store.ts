@@ -12,6 +12,7 @@ export interface TXStoreItem{
 	note?:string;
 	tx?:any,
 	myAddress?:boolean,
+	isCoinbase:boolean,
 	isMoved?:boolean
 }
 
@@ -70,7 +71,8 @@ export class TXStore{
 				address,
 				blueScore:utxo.blockDaaScore,
 				tx:false,//TODO
-				isMoved:true
+				isMoved:true,
+				isCoinbase:false
 			};
 		}
 		this.emitTx(dbItem);
@@ -86,6 +88,7 @@ export class TXStore{
 				amount: utxo.amount,
 				address,
 				blueScore:utxo.blockDaaScore,
+				isCoinbase:utxo.isCoinbase,
 				tx:false//TODO
 			};
 			this.add(item);

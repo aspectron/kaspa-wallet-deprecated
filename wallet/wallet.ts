@@ -17,7 +17,7 @@ import {
 
 import {CreateLogger, Logger} from '../utils/logger';
 import {AddressManager} from './address-manager';
-import {UnspentOutput, UtxoSet, CONFIRMATION_COUNT} from './utxo';
+import {UnspentOutput, UtxoSet, CONFIRMATION_COUNT, COINBASE_CFM_COUNT} from './utxo';
 import {TXStore} from './tx-store';
 import {CacheStore} from './cache-store';
 import {KaspaAPI, ApiError} from './api';
@@ -35,7 +35,7 @@ const SompiPerKaspa = 100_000_000
 // MaxSompi is the maximum transaction amount allowed in sompi.
 const MaxSompi = 21_000_000 * SompiPerKaspa
 
-export {kaspacore, COMPOUND_UTXO_MAX_COUNT, CONFIRMATION_COUNT};
+export {kaspacore, COMPOUND_UTXO_MAX_COUNT, CONFIRMATION_COUNT, COINBASE_CFM_COUNT};
 
 /** Class representing an HDWallet with derivable child addresses */
 class Wallet extends EventTargetImpl {
@@ -1125,7 +1125,8 @@ class Wallet extends EventTargetImpl {
 				in:false, ts, id:txid, amount, address:toAddr, note,
 				blueScore: this.blueScore,
 				tx:rpcTX.transaction,
-				myAddress: this.addressManager.isOur(toAddr)
+				myAddress: this.addressManager.isOur(toAddr),
+				isCoinbase: false
 			})
 			this.updateDebugInfo();
 			this.emitCache()
