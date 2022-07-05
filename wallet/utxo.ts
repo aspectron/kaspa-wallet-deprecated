@@ -219,7 +219,7 @@ export class UtxoSet extends EventTargetImpl {
 		});
 
 		list.sort((a: UnspentOutput, b: UnspentOutput): number => {
-			return a.blockDaaScore - b.blockDaaScore || a.satoshis - b.satoshis || a.txId.localeCompare(b.txId) || a.outputIndex - b.outputIndex;
+			return a.blockDaaScore - b.blockDaaScore || b.satoshis - a.satoshis || a.txId.localeCompare(b.txId) || a.outputIndex - b.outputIndex;
 		})
 		let mass = 0;
 		for (const utxo of list) {
@@ -262,7 +262,7 @@ export class UtxoSet extends EventTargetImpl {
 		});
 
 		list.sort((a: UnspentOutput, b: UnspentOutput): number => {
-			return a.blockDaaScore - b.blockDaaScore || a.satoshis - b.satoshis || a.txId.localeCompare(b.txId) || a.outputIndex - b.outputIndex;
+			return a.blockDaaScore - b.blockDaaScore || b.satoshis - a.satoshis || a.txId.localeCompare(b.txId) || a.outputIndex - b.outputIndex;
 		})
 		let maxMass = Wallet.MaxMassUTXOs;
 		
