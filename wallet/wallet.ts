@@ -1,4 +1,3 @@
-import {Buffer} from 'safe-buffer';
 const Mnemonic = require('bitcore-mnemonic');
 import * as kaspacore from '@kaspa/core-lib';
 import * as helper from '../utils/helper';
@@ -552,7 +551,8 @@ class Wallet extends EventTargetImpl {
 		this.emit("balance-update", {
 			available,
 			pending,
-			total
+			total,
+			confirmedUtxosCount: this.utxoSet.confirmedCount
 		});
 	}
 
@@ -1158,10 +1158,20 @@ class Wallet extends EventTargetImpl {
 		const {
 			UTXOMaxCount=COMPOUND_UTXO_MAX_COUNT,
 			networkFeeMax=0,
-			fee=0
+			fee=0,
+			useLatestChangeAddress=false
 		} = txCompoundOptions;
 
-		let toAddr = this.addressManager.changeAddress.next()
+		//let toAddr = this.addressManager.changeAddress.next()
+
+		let toAddr = this.addressManager.changeAddress.atIndex[0];
+		//console.log("compoundUTXOs: to address:", toAddr, "useLatestChangeAddress:"+useLatestChangeAddress)
+		if (useLatestChangeAddress){
+			toAddr = this.addressManager.changeAddress.current.address;
+		}
+		if(!toAddr){
+			toAddr = this.addressManager.changeAddress.next();
+		}
 
 		let txParamsArg = {
 			toAddr,

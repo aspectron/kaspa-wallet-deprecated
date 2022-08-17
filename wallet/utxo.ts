@@ -70,7 +70,7 @@ export class UtxoSet extends EventTargetImpl {
 					blockDaaScore: utxo.blockDaaScore,
 					isCoinbase: utxo.isCoinbase
 				})
-				confirmed = confirmed || this.isOurChange(unspentOutput);
+				//confirmed = confirmed || this.isOurChange(unspentOutput);
 				//confirmed = /*confirmed || */this.isOurChange(unspentOutput);
 				//if(confirmed){
 				//	console.log("Change address: unspentOutput", blueScore-utxo.blockDaaScore, unspentOutput)

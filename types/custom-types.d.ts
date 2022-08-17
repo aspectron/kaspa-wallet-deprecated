@@ -96,6 +96,7 @@ export interface TxCompoundOptions {
   UTXOMaxCount?:number;
   networkFeeMax?:number;
   fee?:number;
+  useLatestChangeAddress?:boolean
 }
 
 export interface TxResp {
