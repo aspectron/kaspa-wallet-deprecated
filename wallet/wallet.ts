@@ -44,8 +44,8 @@ class Wallet extends EventTargetImpl {
 	static Crypto = Crypto;
 	static kaspacore=kaspacore;
 	static COMPOUND_UTXO_MAX_COUNT=COMPOUND_UTXO_MAX_COUNT;
-	static MaxMassAcceptedByBlock = 500000;
-	static MaxMassUTXOs = 200000;
+	static MaxMassAcceptedByBlock = 100000;
+	static MaxMassUTXOs = 100000;
 	//Wallet.MaxMassAcceptedByBlock -
 	//kaspacore.Transaction.EstimatedStandaloneMassWithoutInputs;
 
@@ -974,7 +974,7 @@ class Wallet extends EventTargetImpl {
 		const {mass:txMass} = tx.getMassAndSize();
 		this.logger.info("txMass", txMass)
 		if(txMass > Wallet.MaxMassAcceptedByBlock){
-			throw new Error(`Transaction size/mass limit reached. Please reduce this transaction amount.`);
+			throw new Error(`Transaction size/mass limit reached. Please reduce this transaction amount. (Mass: ${txMass})`);
 		}
 
 		const ts_1 = Date.now();
@@ -1103,7 +1103,7 @@ class Wallet extends EventTargetImpl {
 		}
 
 		const {
-			rpcTX, utxoIds, amount, toAddr, note
+			rpcTX, utxoIds, amount, toAddr, note, utxos
 		} = await this.buildTransaction(txParamsArg, debug);
 
 		//console.log("rpcTX:", rpcTX)
@@ -1144,9 +1144,29 @@ class Wallet extends EventTargetImpl {
 				//rpctx
 			}
 			return resp;
-		} catch (e) {
+		} catch (e:any) {
 			if(reverseChangeAddress)
 				this.addressManager.changeAddress.reverse();
+			if (typeof e.setExtraDebugInfo == "function"){
+				let mass = 0;
+				let satoshis = 0;
+				let list = utxos.map(tx=>{
+					mass += tx.mass;
+					satoshis += tx.satoshis;
+					return Object.assign({}, tx, {
+						address:tx.address.toString(),
+						script:tx.script?.toString()
+					})
+				});
+				//86500,00000000
+				let info = {
+					mass,
+					satoshis,
+					utxoCount: list.length,
+					utxos: list
+				}
+				e.setExtraDebugInfo(info)
+			}
 			throw e;
 		}
 	}

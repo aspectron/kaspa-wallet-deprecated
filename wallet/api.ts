@@ -6,6 +6,7 @@ export class ApiError{
 	message:string;
 	stack:any;
 	debugInfo:any;
+	extraDebugInfo:any;
 	constructor(message:string, debugInfo:any=null) {
 		//super(...args);
 		this.name = 'ApiError';
@@ -15,6 +16,14 @@ export class ApiError{
 			this.stack = ((new Error(message)).stack+"").split("↵").join("\n");
 		else
 			Error.captureStackTrace(this, ApiError);
+	}
+
+	setDebugInfo(info:any){
+		this.debugInfo = info;
+	}
+
+	setExtraDebugInfo(info:any){
+		this.extraDebugInfo = info;
 	}
 }
 
