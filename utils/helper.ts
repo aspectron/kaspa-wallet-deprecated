@@ -103,3 +103,7 @@ export const throttle = (
 
     return throttled;
 }
+
+export const chunks = (list:any[], size:number): (any[])[]=>{
+    return list.length ? [list.slice(0, size), ...chunks(list.slice(size), size)] : []
+}

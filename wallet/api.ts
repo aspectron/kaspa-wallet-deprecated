@@ -5,10 +5,12 @@ export class ApiError{
 	name:string;
 	message:string;
 	stack:any;
-	constructor(message:string) {
+	debugInfo:any;
+	constructor(message:string, debugInfo:any=null) {
 		//super(...args);
 		this.name = 'ApiError';
 		this.message = message;
+		this.debugInfo = debugInfo;
 		if (!Error.captureStackTrace)
 			this.stack = ((new Error(message)).stack+"").split("↵").join("\n");
 		else
@@ -228,7 +230,7 @@ class KaspaAPI extends EventTargetImpl{
 		if(!response.error.errorCode)
 			response.error.errorCode = 100;
 
-		throw new ApiError(`API error (${response.error.errorCode}): ${response.error.message}`);
+		throw new ApiError(`API error (${response.error.errorCode}): ${response.error.message}`, tx);
 	}
 
 

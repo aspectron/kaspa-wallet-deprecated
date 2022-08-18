@@ -45,7 +45,7 @@ class Wallet extends EventTargetImpl {
 	static kaspacore=kaspacore;
 	static COMPOUND_UTXO_MAX_COUNT=COMPOUND_UTXO_MAX_COUNT;
 	static MaxMassAcceptedByBlock = 500000;
-	static MaxMassUTXOs = 100000;
+	static MaxMassUTXOs = 200000;
 	//Wallet.MaxMassAcceptedByBlock -
 	//kaspacore.Transaction.EstimatedStandaloneMassWithoutInputs;
 
@@ -1219,6 +1219,36 @@ class Wallet extends EventTargetImpl {
 	runStateChangeHooks(): void {
 		//this.utxoSet.updateUtxoBalance();
 		//this.updateBalance();
+	}
+
+	//UTXOsPollingStarted:boolean = false;
+	emitedUTXOs:Set<string> = new Set()
+	startUTXOsPolling(){
+		//if (this.UTXOsPollingStarted)
+		//	return
+		//this.UTXOsPollingStarted = true;
+		this.emitUTXOs();
+	}
+
+	emitUTXOs(){
+		let chunks = helper.chunks([...this.utxoSet.utxos.confirmed.values()], 100);
+		chunks = chunks.concat(helper.chunks([...this.utxoSet.utxos.pending.values()], 100));
+
+		let send = ()=>{
+			let utxos = chunks.pop();
+			if (!utxos)
+				return
+			utxos = utxos.map(tx=>{
+				return Object.assign({}, tx, {
+					address:tx.address.toString()
+				})
+			})
+			this.emit("utxo-sync", {utxos})
+
+			helper.dpc(200, send)
+		}
+
+		send();
 	}
 
 	get cache() {
