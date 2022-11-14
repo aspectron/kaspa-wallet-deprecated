@@ -1,6 +1,6 @@
 // @ts-ignore
 import * as kaspacore from '@kaspa/core-lib';
-import {Network} from 'custom-types';
+import {Network} from '../types/custom-types';
 
 // @ts-ignore
 const secp256k1 = kaspacore.secp256k1;//require('secp256k1-wasm');

@@ -253,13 +253,13 @@ export interface IRPC {
 	submitTransaction(tx: RPC.SubmitTransactionRequest): Promise<RPC.SubmitTransactionResponse>;
 	getVirtualSelectedParentBlueScore(): Promise<RPC.VirtualSelectedParentBlueScoreResponse>;
 	getBlockDagInfo(): Promise<RPC.GetBlockDagInfoResponse>;
-	subscribeChainChanged(callback:Rpc.callback<Rpc.ChainChangedNotification>): RPC.SubPromise<RPC.NotifyChainChangedResponse>;
-	subscribeBlockAdded(callback:Rpc.callback<Rpc.BlockAddedNotification>): RPC.SubPromise<RPC.NotifyBlockAddedResponse>;
-	subscribeVirtualSelectedParentBlueScoreChanged(callback:RPC.callback<Rpc.VirtualSelectedParentBlueScoreChangedNotification>): RPC.SubPromise<RPC.NotifyVirtualSelectedParentBlueScoreChangedResponse>;
-	subscribeVirtualDaaScoreChanged(callback:RPC.callback<Rpc.VirtualDaaScoreChangedNotification>): RPC.SubPromise<RPC.NotifyVirtualDaaScoreChangedResponse>;
-	subscribeUtxosChanged(addresses:string[], callback:Rpc.callback<Rpc.UtxosChangedNotification>): RPC.SubPromise<RPC.NotifyUtxosChangedResponse>;
-	unSubscribeUtxosChanged(uid:string='');
-	unSubscribe(eventName:string, uid:string='');
+	subscribeChainChanged(callback:RPC.callback<RPC.ChainChangedNotification>): RPC.SubPromise<RPC.NotifyChainChangedResponse>;
+	subscribeBlockAdded(callback:RPC.callback<RPC.BlockAddedNotification>): RPC.SubPromise<RPC.NotifyBlockAddedResponse>;
+	subscribeVirtualSelectedParentBlueScoreChanged(callback:RPC.callback<RPC.VirtualSelectedParentBlueScoreChangedNotification>): RPC.SubPromise<RPC.NotifyVirtualSelectedParentBlueScoreChangedResponse>;
+	subscribeVirtualDaaScoreChanged(callback:RPC.callback<RPC.VirtualDaaScoreChangedNotification>): RPC.SubPromise<RPC.NotifyVirtualDaaScoreChangedResponse>;
+	subscribeUtxosChanged(addresses:string[], callback:RPC.callback<RPC.UtxosChangedNotification>): RPC.SubPromise<RPC.NotifyUtxosChangedResponse>;
+	unSubscribeUtxosChanged(uid?:string);
+	unSubscribe(eventName:string, uid?:string);
 
 	request?(method:string, data:any);
 
