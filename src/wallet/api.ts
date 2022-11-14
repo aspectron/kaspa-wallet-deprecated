@@ -1,4 +1,4 @@
-import { Api, IRPC, RPC } from 'custom-types';
+import { Api, IRPC, RPC } from '../types/custom-types';
 import {EventTargetImpl, EventListener} from './event-target-impl';
 export class ApiError{
 	// eslint-disable-next-line @typescript-eslint/no-explicit-any

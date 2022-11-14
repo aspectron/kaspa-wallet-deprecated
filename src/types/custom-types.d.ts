@@ -1,12 +1,10 @@
 import kaspacore from '@kaspa/core-lib';
-import { KaspaAPI } from 'wallet/apiHelpers';
-
+import type {UnspentOutput} from '../wallet/unspent-output';
 export type Network = 'kaspa' | 'kaspadev' | 'kaspareg' | 'kaspatest' | 'kaspasim';
 export type bytes = string;//base84 string
 
 export * from './rpc';
-import {IRPC, RPC} from './rpc';
-import { KaspaAPI } from './apiHelpers';
+import type {IRPC, RPC} from './rpc';
 
 
 export interface ScaneMoreResultItem{
@@ -48,7 +46,7 @@ export interface WalletOptions{
 export interface NetworkOptions{
   network:Network;
   defaultFee?:number;
-  rpc?:IRPC;
+  rpc?:IRPC|RPC;
 }
 
 export interface UnspentOutputInfo{
@@ -223,5 +221,3 @@ export namespace Api{
   }
   declare type BlockResponse = RPC.BlockVerboseData
 }
-
-

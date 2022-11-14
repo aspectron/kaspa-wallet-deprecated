@@ -1,6 +1,5 @@
 node_modules
 dist
 webpack.config.js
-package-lock.json
 bitcore-lib-cash
 yarn.lock

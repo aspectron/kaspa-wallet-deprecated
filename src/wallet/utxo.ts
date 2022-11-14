@@ -1,4 +1,4 @@
-import {Api,RPC} from 'custom-types';
+import {Api,RPC} from '../types/custom-types';
 import {UnspentOutput} from './unspent-output';
 // @ts-ignore
 import * as kaspacore from '@kaspa/core-lib';

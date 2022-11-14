@@ -1,0 +1,28 @@
+name: Build on Main
+on:
+  push:
+    branches: [main]
+
+concurrency:
+  group: ${{ github.repository }}-${{ github.event.ref }}
+  cancel-in-progress: true
+
+env:
+  NAMESPACE: coin-service
+  SERVICE: coin-service
+
+jobs:
+  build_publish:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - uses: actions/setup-node@v3
+        with:
+          node-version: '16.x'
+          scope: '@caldera-network'
+          registry-url: 'https://registry.npmjs.org'
+      - run: npm ci
+      - run: npm run prepublishOnly
+      - run: npm publish
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
