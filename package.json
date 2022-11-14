@@ -1,6 +1,6 @@
 {
   "name": "@caldera-network/kaspa-wallet",
-  "version": "1.4.21",
+  "version": "1.5.0",
   "description": "Node module for kaspa",
   "main": "dist/src/index.js",
   "author": "ASPECTRON Inc.",
@@ -31,8 +31,10 @@
     "dist",
     "README.md"
   ],
-  "contributors": [{
-    "name": "Chandler Ferry",
-    "url": "https://caldera.network/"
-  }]
+  "contributors": [
+    {
+      "name": "Chandler Ferry",
+      "url": "https://caldera.network/"
+    }
+  ]
 }
