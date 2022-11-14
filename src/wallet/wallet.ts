@@ -771,7 +771,8 @@ class Wallet extends EventTargetImpl {
 		skipSign = false,
 		privKeysInfo = false,
 		compoundingUTXO = false,
-		compoundingUTXOMaxCount = COMPOUND_UTXO_MAX_COUNT
+		compoundingUTXOMaxCount = COMPOUND_UTXO_MAX_COUNT,
+		txIdList
 	}: TxSend): ComposeTxInfo {
 		// TODO: bn!
 		amount = parseInt(amount as any);
@@ -785,7 +786,7 @@ class Wallet extends EventTargetImpl {
 		if(compoundingUTXO){
 			({utxos, utxoIds, amount, mass} = this.utxoSet.collectUtxos(compoundingUTXOMaxCount));
 		}else{
-			({utxos, utxoIds, mass} = this.utxoSet.selectUtxos(amount + fee));
+			({utxos, utxoIds, mass} = this.utxoSet.selectUtxos(amount + fee, txIdList));
 		}
 		//if(mass > Wallet.MaxMassUTXOs){
 		//	throw new Error(`Maximum number of inputs (UTXOs) reached. Please reduce this transaction amount.`);
