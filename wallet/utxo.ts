@@ -204,7 +204,7 @@ export class UtxoSet extends EventTargetImpl {
 	 * @param txAmount Provide the amount that the UTXOs should cover.
 	 * @throws Error message if the UTXOs can't cover the `txAmount`
 	 */
-	selectUtxos(txAmount: number): {
+	selectUtxos(txAmount: number, txIdList?: string[]): {
 		utxoIds: string[];
 		utxos: UnspentOutput[],
 		mass: number
@@ -218,9 +218,15 @@ export class UtxoSet extends EventTargetImpl {
 			return !this.inUse.includes(utxo.id);
 		});
 
-		list.sort((a: UnspentOutput, b: UnspentOutput): number => {
-			return a.blockDaaScore - b.blockDaaScore || b.satoshis - a.satoshis || a.txId.localeCompare(b.txId) || a.outputIndex - b.outputIndex;
-		})
+		if (!txIdList) {
+			list.sort((a: UnspentOutput, b: UnspentOutput): number => {
+				return a.blockDaaScore - b.blockDaaScore || b.satoshis - a.satoshis || a.txId.localeCompare(b.txId) || a.outputIndex - b.outputIndex;
+			})
+		} else {
+			list = list.filter((utxo) => {
+				return txIdList.includes(utxo.txId)
+			})
+		}
 		let mass = 0;
 		for (const utxo of list) {
 			//console.log("info",`UTXO ID: ${utxoId}  , UTXO: ${utxo}`);

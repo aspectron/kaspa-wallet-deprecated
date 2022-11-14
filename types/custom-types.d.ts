@@ -90,6 +90,7 @@ export interface TxSend {
   skipUTXOInUseMark?:boolean,
   compoundingUTXO?:boolean,
   compoundingUTXOMaxCount?:number
+  txIdList?:string[]
 }
 
 export interface TxCompoundOptions {
