@@ -96,10 +96,16 @@ export class TXStore{
 				body: JSON.stringify({ "transactionIds": txIds })
 			})
 			.catch(err=>{
-
+				this.wallet.logger.debug("ExplorerAPI transactions/search : error", err);
 			})
-			.then((response:void|Response) => response && response.json())
+			.then((response:void|Response) => {
+				this.wallet.logger.debug("ExplorerAPI transactions/search, txIds:", txIds,  "Response:", response);
+				if (response){
+					return response.json()
+				}
+			})
 			.then(data => {
+				this.wallet.logger.debug("ExplorerAPI transactions/search, data:", data);
 				if (Array.isArray(data))
 					return data
 				return [];
@@ -120,13 +126,8 @@ export class TXStore{
 	async addAddressUTXOs(address:string, utxos:Api.Utxo[], ts?:number){
 		if(!utxos.length || this.wallet.addressManager.isOurChange(address))
 			return
-		let ids = utxos.map(utxo=>utxo.transactionId);
-		//ids.push("xxx");
-		let txid2time = await this.fetchTxTime(ids);
-		//this.wallet.logger.info("fetchTxTime: result", ids, txid2time);
 
 		utxos.forEach(utxo=>{
-			let ts = txid2time[utxo.transactionId];
 			let item = {
 				in: true,
 				ts: ts||Date.now(),
@@ -135,8 +136,7 @@ export class TXStore{
 				address,
 				blueScore:utxo.blockDaaScore,
 				isCoinbase:utxo.isCoinbase,
-				tx:false,//TODO
-				version:ts?2:1
+				tx:false//TODO
 			};
 			this.add(item);
 		})
@@ -149,11 +149,31 @@ export class TXStore{
 	}
 
 	save(tx:TXStoreItem){
-		let {uid} = this.wallet
+		this.updateTransactionTime(tx.id);
 		if(typeof indexedDB != "undefined"){
 			this.idb?.set(tx.id, JSON.stringify(tx))
 		}
 	}
+
+	pendingUpdate:string[] = [];
+	updateTxTimeoutId:NodeJS.Timeout|null = null;
+	updateTransactionTime(id:string){
+		this.wallet.logger.debug("updateTransactionTime", id);
+
+		this.pendingUpdate.push(id);
+		if (this.updateTxTimeoutId){
+			clearTimeout(this.updateTxTimeoutId);
+		}
+	
+		if(this.pendingUpdate.length > 500){
+			this.updateTransactionTimeImpl();
+		}else{
+			this.updateTxTimeoutId = setTimeout(()=>{
+				this.updateTransactionTimeImpl();
+			}, 10000);
+		}
+	}
+
 	emitTx(tx:TXStoreItem){
 		if(this.wallet.syncSignal && !this.wallet.syncInProggress){
 			if(tx.isMoved){
@@ -206,8 +226,34 @@ export class TXStore{
 		this.wallet.emit("update-transactions", list);
 	}
 
-	async startFetchingTxTime(ids:string[]){
-		//this.wallet.logger.info("startFetchingTxTime:", ids);
+	updatingTransactionsInprogress:boolean = false;
+	async startUpdatingTransactions():Promise<boolean>{
+		this.wallet.logger.info("startUpdatingTransactions:", this.updatingTransactionsInprogress);
+		if (this.updatingTransactionsInprogress){
+			this.wallet.emit("transactions-update-status", {status:"in-progress"});
+			return false
+		}
+		this.wallet.emit("transactions-update-status", {status:"started"});
+		this.updatingTransactionsInprogress = true;
+		let {txWithMissingVersion:ids} = await this.getDBEntries();
+		await this.updateTransactionTimeImpl(ids, ()=>{
+			this.updatingTransactionsInprogress = false;
+			this.wallet.emit("transactions-update-status", {status:"finished"});
+		});
+		return true
+	}
+	transactionUpdating:boolean = false;
+	async updateTransactionTimeImpl(txIdList:string[]|null=null, callback:Function|null=null){
+		if (this.transactionUpdating){
+			setTimeout(()=>{
+				this.updateTransactionTimeImpl(txIdList, callback);
+			}, 2000);
+			return
+		}
+		this.transactionUpdating = true;
+		let ids = txIdList||this.pendingUpdate;
+		this.pendingUpdate = [];
+		this.wallet.logger.debug("updateTransactionTimeImpl:", ids);
 		const CHUNK_SIZE = 500;
 		let chunks:string[][] = [];
 
@@ -257,17 +303,20 @@ export class TXStore{
 			tx.id = id;
 
 			this.emitUpdateTx(tx);
-			//this.wallet.logger.info("startFetchingTxTime: tx updated", id, ts);
+			this.wallet.logger.debug("updateTransactionTimeImpl: tx updated", id, "ts:", ts, tx);
 		}
 
 		let fetch_txs = async()=>{
 			let txIds = chunks.shift();
-			//this.wallet.logger.info("startFetchingTxTime: fetch_txs", txIds);
-			if (!txIds)
+			//this.wallet.logger.info("updateTransactionTimeImpl: fetch_txs", txIds);
+			if (!txIds){
+				this.transactionUpdating = false;
+				callback?.();
 				return
+			}
 
 			let txId2time = await this.fetchTxTime(txIds);
-			//this.wallet.logger.info("startFetchingTxTime: txId2time", txId2time);
+			//this.wallet.logger.info("updateTransactionTimeImpl: txId2time", txId2time);
 			Object.keys(txId2time).forEach(txId=>{
 				let ts = txId2time[txId];
 				let index = (txIds as string[]).indexOf(txId);
@@ -291,34 +340,47 @@ export class TXStore{
 
 			setTimeout(fetch_txs, 2000)
 		};
-		setTimeout(fetch_txs, 2000)
+		setTimeout(fetch_txs, 1000)
+	}
+
+	async getDBEntries():Promise<{list:TXStoreItem[], txWithMissingVersion:string[]}>{
+		if (!this.idb){
+			return {
+				list:[],
+				txWithMissingVersion:[]
+			}
+		}
+	
+		let entries = await this.idb.entries().catch((err)=>{
+			console.log("tx-store: entries():error", err)
+		})||[];
+		let length = entries.length;
+		console.log("tx-entries length:", length)
+		let list:TXStoreItem[] = [];
+		let ids:string[] = [];
+		for (let i=0; i<length;i++){
+			let [key, txStr] = entries[i]
+			if(!txStr)
+				continue;
+			try{
+				let tx = JSON.parse(txStr);
+				if (tx.version === undefined){
+					ids.push(tx.id);
+				}
+				list.push(tx);
+			}catch(e){
+				this.wallet.logger.error("LS-TX parse error - 104:", txStr, e)
+			}
+		}
+
+		return {
+			list,
+			txWithMissingVersion:ids
+		}
 	}
 	async restore(){
 		if(this.idb){
-			let entries = await this.idb.entries().catch((err)=>{
-				console.log("tx-store: entries():error", err)
-			})||[];
-			let length = entries.length;
-			console.log("tx-entries length:", length)
-			let list:TXStoreItem[] = [];
-			let ids = [];
-			for (let i=0; i<length;i++){
-				let [key, txStr] = entries[i]
-				if(!txStr)
-					continue;
-				try{
-					let tx = JSON.parse(txStr);
-					if (tx.version === undefined){
-						ids.push(tx.id);
-					}
-					list.push(tx);
-				}catch(e){
-					this.wallet.logger.error("LS-TX parse error - 104:", txStr, e)
-				}
-			}
-			if (ids.length > 0){
-				this.startFetchingTxTime(ids);
-			}
+			let {list} = await this.getDBEntries();
 
 			list.sort((a, b)=>{
 				return a.ts-b.ts;
