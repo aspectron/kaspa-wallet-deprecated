@@ -1126,7 +1126,8 @@ class Wallet extends EventTargetImpl {
 				blueScore: this.blueScore,
 				tx:rpcTX.transaction,
 				myAddress: this.addressManager.isOur(toAddr),
-				isCoinbase: false
+				isCoinbase: false,
+				version:2
 			})
 			this.updateDebugInfo();
 			this.emitCache()
