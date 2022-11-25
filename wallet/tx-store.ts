@@ -2,7 +2,7 @@ import {Wallet} from './wallet';
 import {iDB} from './indexed-db';
 import {Api} from 'custom-types';
 
-const API_BASE = "https://kaspa.herokuapp.com/";
+const API_BASE = "https://api.kaspa.org/";
 
 interface APITx{
 	block_time:number,
