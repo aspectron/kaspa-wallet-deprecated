@@ -416,6 +416,10 @@ class Wallet extends EventTargetImpl {
 		}
 	}
 
+	async startUpdatingTransactions(version:undefined|number=undefined):Promise<boolean>{
+		return await this.txStore.startUpdatingTransactions();
+	}
+
 	/**
 	 * Set rpc provider
 	 * @param rpc

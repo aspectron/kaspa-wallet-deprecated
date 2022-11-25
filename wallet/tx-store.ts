@@ -227,31 +227,37 @@ export class TXStore{
 	}
 
 	updatingTransactionsInprogress:boolean = false;
-	async startUpdatingTransactions():Promise<boolean>{
+	async startUpdatingTransactions(version:undefined|number=undefined):Promise<boolean>{
 		this.wallet.logger.info("startUpdatingTransactions:", this.updatingTransactionsInprogress);
 		if (this.updatingTransactionsInprogress){
 			this.wallet.emit("transactions-update-status", {status:"in-progress"});
 			return false
 		}
-		this.wallet.emit("transactions-update-status", {status:"started"});
 		this.updatingTransactionsInprogress = true;
-		let {txWithMissingVersion:ids} = await this.getDBEntries();
-		await this.updateTransactionTimeImpl(ids, ()=>{
-			this.updatingTransactionsInprogress = false;
-			this.wallet.emit("transactions-update-status", {status:"finished"});
-		});
+		let {txWithMissingVersion:ids} = await this.getDBEntries(version);
+		
+		if (ids.length){
+			this.wallet.emit("transactions-update-status", {status:"started"});
+			await this.updateTransactionTimeImpl(ids, true, ()=>{
+				this.updatingTransactionsInprogress = false;
+				this.wallet.emit("transactions-update-status", {status:"finished"});
+			});
+		}else{
+			this.wallet.emit("transactions-update-status", {status:"finished", total:0, updated:0});
+		}
 		return true
 	}
 	transactionUpdating:boolean = false;
-	async updateTransactionTimeImpl(txIdList:string[]|null=null, callback:Function|null=null){
+	async updateTransactionTimeImpl(txIdList:string[]|null=null, notify:boolean=false, callback:Function|null=null){
 		if (this.transactionUpdating){
 			setTimeout(()=>{
-				this.updateTransactionTimeImpl(txIdList, callback);
+				this.updateTransactionTimeImpl(txIdList, notify, callback);
 			}, 2000);
 			return
 		}
 		this.transactionUpdating = true;
 		let ids = txIdList||this.pendingUpdate;
+		let total = 0;
 		this.pendingUpdate = [];
 		this.wallet.logger.debug("updateTransactionTimeImpl:", ids);
 		const CHUNK_SIZE = 500;
@@ -265,6 +271,7 @@ export class TXStore{
 			if (!txId2Id[txId]){
 				txId2Id[txId] = [];
 				txIds.push(txId);
+				total++;
 				if (txIds.length == CHUNK_SIZE){
 					chunks.push(txIds);
 					txIds = [];
@@ -272,6 +279,14 @@ export class TXStore{
 			}
 			txId2Id[txId].push(id);
 		})
+
+		if (notify){
+			this.wallet.emit("transactions-update-status", {
+				status:"progress",
+				total,
+				updated:0
+			});
+		}
 
 		if (txIds.length){
 			chunks.push(txIds);
@@ -305,7 +320,7 @@ export class TXStore{
 			this.emitUpdateTx(tx);
 			this.wallet.logger.debug("updateTransactionTimeImpl: tx updated", id, "ts:", ts, tx);
 		}
-
+		let updatedCount = 0;
 		let fetch_txs = async()=>{
 			let txIds = chunks.shift();
 			//this.wallet.logger.info("updateTransactionTimeImpl: fetch_txs", txIds);
@@ -314,7 +329,7 @@ export class TXStore{
 				callback?.();
 				return
 			}
-
+			let count = txIds.length;
 			let txId2time = await this.fetchTxTime(txIds);
 			//this.wallet.logger.info("updateTransactionTimeImpl: txId2time", txId2time);
 			Object.keys(txId2time).forEach(txId=>{
@@ -337,13 +352,22 @@ export class TXStore{
 					})
 				})
 			}
+			updatedCount += count;
+
+			if (notify){
+				this.wallet.emit("transactions-update-status", {
+					status:"progress",
+					total,
+					updated:updatedCount
+				});
+			}
 
 			setTimeout(fetch_txs, 2000)
 		};
 		setTimeout(fetch_txs, 1000)
 	}
 
-	async getDBEntries():Promise<{list:TXStoreItem[], txWithMissingVersion:string[]}>{
+	async getDBEntries(version:undefined|number=undefined):Promise<{list:TXStoreItem[], txWithMissingVersion:string[]}>{
 		if (!this.idb){
 			return {
 				list:[],
@@ -364,7 +388,7 @@ export class TXStore{
 				continue;
 			try{
 				let tx = JSON.parse(txStr);
-				if (tx.version === undefined){
+				if (tx.version === undefined || (version && tx.version != version)){
 					ids.push(tx.id);
 				}
 				list.push(tx);
