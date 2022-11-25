@@ -233,10 +233,11 @@ export class TXStore{
 			this.wallet.emit("transactions-update-status", {status:"in-progress"});
 			return false
 		}
-		this.updatingTransactionsInprogress = true;
+		
 		let {txWithMissingVersion:ids} = await this.getDBEntries(version);
 		
 		if (ids.length){
+			this.updatingTransactionsInprogress = true;
 			this.wallet.emit("transactions-update-status", {status:"started"});
 			await this.updateTransactionTimeImpl(ids, true, ()=>{
 				this.updatingTransactionsInprogress = false;
