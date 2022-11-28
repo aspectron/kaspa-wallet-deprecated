@@ -149,7 +149,9 @@ export class TXStore{
 	}
 
 	save(tx:TXStoreItem){
-		this.updateTransactionTime(tx.id);
+		if (this.wallet.options.updateTxTimes){
+			this.updateTransactionTime(tx.id);
+		}
 		if(typeof indexedDB != "undefined"){
 			this.idb?.set(tx.id, JSON.stringify(tx))
 		}

@@ -213,7 +213,8 @@ class Wallet extends EventTargetImpl {
 			logLevel:'info',
 			disableAddressDerivation:false,
 			checkGRPCFlags:false,
-			minimumRelayTransactionFee:1000
+			minimumRelayTransactionFee:1000,
+			updateTxTimes:true
 		};
 		// console.log("CREATING WALLET FOR NETWORK", this.network);
 		this.options = {...defaultOpt,	...options};
