@@ -13,9 +13,6 @@ export class EventTargetImpl{
 	* fire CustomEvent
 	* @param {String} eventName name of event
 	* @param {Object=} detail event's [detail]{@link https://developer.mozilla.org/en-US/docs/Web/API/CustomEvent/detail} property
-	* @param {Object=} options [CustomEventInit dictionary]{@link https://developer.mozilla.org/en-US/docs/Web/API/CustomEvent/CustomEvent}
-	* @param {HTMLElement=} event target (default: window)
-	* @return {boolean} The return value is false if event is cancelable and at least one of the event handlers which handled this event called Event.preventDefault(). Otherwise it returns true.
 	* @since 0.0.1
 	*/
 	emit(type:string, detail:any={}){

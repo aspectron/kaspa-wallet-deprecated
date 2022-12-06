@@ -213,7 +213,8 @@ class Wallet extends EventTargetImpl {
 			logLevel:'info',
 			disableAddressDerivation:false,
 			checkGRPCFlags:false,
-			minimumRelayTransactionFee:1000
+			minimumRelayTransactionFee:1000,
+			updateTxTimes:true
 		};
 		// console.log("CREATING WALLET FOR NETWORK", this.network);
 		this.options = {...defaultOpt,	...options};
@@ -414,6 +415,10 @@ class Wallet extends EventTargetImpl {
 		if(!this.receiveAddress){
 			this.addressManager.receiveAddress.next();
 		}
+	}
+
+	async startUpdatingTransactions(version:undefined|number=undefined):Promise<boolean>{
+		return await this.txStore.startUpdatingTransactions(version);
 	}
 
 	/**
@@ -1127,7 +1132,8 @@ class Wallet extends EventTargetImpl {
 				blueScore: this.blueScore,
 				tx:rpcTX.transaction,
 				myAddress: this.addressManager.isOur(toAddr),
-				isCoinbase: false
+				isCoinbase: false,
+				version:2
 			})
 			this.updateDebugInfo();
 			this.emitCache()
