@@ -31,6 +31,7 @@ export interface WalletOpt{
   disableAddressDerivation:boolean;
   checkGRPCFlags:boolean;
   minimumRelayTransactionFee:number;
+  updateTxTimes:boolean
 }
 
 export interface WalletOptions{
@@ -41,6 +42,7 @@ export interface WalletOptions{
   disableAddressDerivation?:boolean;
   checkGRPCFlags?:boolean;
   minimumRelayTransactionFee?:number;
+  updateTxTimes?:boolean
 }
  
 export interface NetworkOptions{
