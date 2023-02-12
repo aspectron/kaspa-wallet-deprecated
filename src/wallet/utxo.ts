@@ -218,15 +218,16 @@ export class UtxoSet extends EventTargetImpl {
 			return !this.inUse.includes(utxo.id);
 		});
 
-		if (!txIdList) {
-			list.sort((a: UnspentOutput, b: UnspentOutput): number => {
-				return a.blockDaaScore - b.blockDaaScore || b.satoshis - a.satoshis || a.txId.localeCompare(b.txId) || a.outputIndex - b.outputIndex;
-			})
-		} else {
+		if (txIdList) {
 			list = list.filter((utxo) => {
 				return txIdList.includes(utxo.txId)
 			})
 		}
+
+		list.sort((a: UnspentOutput, b: UnspentOutput): number => {
+			return a.blockDaaScore - b.blockDaaScore || b.satoshis - a.satoshis || a.txId.localeCompare(b.txId) || a.outputIndex - b.outputIndex;
+		})
+		
 		let mass = 0;
 		for (const utxo of list) {
 			//console.log("info",`UTXO ID: ${utxoId}  , UTXO: ${utxo}`);
