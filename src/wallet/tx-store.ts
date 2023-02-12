@@ -1,7 +1,7 @@
 import {Wallet} from './wallet';
 import {iDB} from './indexed-db';
 import {Api} from '../types/custom-types';
-
+import fetch from "node-fetch"
 const API_BASE = "https://api.kaspa.org/";
 
 interface APITx{
@@ -98,7 +98,7 @@ export class TXStore{
 			.catch(err=>{
 				this.wallet.logger.debug("ExplorerAPI transactions/search : error", err);
 			})
-			.then((response:void|Response) => {
+			.then((response) => {
 				this.wallet.logger.debug("ExplorerAPI transactions/search, txIds:", txIds,  "Response:", response);
 				if (response){
 					return response.json()
