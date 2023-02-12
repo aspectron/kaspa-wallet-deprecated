@@ -20,12 +20,13 @@
     "browser-passworder": "^2.0.3",
     "crypto-js": "^4.0.0",
     "decimal.js": "^10.2.1",
+    "node-fetch": "^3.3.0",
     "secp256k1-wasm": "^1.0.3"
   },
   "devDependencies": {
     "@types/crypto-js": "^4.0.1",
     "ts-node": "^9.0.0",
-    "typescript": "*"
+    "typescript": "4.8.3"
   },
   "files": [
     "dist",
