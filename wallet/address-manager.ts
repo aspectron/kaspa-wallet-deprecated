@@ -72,7 +72,8 @@ export class AddressManager extends EventTargetImpl {
 			return address;
 		},
 		advance(n: number): void {
-			this.counter = n;
+			if (n > -1)
+				this.counter = n;
 			this.next();
 		},
 	};
@@ -113,11 +114,13 @@ export class AddressManager extends EventTargetImpl {
 			return address;
 		},
 		advance(n: number): void {
-			this.counter = n;
+			if (n > -1)
+				this.counter = n;
 			// no call to next() here; composeTx calls it on demand.
 		},
 		reverse(): void {
-			this.counter -= 1;
+			if (this.counter > 0)
+				this.counter -= 1;
 		},
 	};
 
