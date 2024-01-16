@@ -202,9 +202,10 @@ export class UtxoSet extends EventTargetImpl {
 	/**
 	 * Naively select UTXOs.
 	 * @param txAmount Provide the amount that the UTXOs should cover.
+	 * @param fromAddr Select UTXOs only from this address
 	 * @throws Error message if the UTXOs can't cover the `txAmount`
 	 */
-	selectUtxos(txAmount: number): {
+	selectUtxos(txAmount: number, fromAddr?: string): {
 		utxoIds: string[];
 		utxos: UnspentOutput[],
 		mass: number
@@ -215,7 +216,7 @@ export class UtxoSet extends EventTargetImpl {
 		let list = [...this.utxos.confirmed.values()];
 
 		list = list.filter((utxo) => {
-			return !this.inUse.includes(utxo.id);
+			return !this.inUse.includes(utxo.id) && (!fromAddr || utxo.address.toString() === fromAddr);
 		});
 
 		list.sort((a: UnspentOutput, b: UnspentOutput): number => {
@@ -245,8 +246,9 @@ export class UtxoSet extends EventTargetImpl {
 	/**
 	 * Naively collect UTXOs.
 	 * @param maxCount Provide the max UTXOs count.
+	 * @param fromAddr collect UTXOs only from this address
 	 */
-	collectUtxos(maxCount: number = 10000): {
+	collectUtxos(maxCount: number = 10000, fromAddr?: string): {
 		utxoIds: string[];
 		utxos: UnspentOutput[],
 		amount: number,
@@ -258,7 +260,7 @@ export class UtxoSet extends EventTargetImpl {
 		let list = [...this.utxos.confirmed.values()];
 
 		list = list.filter((utxo) => {
-			return !this.inUse.includes(utxo.id);
+			return !this.inUse.includes(utxo.id) && (!fromAddr || utxo.address.toString() === fromAddr);
 		});
 
 		list.sort((a: UnspentOutput, b: UnspentOutput): number => {
