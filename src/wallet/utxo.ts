@@ -1,7 +1,7 @@
 import {Api,RPC} from '../types/custom-types';
 import {UnspentOutput} from './unspent-output';
 // @ts-ignore
-import * as kaspacore from '@kaspa/core-lib';
+import * as kaspacore from '@caldera-network/kaspa-core-lib';
 import * as crypto from 'crypto';
 import * as helper from '../utils/helper';
 // import * as api from './apiHelpers';

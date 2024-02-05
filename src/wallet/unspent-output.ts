@@ -1,4 +1,4 @@
-import * as kaspacore from '@kaspa/core-lib';
+import * as kaspacore from '@caldera-network/kaspa-core-lib';
 import {UnspentOutputInfo} from '../types/custom-types';
 export class UnspentOutput extends kaspacore.Transaction.UnspentOutput {
 	blockDaaScore: number;

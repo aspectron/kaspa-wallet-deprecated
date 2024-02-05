@@ -1,4 +1,4 @@
-import kaspacore from '@kaspa/core-lib';
+import kaspacore from '@caldera-network/kaspa-core-lib';
 import type {UnspentOutput} from '../wallet/unspent-output';
 export type { KaspaAPI } from '../wallet/api';
 

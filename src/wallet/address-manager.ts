@@ -1,5 +1,5 @@
 // @ts-ignore
-import * as kaspacore from '@kaspa/core-lib';
+import * as kaspacore from '@caldera-network/kaspa-core-lib';
 import {Network} from '../types/custom-types';
 
 // @ts-ignore
