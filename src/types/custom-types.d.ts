@@ -2,7 +2,7 @@ import kaspacore from '@kaspa/core-lib';
 import type {UnspentOutput} from '../wallet/unspent-output';
 export type { KaspaAPI } from '../wallet/api';
 
-export type Network = 'kaspa' | 'kaspadev' | 'kaspareg' | 'kaspatest' | 'kaspasim';
+export type Network = 'kaspa' | 'kaspadev' | 'kaspareg' | 'kaspatest' | 'kaspasim' | 'nexellia';
 export type bytes = string;//base84 string
 
 export * from './rpc';
