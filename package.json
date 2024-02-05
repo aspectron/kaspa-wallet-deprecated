@@ -1,6 +1,6 @@
 {
   "name": "@caldera-network/kaspa-wallet",
-  "version": "1.7.3",
+  "version": "1.7.4",
   "description": "Node module for kaspa",
   "main": "dist/src/index.js",
   "author": "ASPECTRON Inc.",
