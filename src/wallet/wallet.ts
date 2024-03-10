@@ -57,6 +57,8 @@ class Wallet extends EventTargetImpl {
 		kaspadev: {	port: 16610, network: 'kaspadev', name : 'devnet' },
 		
 		nexellia: { port: 1111, network: 'nexellia', name : 'mainnet' },
+		hoosat: { port: 1111, network: 'hoosat', name : 'mainnet' },
+		nautilus: { port: 1111, network: 'nautilus', name : 'mainnet' },
 	}
 
 	static networkAliases: Object = {
