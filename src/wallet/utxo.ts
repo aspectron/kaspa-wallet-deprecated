@@ -324,7 +324,7 @@ export class UtxoSet extends EventTargetImpl {
 
 		if (!addresses.length)
 			return addresses;
-		//console.log(`[${this.wallet.network}] !!! +++++++++++++++ SUBSCRIBING TO ADDRESSES :)\n`,addresses);
+		console.log(`[${this.wallet.network}] !!! +++++++++++++++ SUBSCRIBING TO ADDRESSES :)\n`,addresses);
 		let utxoChangedRes = await this.wallet.api.subscribeUtxosChanged(addresses, this.onUtxosChanged.bind(this))
 			.catch((error: RPC.Error) => {
 				console.log(`[${this.wallet.network}] RPC ERROR in uxtoSync! while registering addresses:`, error, addresses);
@@ -333,7 +333,7 @@ export class UtxoSet extends EventTargetImpl {
 				})
 			})
 
-		//console.log("utxoSync:utxoChangedRes:", utxoChangedRes, "\n utxoSync addresses:", addresses)
+		console.log("utxoSync:utxoChangedRes:", utxoChangedRes, "\n utxoSync addresses:", addresses)
 		return addresses;
 	}
 
