@@ -30,6 +30,7 @@ export const internalNames = {
 	nexellia: "default",
 	hoosat: "default",
 	nautilus: "default",
+	cas: "default",
 	testnet : "testnet",
 	kaspatest: "testnet",
 	kaspasim: "simnet",
