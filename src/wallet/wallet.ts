@@ -59,6 +59,7 @@ class Wallet extends EventTargetImpl {
 		nexellia: { port: 1111, network: 'nexellia', name : 'mainnet' },
 		hoosat: { port: 1111, network: 'hoosat', name : 'mainnet' },
 		nautilus: { port: 1111, network: 'nautilus', name : 'mainnet' },
+		bugna: { port: 1111, network: 'bugna', name : 'mainnet' },
 		cas: { port: 1111, network: 'cas', name : 'mainnet' },
 	}
 
