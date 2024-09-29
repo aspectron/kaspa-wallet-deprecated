@@ -14,7 +14,7 @@
   },
   "dependencies": {
     "@aspectron/flow-logger": ">=1.0.3",
-    "@caldera-network/kaspa-core-lib": "^1.6.13",
+    "@caldera-network/kaspa-core-lib": "^1.6.14",
     "@types/node": "^14.14.9",
     "bitcore-mnemonic": "^8.24.2",
     "browser-passworder": "^2.0.3",
