@@ -32,6 +32,7 @@ export const internalNames = {
 	nautilus: "default",
 	bugna: "default",
 	astrix: "default",
+	kasv2: "default",
 	cas: "default",
 	testnet : "testnet",
 	kaspatest: "testnet",

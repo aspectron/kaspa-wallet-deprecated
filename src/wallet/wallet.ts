@@ -61,6 +61,7 @@ class Wallet extends EventTargetImpl {
 		nautilus: { port: 1111, network: 'nautilus', name : 'mainnet' },
 		bugna: { port: 1111, network: 'bugna', name : 'mainnet' },
 		astrix: { port: 1111, network: 'astrix', name : 'mainnet' },
+		kasv2: { port: 1111, network: 'astrix', name : 'mainnet' },
 		cas: { port: 1111, network: 'cas', name : 'mainnet' },
 	}
 
