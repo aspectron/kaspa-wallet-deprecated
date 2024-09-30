@@ -2,7 +2,7 @@ import kaspacore from '@caldera-network/kaspa-core-lib';
 import type {UnspentOutput} from '../wallet/unspent-output';
 export type { KaspaAPI } from '../wallet/api';
 
-export type Network = 'kaspa' | 'kaspadev' | 'kaspareg' | 'kaspatest' | 'kaspasim' | 'nexellia' | 'hoosat' | 'bugna' | 'nautilus' | 'cas' | 'astrix'| 'kasv2';
+export type Network = 'kaspa' | 'kaspadev' | 'kaspareg' | 'kaspatest' | 'kaspasim' | 'nexellia' | 'hoosat' | 'bugna' | 'nautilus' | 'cas' | 'astrix' | 'kasv2';
 export type bytes = string;//base84 string
 
 export * from './rpc';
