@@ -30,7 +30,7 @@ export const internalNames = {
 	nexellia: "default",
 	hoosat: "default",
 	nautilus: "default",
-	waglaylad: "default",
+	waglayla: "default",
 	bugna: "default",
 	astrix: "default",
 	kasv2: "default",
