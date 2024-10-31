@@ -85,7 +85,7 @@ export class Crypto {
 
 	static toHexCode(data:string[]){
 		return data.map(d=>{
-			return (d.length+"").padStart(5, '0')+d;
+			return (d.length+"").padStart(8, '0')+d;
 		}).join('');
 		/*
 		let words = CryptoJS.enc.Utf8.parse(data.join(","));

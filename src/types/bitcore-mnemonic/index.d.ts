@@ -1,5 +1,5 @@
 // These types generated using tsd-jsdoc on the bitcore-mnemnoic module, and then hand-modified for correctness.
-/// <reference path="../bitcore-lib-cash/index.d.ts" />
+/// <reference types="bitcore-lib-cash" />
 import { HDPrivateKey, Networks } from 'bitcore-lib-cash';
 type Network = Networks.Network;
 

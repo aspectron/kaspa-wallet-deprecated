@@ -1,7 +1,7 @@
-import {Api,RPC} from 'custom-types';
+import {Api,RPC} from '../types/custom-types';
 import {UnspentOutput} from './unspent-output';
 // @ts-ignore
-import * as kaspacore from '@kaspa/core-lib';
+import * as kaspacore from '@caldera-network/kaspa-core-lib';
 import * as crypto from 'crypto';
 import * as helper from '../utils/helper';
 // import * as api from './apiHelpers';
@@ -204,7 +204,7 @@ export class UtxoSet extends EventTargetImpl {
 	 * @param txAmount Provide the amount that the UTXOs should cover.
 	 * @throws Error message if the UTXOs can't cover the `txAmount`
 	 */
-	selectUtxos(txAmount: number): {
+	selectUtxos(txAmount: number, txIdList?: string[]): {
 		utxoIds: string[];
 		utxos: UnspentOutput[],
 		mass: number
@@ -218,9 +218,16 @@ export class UtxoSet extends EventTargetImpl {
 			return !this.inUse.includes(utxo.id);
 		});
 
+		if (txIdList) {
+			list = list.filter((utxo) => {
+				return txIdList.includes(utxo.txId)
+			})
+		}
+
 		list.sort((a: UnspentOutput, b: UnspentOutput): number => {
 			return a.blockDaaScore - b.blockDaaScore || b.satoshis - a.satoshis || a.txId.localeCompare(b.txId) || a.outputIndex - b.outputIndex;
 		})
+		
 		let mass = 0;
 		for (const utxo of list) {
 			//console.log("info",`UTXO ID: ${utxoId}  , UTXO: ${utxo}`);
@@ -317,7 +324,7 @@ export class UtxoSet extends EventTargetImpl {
 
 		if (!addresses.length)
 			return addresses;
-		//console.log(`[${this.wallet.network}] !!! +++++++++++++++ SUBSCRIBING TO ADDRESSES :)\n`,addresses);
+		console.log(`[${this.wallet.network}] !!! +++++++++++++++ SUBSCRIBING TO ADDRESSES :)\n`,addresses);
 		let utxoChangedRes = await this.wallet.api.subscribeUtxosChanged(addresses, this.onUtxosChanged.bind(this))
 			.catch((error: RPC.Error) => {
 				console.log(`[${this.wallet.network}] RPC ERROR in uxtoSync! while registering addresses:`, error, addresses);
@@ -326,7 +333,7 @@ export class UtxoSet extends EventTargetImpl {
 				})
 			})
 
-		//console.log("utxoSync:utxoChangedRes:", utxoChangedRes, "\n utxoSync addresses:", addresses)
+		console.log("utxoSync:utxoChangedRes:", utxoChangedRes, "\n utxoSync addresses:", addresses)
 		return addresses;
 	}
 

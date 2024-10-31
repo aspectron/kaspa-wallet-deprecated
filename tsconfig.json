@@ -6,9 +6,8 @@
     // this enables stricter inference for data properties on `this`
     "strict": true,
     "skipLibCheck": true,
-    "typeRoots": ["node_modules/@types", "types"],
     "paths": {
-      "*": ["./types/*","./lib/*"] 
+      "*": ["../types/*","./lib/*"],
     },
     "baseUrl": ".",
     "outDir": "./dist",
@@ -20,6 +19,7 @@
     "resolveJsonModule": true,
     "experimentalDecorators":true,
     "module":"CommonJS",
-    "esModuleInterop": true
-  }
+    "esModuleInterop": true,
+  },
+  "include": ["src", "src/types"]
 }

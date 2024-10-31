@@ -1,13 +1,12 @@
-import kaspacore from '@kaspa/core-lib';
-import { KaspaAPI } from 'wallet/apiHelpers';
+import kaspacore from '@caldera-network/kaspa-core-lib';
+import type {UnspentOutput} from '../wallet/unspent-output';
+export type { KaspaAPI } from '../wallet/api';
 
-export type Network = 'kaspa' | 'kaspadev' | 'kaspareg' | 'kaspatest' | 'kaspasim';
+export type Network = 'kaspa' | 'kaspadev' | 'kaspareg' | 'kaspatest' | 'kaspasim' | 'nexellia' | 'hoosat' | 'bugna' | 'nautilus' | 'waglayla' | 'cas' | 'astrix' | 'kasv2';
 export type bytes = string;//base84 string
 
 export * from './rpc';
-import {IRPC, RPC} from './rpc';
-import { KaspaAPI } from './apiHelpers';
-
+import type {IRPC, RPC} from './rpc';
 
 export interface ScaneMoreResultItem{
   start:number,
@@ -50,7 +49,7 @@ export interface WalletOptions{
 export interface NetworkOptions{
   network:Network;
   defaultFee?:number;
-  rpc?:IRPC;
+  rpc?:IRPC|RPC;
 }
 
 export interface UnspentOutputInfo{
@@ -92,6 +91,7 @@ export interface TxSend {
   skipUTXOInUseMark?:boolean,
   compoundingUTXO?:boolean,
   compoundingUTXOMaxCount?:number
+  txIdList?:string[]
 }
 
 export interface TxCompoundOptions {
@@ -224,5 +224,3 @@ export namespace Api{
   }
   declare type BlockResponse = RPC.BlockVerboseData
 }
-
-

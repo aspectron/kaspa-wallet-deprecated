@@ -1,7 +1,7 @@
 import {Wallet} from './wallet';
 import {iDB} from './indexed-db';
-import {Api} from 'custom-types';
-
+import {Api} from '../types/custom-types';
+import fetch from "node-fetch"
 const API_BASE = "https://api.kaspa.org/";
 
 interface APITx{
@@ -27,11 +27,19 @@ export interface TXStoreItem{
 export const internalNames = {
 	mainnet : "default",
 	kaspa: "default",
+	nexellia: "default",
+	hoosat: "default",
+	nautilus: "default",
+	waglayla: "default",
+	bugna: "default",
+	astrix: "default",
+	kasv2: "default",
+	cas: "default",
 	testnet : "testnet",
 	kaspatest: "testnet",
 	kaspasim: "simnet",
 	kaspadev: "devnet",
-  kaspareg: "kaspareg"
+  	kaspareg: "kaspareg"
 }
 
 export class TXStore{
@@ -98,7 +106,7 @@ export class TXStore{
 			.catch(err=>{
 				this.wallet.logger.debug("ExplorerAPI transactions/search : error", err);
 			})
-			.then((response:void|Response) => {
+			.then((response) => {
 				this.wallet.logger.debug("ExplorerAPI transactions/search, txIds:", txIds,  "Response:", response);
 				if (response){
 					return response.json()

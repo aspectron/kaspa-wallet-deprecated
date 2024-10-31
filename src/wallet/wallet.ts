@@ -1,5 +1,5 @@
 const Mnemonic = require('bitcore-mnemonic');
-import * as kaspacore from '@kaspa/core-lib';
+import * as kaspacore from '@caldera-network/kaspa-core-lib';
 import * as helper from '../utils/helper';
 import {Storage, StorageType} from './storage';
 export * from './storage';
@@ -54,7 +54,16 @@ class Wallet extends EventTargetImpl {
 		kaspa: { port: 16110, network: 'kaspa', name : 'mainnet' },
 		kaspatest: { port: 16210, network: 'kaspatest', name : 'testnet' },
 		kaspasim: {	port: 16510, network: 'kaspasim', name : 'simnet' },
-		kaspadev: {	port: 16610, network: 'kaspadev', name : 'devnet' }
+		kaspadev: {	port: 16610, network: 'kaspadev', name : 'devnet' },
+		
+		nexellia: { port: 1111, network: 'nexellia', name : 'mainnet' },
+		hoosat: { port: 1111, network: 'hoosat', name : 'mainnet' },
+		nautilus: { port: 1111, network: 'nautilus', name : 'mainnet' },
+		waglayla: { port: 1111, network: 'waglayla', name : 'mainnet' },
+		bugna: { port: 1111, network: 'bugna', name : 'mainnet' },
+		astrix: { port: 1111, network: 'astrix', name : 'mainnet' },
+		kasv2: { port: 1111, network: 'kasv2', name : 'mainnet' },
+		cas: { port: 1111, network: 'cas', name : 'mainnet' },
 	}
 
 	static networkAliases: Object = {
@@ -776,7 +785,8 @@ class Wallet extends EventTargetImpl {
 		skipSign = false,
 		privKeysInfo = false,
 		compoundingUTXO = false,
-		compoundingUTXOMaxCount = COMPOUND_UTXO_MAX_COUNT
+		compoundingUTXOMaxCount = COMPOUND_UTXO_MAX_COUNT,
+		txIdList
 	}: TxSend): ComposeTxInfo {
 		// TODO: bn!
 		amount = parseInt(amount as any);
@@ -790,7 +800,7 @@ class Wallet extends EventTargetImpl {
 		if(compoundingUTXO){
 			({utxos, utxoIds, amount, mass} = this.utxoSet.collectUtxos(compoundingUTXOMaxCount));
 		}else{
-			({utxos, utxoIds, mass} = this.utxoSet.selectUtxos(amount + fee));
+			({utxos, utxoIds, mass} = this.utxoSet.selectUtxos(amount + fee, txIdList));
 		}
 		//if(mass > Wallet.MaxMassUTXOs){
 		//	throw new Error(`Maximum number of inputs (UTXOs) reached. Please reduce this transaction amount.`);
@@ -1114,6 +1124,7 @@ class Wallet extends EventTargetImpl {
 		//console.log("rpcTX:", rpcTX)
 		//throw new Error("TODO : XXXX")
 		try {
+			this.logger.info(`tx ... submission start`);
 			const ts = Date.now();
 			let txid: string = await this.api.submitTransaction(rpcTX);
 			const ts3 = Date.now();
@@ -1151,6 +1162,8 @@ class Wallet extends EventTargetImpl {
 			}
 			return resp;
 		} catch (e:any) {
+			this.logger.info(`tx ... submission error caught`);
+			this.logger.info(JSON.stringify(e));
 			if(reverseChangeAddress)
 				this.addressManager.changeAddress.reverse();
 			if (typeof e.setExtraDebugInfo == "function"){
