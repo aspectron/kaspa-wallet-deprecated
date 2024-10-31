@@ -1124,6 +1124,7 @@ class Wallet extends EventTargetImpl {
 		//console.log("rpcTX:", rpcTX)
 		//throw new Error("TODO : XXXX")
 		try {
+			this.logger.info(`tx ... submission start`);
 			const ts = Date.now();
 			let txid: string = await this.api.submitTransaction(rpcTX);
 			const ts3 = Date.now();
@@ -1161,6 +1162,8 @@ class Wallet extends EventTargetImpl {
 			}
 			return resp;
 		} catch (e:any) {
+			this.logger.info(`tx ... submission error caught`);
+			this.logger.info(JSON.stringify(e));
 			if(reverseChangeAddress)
 				this.addressManager.changeAddress.reverse();
 			if (typeof e.setExtraDebugInfo == "function"){
