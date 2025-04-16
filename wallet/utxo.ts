@@ -330,55 +330,162 @@ export class UtxoSet extends EventTargetImpl {
 		return addresses;
 	}
 
-	onUtxosChanged(added: Map < string, Api.Utxo[] > , removed: Map < string, RPC.Outpoint[] > ) {
-		// console.log("onUtxosChanged:res", added, removed)
-		added.forEach((utxos, address) => {
-			//this.logger.log('info', `${address}: ${utxos.length} utxos found.+=+=+=+=+=+=+++++=======+===+====+====+====+`);
-			if (!utxos.length)
-				return
+	onUtxosChanged (added: Map < string, Api.Utxo[] > , removed: Map < string, RPC.Outpoint[] > ) {
+		//console.log("onUtxosChanged:res", added, removed)
 
-			if (!this.utxoStorage[address]) {
-				this.utxoStorage[address] = utxos;
-			} else {
-				let txid2Utxo: Record < string, Api.Utxo > = {};
-				utxos.forEach(utxo => {
-					txid2Utxo[utxo.transactionId + utxo.index] = utxo;
-				})
-				let oldUtxos = this.utxoStorage[address].filter(utxo => {
-					return !txid2Utxo[utxo.transactionId + utxo.index]
-				});
-				this.utxoStorage[address] = [...oldUtxos, ...utxos];
-			}
-			this.add(utxos, address);
-		})
+        let commonAdded: Map<string, Api.Utxo[]> = new Map();
 
-		this.wallet.txStore.addFromUTXOs(added);
+        // Find common entries and separate them
+        for (const [address, removedEntries] of removed.entries()) {
+            const addedEntries = added.get(address);
+            if (addedEntries) {
+                const commonEntriesAdded:Api.Utxo[] = [];
 
-		let utxoIds: string[] = [];
-		removed.forEach((utxos, address) => {
-			let txid2Outpoint: Record < string, RPC.Outpoint > = {};
-			utxos.forEach(utxo => {
-				txid2Outpoint[utxo.transactionId + utxo.index] = utxo;
-				utxoIds.push(utxo.transactionId + utxo.index);
-			})
-			if (!this.utxoStorage[address])
-				return
-			this.utxoStorage[address] = this.utxoStorage[address].filter(utxo => {
-				return !txid2Outpoint[utxo.transactionId + utxo.index]
-			});
-		})
+                for (const removedEntry of removedEntries) {
+                    const addedEntry = addedEntries.find(ae => 
+                        ae.transactionId + ae.index === removedEntry.transactionId + removedEntry.index
+                    );
+                    if (addedEntry) {
+                        commonEntriesAdded.push(addedEntry);
+                    }
+                }
 
-		if (utxoIds.length)
-			this.remove(utxoIds);
+                if (commonEntriesAdded.length > 0) {
+                    commonAdded.set(address, commonEntriesAdded);
 
-		const isActivityOnReceiveAddr =
-			this.utxoStorage[this.wallet.receiveAddress] !== undefined;
-		if (isActivityOnReceiveAddr)
-			this.wallet.addressManager.receiveAddress.next();
+                    // Remove common entries from original lists
+                    const remainingRemoved = removedEntries.filter(entry => 
+                        !commonEntriesAdded.some(common => 
+                            common.transactionId + common.index === entry.transactionId + entry.index
+                        )
+                    );
+                    removed.set(address, remainingRemoved);
 
-		//this.updateUtxoBalance();
-		this.wallet.emit("utxo-change", {added, removed});
-	}
+                    const remainingAdded = addedEntries.filter(entry => 
+                        !commonEntriesAdded.some(common => 
+                            common.transactionId + common.index === entry.transactionId + entry.index
+                        )
+                    );
+                    added.set(address, remainingAdded);
+                }
+            }
+        }
+
+        // Process remaining removed entries
+        let utxoIds: string[] = [];
+        removed.forEach((utxos, address) => {
+            let txid2Outpoint: Record < string, RPC.Outpoint > = {};
+            utxos.forEach(utxo => {
+                txid2Outpoint[utxo.transactionId + utxo.index] = utxo;
+                utxoIds.push(utxo.transactionId + utxo.index);
+            });
+            if (!this.utxoStorage[address])
+                return;
+            this.utxoStorage[address] = this.utxoStorage[address].filter(utxo => {
+                return !txid2Outpoint[utxo.transactionId + utxo.index];
+            });
+        });
+        if (utxoIds.length)
+            this.remove(utxoIds);
+
+        // Process remaining added entries
+        added.forEach((utxos, address) => {
+            //this.logger.log('info', `${address}: ${utxos.length} utxos found.+=+=+=+=+=+=+++++=======+===+====+====+====+`);
+            if (!utxos.length)
+                return;
+            if (!this.utxoStorage[address]) {
+                this.utxoStorage[address] = utxos;
+            }
+            else {
+                let txid2Utxo: Record < string, Api.Utxo > = {};
+                utxos.forEach(utxo => {
+                    txid2Utxo[utxo.transactionId + utxo.index] = utxo;
+                });
+                let oldUtxos = this.utxoStorage[address].filter(utxo => {
+                    return !txid2Utxo[utxo.transactionId + utxo.index];
+                });
+                this.utxoStorage[address] = [...oldUtxos, ...utxos];
+            }
+            this.add(utxos, address);
+        });
+        this.wallet.txStore.addFromUTXOs(added);
+
+
+        for (const [address, addedEntries] of commonAdded.entries()) {
+            this.updateUtxos(addedEntries, address);
+        }
+
+        
+        const isActivityOnReceiveAddr = this.utxoStorage[this.wallet.receiveAddress] !== undefined;
+        if (isActivityOnReceiveAddr)
+            this.wallet.addressManager.receiveAddress.next();
+        //this.updateUtxoBalance();
+        this.wallet.emit("utxo-change", { added, removed });
+    }
+
+    updateUtxos(newUtxos: Api.Utxo[], address: string){
+
+        if (!newUtxos.length)
+            return
+
+        if (!this.utxoStorage[address]) {
+            //this.utxoStorage[address] = newUtxos;
+        } else {
+            // Create a map of existing UTXOs for quick lookup
+            let existingUtxos = new Map();
+            this.utxoStorage[address].forEach(utxo => {
+                existingUtxos.set(utxo.transactionId + utxo.index, utxo);
+            });
+
+            // Update or add new UTXOs
+            newUtxos.forEach(newUtxo => {
+                const key = newUtxo.transactionId + newUtxo.index;
+                const existingUtxo = existingUtxos.get(key);
+                
+                if (existingUtxo) {
+                    // Update if new UTXO has higher blockDaaScore
+                    //if (+newUtxo.blockDaaScore > +existingUtxo.blockDaaScore) {
+                        existingUtxos.set(key, newUtxo);
+                    //}
+                } else {
+                    // Add new UTXO if it doesn't exist
+                    //existingUtxos.set(key, newUtxo);
+                }
+            });
+
+            // Convert map back to array
+            this.utxoStorage[address] = Array.from(existingUtxos.values());
+        }
+
+        newUtxos.forEach(utxo => {
+            this.updateUtxo(utxo, address)
+        });
+
+    }
+
+    updateUtxo(newUtxo: Api.Utxo, address:string) {
+        const utxoId = newUtxo.transactionId + newUtxo.index.toString();
+
+        let unspentOutput = new UnspentOutput({
+            txid: newUtxo.transactionId,
+            address,
+            vout: newUtxo.index,
+            scriptPubKey: newUtxo.scriptPublicKey.scriptPublicKey,
+            scriptPublicKeyVersion: newUtxo.scriptPublicKey.version,
+            satoshis: +newUtxo.amount,
+            blockDaaScore: newUtxo.blockDaaScore,
+            isCoinbase: newUtxo.isCoinbase
+        });
+        
+        let maps = [this.utxos.confirmed, this.utxos.pending, this.utxos.used]
+        maps.forEach(map=>{
+            let oldUtxo = this.utxos.confirmed.get(utxoId)
+            //console.log("oldUtxo#####: ", utxoId,  oldUtxo, newUtxo)
+            if (oldUtxo){// && +newUtxo.blockDaaScore > +oldUtxo.blockDaaScore){
+                map.set(utxoId, unspentOutput);
+            }
+        })
+    }
 
 	isOur(utxo:UnspentOutput): boolean{
 		return (!!this.wallet.transactions[utxo.txId]) || this.isOurChange(utxo)
